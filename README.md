@@ -1,195 +1,60 @@
-# samadams — NixOS + LARBS
+# samadams — modular NixOS
 
-A single-file NixOS configuration that reproduces [LARBS](https://larbs.xyz)
-(Luke Smith's Auto-Rice Bootstrapping Scripts) declaratively: the same suckless
-desktop, the same programs, and the same keybindings — but built by Nix instead
-of an Arch install script.
+A LARBS-style dwm desktop plus an electronics / 3D-printing / gaming / AI
+workstation, split into toggleable modules.
 
-Everything lives in [`configuration.nix`](./configuration.nix), split into
-numbered sections with dividers. The full keybinding reference is a comment
-block at the top of that file.
+## Layout
+
+```
+configuration.nix     picks which modules are on (reads ./mods)
+settings.nix          the few values you'd change (user, host, ESP, theme)
+modules/core.nix      always on: boot, net, user, audio, shell, hardening, `mod`
+modules/*.nix         one feature each — desktop, apps, ai, ee, gaming,
+                      privacy, virt, osint, backoffice
+pkgs/default.nix      everything built from source (dwm/st/dmenu, backoffice,
+                      Grok Bot, SpiderFoot, the GRUB theme…)
+mods/<name>           an empty marker file = that module is ON
+```
 
 ## Install
 
+It's a directory now, not one file — copy the whole thing:
+
 ```sh
-# 1. Generate the machine-specific hardware config (configuration.nix imports it)
-sudo nixos-generate-config
-
-# 2. Put this config in place
-sudo cp configuration.nix /etc/nixos/configuration.nix
-
-# 3. Build
+sudo cp -r . /etc/nixos/
 sudo nixos-rebuild switch
-
-# 4. Give the account a password, then log in
-sudo passwd samadams
 ```
 
-Targets NixOS **26.05**. To rename the account or host, edit section 0 — the
-rest of the file reads from those bindings.
+(First time, make sure `/etc/nixos/hardware-configuration.nix` exists —
+`sudo nixos-generate-config` — and that the ESP is mounted where
+`settings.nix` says. The build stops with instructions if it isn't.)
 
-## What you get
+## Turning things on and off
 
-| | |
-|---|---|
-| Window manager | dwm — Luke's build, pinned revision, with vanitygaps, scratchpads and window swallowing |
-| Terminal | st — scrollback, ligatures, URL picker |
-| Launcher / bar | dmenu, dwmblocks |
-| Editor | neovim, with the system clipboard wired up (see below) |
-| Multiplexer | tmux — `Ctrl+a` prefix, vi copy-mode yanking to the same X clipboard |
-| Shell | zsh — vi keys, LARBS's `Ctrl+o` / `Ctrl+f` / `Ctrl+a` bindings, starship, zoxide |
-| Browsers | Firefox, Tor Browser, vimb, lynx |
-| Monitors | htop, fastfetch |
-| Virtualisation | QEMU/KVM via libvirt + virt-manager, with swtpm for Windows guests |
-| Privacy | Tor daemon and SOCKS proxy on `127.0.0.1:9050` |
-| Media | mpv, ani-cli, ncmpcpp/mpd, nsxiv, zathura, yt-dlp |
-| Mail / news / chat | neomutt + mutt-wizard, newsboat, abook, profanity |
-| Security / OSINT | recon-ng, theHarvester, SpiderFoot, osint-tools-cli, sherlock, nmap, Wireshark, Metasploit, aircrack-ng |
-| VPN | Proton VPN (GUI + `protonvpn` CLI) |
-| Passwords / chat / anon | Bitwarden (desktop + `bw` CLI), nheko (Matrix), I2P router |
+```sh
+mod list            # what's on / off
+mod on osint        # enable a module + rebuild
+mod off gaming      # disable + rebuild
+```
 
-Sections 2 and 15 list which package backs which keybinding.
+An off module stays fully written in `modules/` — it's just not built. Default
+on: desktop, apps, ai, ee, gaming, privacy, virt, backoffice. Default off: osint.
 
-## Answering "vim with `"+y`"
+## Commands the modules add
 
-Section 13 sets `clipboard+=unnamedplus`, so plain `y` and `p` already use the
-X11 CLIPBOARD selection. The explicit form is mapped too, with `,` as leader:
-
-| Keys | Does |
-|---|---|
-| `,y` | yank to `"+` (normal and visual) |
-| `,Y` | yank to end of line into `"+` |
-| `,yy` | yank the line into `"+` |
-| `,p` / `,P` | put from `"+` |
-| `,d` | delete into `"+` |
-| `,ya` | `:%y+` — yank the whole buffer |
-
-tmux copy-mode `y` pipes through `xclip -selection clipboard`, so nvim, tmux and
-every X app share one clipboard.
-
-## Common knobs
-
-All in section 0, at the top of `configuration.nix`:
-
-| Setting | Default | What it does |
+| command | from | what |
 |---|---|---|
-| `stAlpha` | `0.72` | Terminal transparency. Lower = more see-through. `Alt+a` / `Alt+s` adjust it live in a running terminal if you want to find your number first. |
-| `useUEFI` | `true` | Set `false` on a BIOS/MBR machine. |
-| `useGrub` | `true` | GRUB (themeable) vs systemd-boot (simpler, but **cannot** be themed). |
-| `grubTheme` | `catppuccin-grub` | Boot menu theme. `sleek-grub-theme` is the other packaged option; `null` for plain. |
-| `grubResolution` | `auto` | Boot menu graphics mode. Set an exact resolution if the menu looks wrong. |
-| `seedLarbsDotfiles` | `true` | Whether to copy Luke's dotfiles into `$HOME` on first activation. |
+| `mod` | core | the module toggle above |
+| `backoffice` | backoffice | parts-inventory web app on :8080 |
+| `grok-bot` / `grok` | ai | Grok Bot desktop app / xAI CLI |
+| `torrun <app>` | privacy | one app through Tor, leak-proof (oniux) |
+| `tormode on\|off` | privacy | ALL traffic through Tor (breaks voice/games) |
 
-Transparency needs a compositor, which section 8 starts (`xcompmgr`) before dwm.
-Note that `stAlpha` has to be applied in two places — st reads `alpha` from
-Xresources at startup and that silently overrides the compiled-in value. The
-config patches both from the one setting; if your home was already seeded from
-an earlier build, edit `~/.config/x11/xresources` too.
+## Notes
 
-## If `nixos-rebuild switch` throws errors
-
-Most first-build failures on a laptop are one of these:
-
-1. **UEFI vs BIOS mismatch.** Run `[ -d /sys/firmware/efi ] && echo UEFI || echo BIOS`
-   and set `useUEFI` to match. This is the most common one by far.
-   Then check where your EFI partition is (`lsblk -f`, it's the small FAT32 one)
-   and set `espMountPoint` — `/boot` and `/boot/efi` are both common, and a
-   mismatch gives you a "failed to install the boot loader" error.
-2. **Wifi firmware.** `hardware.enableRedistributableFirmware` is on in section 5.
-   Without it most Intel/Broadcom/Realtek cards do not appear at all — no error,
-   just no interface.
-3. **Failed units at boot rather than a build error.** `systemctl --failed`
-   tells you which. Two known ones are already fixed here: mpd is no longer a
-   system service (it started before PipeWire existed and failed every boot),
-   and `NetworkManager-wait-online` is disabled (it fails whenever you boot out
-   of range of a known network).
-
-If something still fails, `journalctl -b -p err` is the fastest way to see what.
-
-## The Alfa AWUS036ACS needs the pinned kernel
-
-That adapter's injection-capable driver (`rtl8812au`) is marked broken on
-NixOS 26.05's default 6.18 kernel, so section 4 pins the kernel to 6.12 LTS,
-where the module is prebuilt in the binary cache. If you ever drop the adapter,
-remove the two `boot.kernelPackages` / `boot.extraModulePackages` lines to go
-back to the latest kernel. To use the card: `sudo ip link set wlan1 down`,
-`sudo iw dev wlan1 set type monitor`, `sudo ip link set wlan1 up` — or just let
-`airmon-ng start wlan1` do it.
-
-Monitor mode and packet injection are legal only against networks you own or
-are authorised to test. The tools don't enforce that; you do.
-
-## SpiderFoot runs from source, not a nixpkgs package
-
-It isn't in nixpkgs and its dependency pins are from 2022, so it's built from
-the upstream repo against current libraries (the pins turned out to be
-install-time only — verified that the core imports and both entry points run).
-`spiderfoot` launches the web UI; `spiderfoot-cli` is the terminal client. One
-of its deps, PyPDF2, is flagged insecure and is allow-listed in section 3;
-that path is only hit when SpiderFoot parses a PDF mid-scan.
-
-## I2P runs as a service
-
-Enabled via `services.i2p`, so the router comes up at boot under its own `i2p`
-user and keeps building tunnels. Manage it and browse eepsites from the web
-console at `http://127.0.0.1:7657`; its HTTP proxy is `127.0.0.1:4444`. Nothing
-routes through I2P until you point an app at that proxy.
-
-## Three allow-listed insecure packages
-
-Section 3 allow-lists three packages nixpkgs flags as insecure, each for a
-named reason and each tied to one app you can remove to drop it:
-
-- **`electron-39.8.10`** — Bitwarden desktop bundles an EOL Electron. The app
-  is current; the browser engine under it isn't getting fixes. The `bw` CLI
-  and browser extension avoid it.
-- **`olm-3.2.16`** — nheko's Matrix E2E library, deprecated upstream for
-  vodozemac but the only backend nheko has.
-- **`python3.13-pypdf2-3.0.1`** — SpiderFoot's PDF parser, only reached mid-scan.
-
-## Two things to know
-
-**Dotfiles are seeded, not managed.** On first activation, Luke's configs for lf,
-dunst, mpv, zathura, ncmpcpp and X resources are copied into `~/.config` with
-`cp -rn`, so nothing you have written is ever overwritten. `nvim` and `zsh` are
-deliberately skipped — those are configured declaratively in section 13, and a
-wrapped neovim ignores `~/.config/nvim` anyway. To re-seed after bumping the
-pinned revision, delete `~/.local/share/larbs/.seeded`. Set
-`seedLarbsDotfiles = false` in section 0 to turn it off.
-
-**surf is not installed, on purpose.** You asked for it, and it is one
-uncomment away, but it has two real problems in nixpkgs 26.05: it is marked
-broken because WebKitGTK dropped the XEmbed support surf relies on, and it drags
-in libsoup 2.74.3, which is flagged for known CVEs. A web browser is the worst
-place to accept a vulnerable HTTP stack, so `Super+Shift+c` opens `vimb`
-instead — the same minimal, vim-keys, WebKitGTK idea on a maintained codebase.
-Section 2 has the exact steps if you want surf anyway.
-
-## Verification
-
-The config evaluates against nixpkgs 26.05 with no errors and no deprecation
-warnings, and all five from-source packages (dwm, st, dmenu, dwmblocks, and the
-voidrice helper scripts) compile. The added keybindings were confirmed present
-in the built `dwm` binary.
-
-Every binding was then traced to the program it actually launches — including
-the commands the LARBS helper scripts shell out to internally, which is where
-most of the gaps were.
-
-### Bindings that need setup before they do anything
-
-These work, but only once you have configured the thing behind them:
-
-| Binding | Needs |
-|---|---|
-| `Super+e`, `Super+F8` | a mail account — run `mw -a you@example.com` first |
-| `Super+Shift+d` | an initialised `pass` store (`pass init <gpg-id>`) |
-| `Super+c` | an XMPP account in profanity |
-| `Super+m` and the music keys | music in `~/Music` (mpd is already running) |
-| `Super+Insert` | a `~/.local/share/larbs/snippets` file you write yourself |
-
-### Known dead
-
-The touchpad-toggle media keys call `synclient`, from the old X synaptics
-driver. This config uses libinput instead, so those keys do nothing. Use your
-laptop's own touchpad toggle, or the libinput settings in section 8.
+- **Top bar** shows the clock (`date`), plus net/volume/battery. Edit the block
+  list in `pkgs/default.nix` → `larbs-dwmblocks`.
+- **Minecraft**: Prism Launcher (gaming module); Feather/Fabric install into it
+  from Modrinth.
+- **Onshape** is a Chromium app-mode desktop shortcut (it's web-only).
+- **Wallpaper**: `setbg /path/to/image.png`.
