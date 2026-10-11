@@ -3,6 +3,65 @@
 let
   s = import ../settings.nix;
 
+  # which feature modules are switched on (same marker files the picker reads)
+  allModules = lib.pipe (builtins.readDir ../modules) [
+    builtins.attrNames
+    (map (f: lib.removeSuffix ".nix" f))
+    (builtins.filter (m: m != "core"))
+  ];
+  enabledModules = builtins.filter (m: builtins.pathExists (../mods + "/${m}")) allModules;
+
+  # ── Jarvis's note-to-self: regenerated from the live config every rebuild ──
+  # Lands at /etc/jarvis/SYSTEM.md (and ~/SYSTEM.md). Written for an assistant
+  # bot so it knows how this machine is wired without being told.
+  jarvisDoc = pkgs.writeText "SYSTEM.md" ''
+    # ${s.hostName} — system notes (auto-generated, do not hand-edit)
+
+    Regenerated on every `nixos-rebuild`, so it always matches the running
+    system. Source of truth is /etc/nixos (a module tree). Owner: ${s.fullName}
+    (`${s.username}`), timezone ${s.timeZone}.
+
+    ## Shape of the config
+    - `/etc/nixos/configuration.nix` — picks modules by reading `/etc/nixos/mods/`.
+    - `/etc/nixos/settings.nix` — user/host/ESP/theme knobs.
+    - `/etc/nixos/modules/<name>.nix` — one feature each. Off modules stay on
+      disk, just unbuilt.
+    - `/etc/nixos/pkgs/default.nix` — packages built from source (one overlay).
+
+    ## Modules currently ON
+    ${lib.concatMapStringsSep "\n" (m: "- ${m}") enabledModules}
+
+    (Available but possibly off: ${lib.concatStringsSep ", " allModules})
+
+    ## Commands this system adds
+    - `mod list | mod on <name> | mod off <name>` — toggle a module + rebuild.
+    - `backoffice` — parts-inventory web app, http://localhost:8080.
+    - `grok` — xAI coding CLI.  `claude-code` — Claude Code.
+    - `torrun <app>` — run one app through Tor (leak-proof). `tormode on|off` —
+      route everything through Tor (only if the `privacy` module is on).
+    - `setbg <image>` — set the wallpaper.
+    - `nrs` — `sudo nixos-rebuild switch`.
+
+    ## To change the system (do this, not `nix profile install`)
+    1. Edit the relevant file under /etc/nixos (a module, or settings.nix).
+    2. `sudo nixos-rebuild switch`. Rollback: pick an older generation at boot,
+       or `sudo nixos-rebuild switch --rollback`.
+    - Add a package: put it in the fitting module's `environment.systemPackages`.
+    - Add a service: a NixOS `services.*` option in the fitting module.
+    - Add software built from Git: a derivation in pkgs/default.nix (copy the
+      `backoffice` block — it shows the fetchFromGitHub + hash pattern).
+
+    ## Conventions / safety for an assistant acting here
+    - This is declarative: nothing is "installed" imperatively. Change files,
+      rebuild. Never edit /nix/store.
+    - The firewall is on with no open ports; SSH is off. `sudo` needs a password.
+    - Desktop is dwm (suckless); the status bar clock + commands are in
+      pkgs/default.nix → larbs-dwmblocks. Press Super+F1 for the keybind manual.
+    - 3D printers: control over the LAN (mDNS is on, so `*.local` resolves).
+      See modules/printing.nix for the self-host Klipper option.
+    - Before any outward-facing or irreversible action, confirm with ${s.username}.
+  '';
+
   mod = pkgs.writeShellScriptBin "mod" ''
     dir=/etc/nixos; m="$dir/mods"
     all() { for f in "$dir"/modules/*.nix; do n=$(basename "$f" .nix); [ "$n" = core ] || echo "$n"; done; }
@@ -104,6 +163,13 @@ in
 
   services.fstrim.enable = true;
   services.openssh.enable = false;
+
+  # Jarvis's note-to-self, placed system-wide and in the user's home each rebuild.
+  environment.etc."jarvis/SYSTEM.md".source = jarvisDoc;
+  system.activationScripts.jarvisDoc.text = ''
+    install -Dm644 ${jarvisDoc} /home/${s.username}/SYSTEM.md
+    chown ${s.username}:users /home/${s.username}/SYSTEM.md
+  '';
 
   # ── hardening (light enough that Steam/Proton/VMs still work) ──────────────
   security.sudo.execWheelOnly = true;

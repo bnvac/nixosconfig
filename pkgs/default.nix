@@ -130,22 +130,6 @@ in
     meta.mainProgram = "backoffice";
   };
 
-  # ── Grok Bot — xAI/Cursor's official desktop agent (AppImage) ──────────────
-  grok-bot = prev.appimageTools.wrapType2 rec {
-    pname = "grok-bot"; version = "0.68.1";
-    src = prev.fetchurl {
-      url = "https://downloads.cursor.com/grokbot/stable/33103062f95061ccf9c81c5b365d37ab152c3b66/linux/x64/Grok_Bot_${version}.AppImage";
-      hash = "sha256-L+fFrOzM1VehM7DGGSmX7AwTIPHp/Hvv/MprXozvuls=";
-    };
-    extraInstallCommands =
-      let ex = prev.appimageTools.extractType2 { inherit pname version src; }; in ''
-        install -Dm644 ${ex}/grok-bot.desktop -t $out/share/applications 2>/dev/null || true
-        cp -r ${ex}/usr/share/icons $out/share/ 2>/dev/null || true
-      '';
-    meta = { description = "Grok Bot desktop agent (xAI/Cursor)"; mainProgram = "grok-bot";
-             license = prev.lib.licenses.unfree; };
-  };
-
   # ── OSINT TUI cheat-sheet ──────────────────────────────────────────────────
   osint-tools-cli = prev.rustPlatform.buildRustPackage {
     pname = "osint-tools-cli"; version = "0.2.0";
