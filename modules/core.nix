@@ -39,7 +39,7 @@ let
     - `grok` — xAI coding CLI.  `claude-code` — Claude Code.
     - `torrun <app>` — run one app through Tor (leak-proof). `tormode on|off` —
       route everything through Tor (only if the `privacy` module is on).
-    - `jarvis` (keybind: Super+Shift+backtick) — push-to-talk voice assistant:
+    - `jarvis` (keybind: Super+Space) — push-to-talk voice assistant:
       speak, it transcribes (whisper), asks the local model (ollama, with THIS
       file as context), and speaks back (piper). Needs the `assistant` module
       on and a model pulled (`ollama pull llama3.1`).

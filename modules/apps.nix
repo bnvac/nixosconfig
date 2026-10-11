@@ -19,7 +19,12 @@ in
     mpv ani-cli yt-dlp ffmpeg mpd mpc ncmpcpp pulsemixer pavucontrol playerctl mediainfo
     cider-2                                  # Apple Music desktop client
     newsboat abook calcurse sc-im
+    calibre                                  # ebook library / reader / converter
     qbittorrent                              # FOSS torrent client
+    stremio-linux-shell                      # "Netflix for torrents": browse a
+                                             # poster grid, click to stream via
+                                             # addons (install Torrentio in-app).
+                                             # Simpler classic alternative: popcorntime
     usbmuxd libimobiledevice balena-cli appimage-run flatpak
     nodejs
     networkmanagerapplet lm_sensors ntfs3g exfatprogs dosfstools simple-mtpfs

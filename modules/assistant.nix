@@ -2,7 +2,7 @@
 #
 #   ollama       local LLM server (the brain)         http://127.0.0.1:11434
 #   open-webui   ChatGPT-style web UI over ollama     http://127.0.0.1:8088
-#   jarvis       push-to-talk voice assistant         Super+Shift+` (backtick)
+#   jarvis       push-to-talk voice assistant         Super+Space
 #   whisper-cpp  speech-to-text (ears)  ·  piper-tts   text-to-speech (voice)
 #   uv + python  for building the agent itself
 #

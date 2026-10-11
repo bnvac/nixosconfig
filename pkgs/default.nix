@@ -19,8 +19,11 @@ in
       substituteInPlace config.h \
         --replace-fail '{ "xbacklight", "-inc", "15", NULL }' '{ "brightnessctl", "set", "10%+", NULL }' \
         --replace-fail '{ "xbacklight", "-dec", "15", NULL }' '{ "brightnessctl", "set", "10%-", NULL }'
+      # Super+Space talks to Jarvis. dwm binds Super+Space to zoom by default —
+      # dwm fires EVERY matching binding, so that line is deleted, not shadowed.
+      sed -i '/MODKEY,.*XK_space,.*zoom/d' config.h
       cat > larbs-extra-keys.h <<'KEYS'
-      { MODKEY|ShiftMask, XK_grave,     spawn, {.v = (const char*[]){ "jarvis", NULL } } },
+      { MODKEY,           XK_space,     spawn, {.v = (const char*[]){ "jarvis", NULL } } },
       { MODKEY|ShiftMask, XK_Tab,       spawn, {.v = (const char*[]){ "tor-browser", NULL } } },
       { MODKEY|ShiftMask, XK_backslash, spawn, {.v = (const char*[]){ TERMINAL, "-e", "tmux", "new-session", "-A", "-s", "main", NULL } } },
       { MODKEY|ShiftMask, XK_Escape,    spawn, SHCMD(TERMINAL " -e sh -c 'fastfetch; read -r _'") },
