@@ -17,6 +17,7 @@ in
     onshape
     chromium discord slack
     mpv ani-cli yt-dlp ffmpeg mpd mpc ncmpcpp pulsemixer pavucontrol playerctl mediainfo
+    cider-2                                  # Apple Music desktop client
     newsboat abook calcurse sc-im
     qbittorrent                              # FOSS torrent client
     usbmuxd libimobiledevice balena-cli appimage-run flatpak
