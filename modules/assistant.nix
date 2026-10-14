@@ -1,75 +1,94 @@
-# Jarvis foundation — a local AI stack that runs offline and keeps data local.
+# Neb — local voice assistant — plus the AI stack it talks to.
 #
-#   ollama       local LLM server (the brain)         http://127.0.0.1:11434
-#   open-webui   ChatGPT-style web UI over ollama     http://127.0.0.1:8088
-#   jarvis       push-to-talk voice assistant         Super+Space
-#   whisper-cpp  speech-to-text (ears)  ·  piper-tts   text-to-speech (voice)
-#   uv + python  for building the agent itself
+#   neb serve    HTTP endpoint + dashboard   http://127.0.0.1:7000   (user service)
+#   neb hotkey   Super+Space: listen → answer → speak (opens a `neb tui` window)
+#   neb tui / chat / ask / tools             terminal faces of the same agent
 #
-# When your bot has a repo, package it in pkgs/default.nix (copy backoffice) and
-# add it to the ai module. It can read ~/SYSTEM.md for live machine context.
+# BRAIN depends on settings.nix `device`:
+#   desktop → local Ollama on the RX 6750 XT (free, offline)
+#   laptop  → an API brain (set a key in the dashboard, or ANTHROPIC_API_KEY)
+#
+# Dashboard: http://127.0.0.1:7000 — switch brains, set API keys (write-only),
+# edit the command allowlist, see tools/memory. Open it with: chromium http://127.0.0.1:7000
 { config, pkgs, lib, ... }:
 let
-  # Push-to-talk: press the keybind, speak, it stops on silence, transcribes,
-  # asks the local model (with ~/SYSTEM.md as context), and speaks the reply.
-  # Speech + voice models download themselves to ~/.local/share/jarvis on first
-  # run. Change the model with:  JARVIS_MODEL=qwen2.5 jarvis
-  jarvis = pkgs.writeShellScriptBin "jarvis" ''
-    export PATH=${lib.makeBinPath (with pkgs; [
-      sox whisper-cpp piper-tts curl jq libnotify coreutils gnused gnugrep
-    ])}:$PATH
-    set -eu
-    dir="''${XDG_DATA_HOME:-$HOME/.local/share}/jarvis"; mkdir -p "$dir"
-    wm="$dir/ggml-base.en.bin"; pm="$dir/voice.onnx"
-    model="''${JARVIS_MODEL:-llama3.1}"
+  s = import ../settings.nix;
+  isDesktop = s.device == "desktop";
+  home = "/home/${s.username}";
 
-    [ -f "$wm" ] || { notify-send "Jarvis" "Downloading speech model…"
-      whisper-cpp-download-ggml-model base.en "$dir" >/dev/null 2>&1 || true; }
-    [ -f "$pm" ] || { notify-send "Jarvis" "Downloading voice…"
-      base=https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium
-      curl -fsSL "$base/en_US-lessac-medium.onnx"      -o "$pm"
-      curl -fsSL "$base/en_US-lessac-medium.onnx.json" -o "$pm.json"; }
+  # tools Neb's server shells out to (mod, nixos-rebuild, sudo, systemctl, df…)
+  # plus the voice tools the hotkey uses.
+  nebPath = lib.makeBinPath (with pkgs; [
+    sox whisper-cpp piper-tts libnotify xdotool coreutils curl jq
+  ]);
 
-    notify-send "🎙 Jarvis" "Listening… (stops when you pause)"
-    rec -q -r 16000 -c 1 "$dir/in.wav" silence 1 0.1 3% 1 2.0 3% trim 0 15 2>/dev/null
-    text=$(whisper-cli -m "$wm" -f "$dir/in.wav" -nt -np 2>/dev/null | tr '\n' ' ' | sed 's/^ *//;s/ *$//')
-    [ -n "$text" ] || { notify-send "Jarvis" "Didn't catch that."; exit 0; }
-    notify-send "🗣 You said" "$text"
-
-    sys="You are Jarvis, $USER's terminal assistant on a NixOS machine. Be concise and spoken-friendly."
-    [ -f "$HOME/SYSTEM.md" ] && sys="$sys Machine notes:
-$(cat "$HOME/SYSTEM.md")"
-    reply=$(curl -fsS http://127.0.0.1:11434/api/generate \
-      -d "$(jq -n --arg m "$model" --arg p "$text" --arg s "$sys" \
-            '{model:$m,prompt:$p,system:$s,stream:false}')" | jq -r '.response')
-    [ -n "$reply" ] || { notify-send "Jarvis" "No reply (is a model pulled? 'ollama pull $model')"; exit 0; }
-    notify-send "🤖 Jarvis" "$reply"
-    printf '%s' "$reply" | piper --model "$pm" --output_file "$dir/out.wav" 2>/dev/null
-    play -q "$dir/out.wav" 2>/dev/null
-  '';
+  # Seed ~/.local/share/neb/settings.json on first run only (Neb owns it after).
+  # Picks the brain by device and teaches the voice loop about st + X11 focus.
+  nebSeed = pkgs.writeText "neb-settings.json" (builtins.toJSON {
+    provider = if isDesktop then "ollama" else "anthropic";
+    voice = {
+      record = [ "rec" "-q" "-c" "1" "-r" "16000" "-b" "16" "{wav}"
+                 "silence" "1" "0.1" "2%" "1" "1.5" "2%" "trim" "0" "30" ];
+      stt = [ "whisper-cli" "-m" "~/.local/share/jarvis/ggml-base.en.bin" "-nt" "-np" "-f" "{wav}" ];
+      tts = [ "piper" "--model" "~/.local/share/jarvis/voice.onnx" "--output_file" "{out}" ];
+      play = [ "play" "-q" "{out}" ];
+    };
+    ui = {
+      # st is the user's terminal (not in Neb's built-in list), dwm/X11 focus
+      # is via xdotool (Neb only auto-focuses on Wayland).
+      terminal = [ "st" "-n" "neb" "-t" "neb" "-e" "{cmd}" ];
+      focus = [ "xdotool" "search" "--name" "^neb$" "windowactivate" ];
+    };
+  });
 in
 {
-  services.ollama = {
+  # ── local model stack — desktop only (the laptop uses an API brain) ────────
+  services.ollama = lib.mkIf isDesktop {
     enable = true;
-    package = pkgs.ollama-rocm;   # AMD GPU build (26.05 picks accel by package)
-    # RX 6750 XT is gfx1031 (Navi 22), which ROCm doesn't list. Tell it to act
-    # as the supported gfx1030 — the standard, reliable fix for this card.
-    rocmOverrideGfx = "10.3.0";
+    package = pkgs.ollama-rocm;      # AMD GPU build
+    rocmOverrideGfx = "10.3.0";      # RX 6750 XT (gfx1031) → acts as gfx1030
+  };
+  services.open-webui = lib.mkIf isDesktop {
+    enable = true; port = 8088; openFirewall = false;
+    environment = { OLLAMA_API_BASE_URL = "http://127.0.0.1:11434"; WEBUI_AUTH = "False"; };
   };
 
-  services.open-webui = {
-    enable = true;
-    port = 8088;                       # 8080 is backoffice
-    openFirewall = false;
-    environment = {
-      OLLAMA_API_BASE_URL = "http://127.0.0.1:11434";
-      WEBUI_AUTH = "False";
+  # ── voice models fetched once to ~/.local/share/jarvis (used by Neb) ───────
+  systemd.user.services.neb-voice-setup = {
+    description = "Fetch Neb's whisper + piper voice models";
+    wantedBy = [ "default.target" ];
+    serviceConfig.Type = "oneshot";
+    path = with pkgs; [ whisper-cpp curl coreutils ];
+    script = ''
+      d="$HOME/.local/share/jarvis"; mkdir -p "$d"
+      [ -f "$d/ggml-base.en.bin" ] || whisper-cpp-download-ggml-model base.en "$d" || true
+      base=https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium
+      [ -f "$d/voice.onnx" ] || curl -fsSL "$base/en_US-lessac-medium.onnx" -o "$d/voice.onnx" || true
+      [ -f "$d/voice.onnx.json" ] || curl -fsSL "$base/en_US-lessac-medium.onnx.json" -o "$d/voice.onnx.json" || true
+    '';
+  };
+
+  # ── Neb server (the dashboard + /ask endpoint) as a user service ───────────
+  systemd.user.services.neb = {
+    description = "Neb assistant server";
+    wantedBy = [ "default.target" ];
+    after = [ "neb-voice-setup.service" ];
+    path = [ "/run/wrappers/bin" "/run/current-system/sw/bin" ];  # sudo, mod, systemctl…
+    environment.PATH = lib.mkForce "/run/wrappers/bin:/run/current-system/sw/bin:${nebPath}";
+    preStart = ''
+      mkdir -p "$HOME/.local/share/neb"
+      [ -f "$HOME/.local/share/neb/settings.json" ] || {
+        install -m600 ${nebSeed} "$HOME/.local/share/neb/settings.json"; }
+    '';
+    serviceConfig = {
+      ExecStart = "${pkgs.neb}/bin/neb serve --port 7000";
+      Restart = "on-failure"; RestartSec = 3;
     };
   };
 
   environment.systemPackages = with pkgs; [
-    jarvis
-    whisper-cpp piper-tts sox alsa-utils   # voice I/O
-    uv python3                             # agent dev
+    neb                                   # neb / neb tui / neb ask / neb chat
+    whisper-cpp piper-tts sox alsa-utils  # voice I/O
+    uv python3                            # agent dev
   ];
 }

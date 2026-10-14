@@ -39,10 +39,13 @@ let
     - `claude-code` — Claude Code.
     - `torrun <app>` — run one app through Tor (leak-proof). `tormode on|off` —
       route everything through Tor (only if the `privacy` module is on).
-    - `jarvis` (keybind: Super+Space) — push-to-talk voice assistant:
-      speak, it transcribes (whisper), asks the local model (ollama, with THIS
-      file as context), and speaks back (piper). Needs the `assistant` module
-      on and a model pulled (`ollama pull llama3.1`).
+    - **Neb** is the assistant (the `assistant` module). `neb` server runs on
+      http://127.0.0.1:7000 (dashboard: switch brain, set API keys, allowlist).
+      Keybind **Super+Space** = `neb hotkey` (listen → answer → speak). Also
+      `neb tui`, `neb ask "..."`, `neb chat`, `neb tools`. On the desktop its
+      brain is local Ollama; on the laptop it's an API key. This file is Neb's
+      machine context — Neb reads it via its read_system_notes tool.
+    - `modtui` — a TUI to toggle modules, rebuild, open Neb's dashboard.
     - `setbg <image>` — set the wallpaper.
     - `nrs` — `sudo nixos-rebuild switch`.
 
@@ -64,6 +67,32 @@ let
     - 3D printers: control over the LAN (mDNS is on, so `*.local` resolves).
       See modules/printing.nix for the self-host Klipper option.
     - Before any outward-facing or irreversible action, confirm with ${s.username}.
+  '';
+
+  # A friendly TUI over `mod` and common actions. Run: modtui
+  modtui = pkgs.writeShellScriptBin "modtui" ''
+    export PATH=${lib.makeBinPath (with pkgs; [ gum coreutils gnused ])}:$PATH
+    dir=/etc/nixos
+    while true; do
+      action=$(gum choose --header "Neb / system control" \
+        "Toggle modules" "Rebuild now" "Show enabled" "Open Neb dashboard" "Quit") || exit 0
+      case "$action" in
+        "Toggle modules")
+          mapfile -t mods < <(for f in "$dir"/modules/*.nix; do n=$(basename "$f" .nix); [ "$n" = core ] || echo "$n"; done)
+          pre=(); for m in "''${mods[@]}"; do [ -e "$dir/mods/$m" ] && pre+=("$m"); done
+          sel=$(printf '%s\n' "''${mods[@]}" | gum choose --no-limit --header "Space=toggle, Enter=apply" \
+                $(printf -- '--selected=%s ' "''${pre[@]}")) || continue
+          for m in "''${mods[@]}"; do
+            if printf '%s\n' "$sel" | grep -qx "$m"; then sudo mkdir -p "$dir/mods" && sudo touch "$dir/mods/$m"
+            else sudo rm -f "$dir/mods/$m"; fi
+          done
+          gum confirm "Rebuild now to apply?" && sudo nixos-rebuild switch ;;
+        "Rebuild now")        sudo nixos-rebuild switch ;;
+        "Show enabled")       mod list | gum pager 2>/dev/null || mod list ;;
+        "Open Neb dashboard") (xdg-open http://127.0.0.1:7000 >/dev/null 2>&1 &) ;;
+        "Quit")               exit 0 ;;
+      esac
+    done
   '';
 
   mod = pkgs.writeShellScriptBin "mod" ''
@@ -161,7 +190,7 @@ in
                     escapeTime = 0; extraConfig = "set -g mouse on"; };
 
   environment.systemPackages = with pkgs; [
-    mod git curl wget htop fastfetch fzf ripgrep fd bat eza zoxide starship
+    mod modtui git curl wget htop fastfetch fzf ripgrep fd bat eza zoxide starship
     tree jq unzip zip gcc gnumake python3 psmisc usbutils pciutils xclip
   ];
 

@@ -23,7 +23,7 @@ in
       # dwm fires EVERY matching binding, so that line is deleted, not shadowed.
       sed -i '/MODKEY,.*XK_space,.*zoom/d' config.h
       cat > larbs-extra-keys.h <<'KEYS'
-      { MODKEY,           XK_space,     spawn, {.v = (const char*[]){ "jarvis", NULL } } },
+      { MODKEY,           XK_space,     spawn, {.v = (const char*[]){ "neb", "hotkey", NULL } } },
       { MODKEY|ShiftMask, XK_Tab,       spawn, {.v = (const char*[]){ "tor-browser", NULL } } },
       { MODKEY|ShiftMask, XK_backslash, spawn, {.v = (const char*[]){ TERMINAL, "-e", "tmux", "new-session", "-A", "-s", "main", NULL } } },
       { MODKEY|ShiftMask, XK_Escape,    spawn, SHCMD(TERMINAL " -e sh -c 'fastfetch; read -r _'") },
@@ -121,6 +121,18 @@ in
       rm -f "$out/No watermark version – rename and place in assets folder.jpg" \
             "$out/background.jpg" "$out/preview.jpg" "$out/install.sh" "$out/README.md" "$out/LICENSE"
     '';
+  };
+
+  # ── Neb — the user's local voice assistant (stdlib-only Python) ────────────
+  neb = final.python3Packages.buildPythonApplication {
+    pname = "neb"; version = "0.1.0"; pyproject = true;
+    src = gh { owner = "bnvac"; repo = "neb";
+      rev = "e75b6e00f68201fd0555eee2f815170e792c93a5";
+      hash = "sha256-QrR/xkJ007306UTaAlzhasifymFQjuz8+6p2OTm3KtE="; };
+    build-system = [ final.python3Packages.hatchling ];
+    dependencies = [ ];           # stdlib only
+    doCheck = false;
+    meta.mainProgram = "neb";
   };
 
   # ── the user's parts-inventory app → `backoffice` ──────────────────────────
