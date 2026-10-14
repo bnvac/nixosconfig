@@ -170,10 +170,15 @@ in
 
   # Jarvis's note-to-self, placed system-wide and in the user's home each rebuild.
   environment.etc."jarvis/SYSTEM.md".source = jarvisDoc;
-  system.activationScripts.jarvisDoc.text = ''
-    install -Dm644 ${jarvisDoc} /home/${s.username}/SYSTEM.md
-    chown ${s.username}:users /home/${s.username}/SYSTEM.md
-  '';
+  system.activationScripts.jarvisDoc = {
+    deps = [ "users" ];   # the home must exist before we write into it
+    text = ''
+      if [ -d /home/${s.username} ]; then
+        install -Dm644 ${jarvisDoc} /home/${s.username}/SYSTEM.md
+        chown ${s.username}:users /home/${s.username}/SYSTEM.md
+      fi
+    '';
+  };
 
   # ── hardening (light enough that Steam/Proton/VMs still work) ──────────────
   security.sudo.execWheelOnly = true;
