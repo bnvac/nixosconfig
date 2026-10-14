@@ -36,7 +36,7 @@ let
     ## Commands this system adds
     - `mod list | mod on <name> | mod off <name>` — toggle a module + rebuild.
     - `backoffice` — parts-inventory web app, http://localhost:8080.
-    - `grok` — xAI coding CLI.  `claude-code` — Claude Code.
+    - `claude-code` — Claude Code.
     - `torrun <app>` — run one app through Tor (leak-proof). `tormode on|off` —
       route everything through Tor (only if the `privacy` module is on).
     - `jarvis` (keybind: Super+Space) — push-to-talk voice assistant:

@@ -12,7 +12,7 @@ modules/core.nix      always on: boot, net, user, audio, shell, hardening, `mod`
 modules/*.nix         one feature each — desktop, apps, ai, ee, gaming,
                       privacy, virt, osint, backoffice
 pkgs/default.nix      everything built from source (dwm/st/dmenu, backoffice,
-                      Grok Bot, SpiderFoot, the GRUB theme…)
+                      SpiderFoot, the GRUB theme…)
 mods/<name>           an empty marker file = that module is ON
 ```
 
@@ -46,7 +46,6 @@ on: desktop, apps, ai, ee, gaming, privacy, virt, backoffice. Default off: osint
 |---|---|---|
 | `mod` | core | the module toggle above |
 | `backoffice` | backoffice | parts-inventory web app on :8080 |
-| `grok-bot` / `grok` | ai | Grok Bot desktop app / xAI CLI |
 | `torrun <app>` | privacy | one app through Tor, leak-proof (oniux) |
 | `tormode on\|off` | privacy | ALL traffic through Tor (breaks voice/games) |
 

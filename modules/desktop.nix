@@ -32,7 +32,7 @@ in
   hardware.graphics.enable = true;
 
   environment.variables = {
-    TERMINAL = "st"; BROWSER = "chromium"; READER = "zathura"; FILE = "lfub";
+    TERMINAL = "st"; BROWSER = "firefox"; READER = "zathura"; FILE = "lfub";
     SUDO_ASKPASS = "${pkgs.larbs-scripts}/bin/dmenupass";
   };
 

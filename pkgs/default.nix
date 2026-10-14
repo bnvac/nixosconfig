@@ -14,7 +14,7 @@ in
     nativeBuildInputs = [ prev.pkg-config ];
     buildInputs = with prev; [ libx11 libxinerama libxft libxcb fontconfig freetype ];
     postPatch = ''
-      substituteInPlace config.h --replace-fail '#define BROWSER "librewolf"' '#define BROWSER "chromium"'
+      substituteInPlace config.h --replace-fail '#define BROWSER "librewolf"' '#define BROWSER "firefox"'
       substituteInPlace config.h --replace-fail "/usr/local/share/dwm/larbs.mom" "$out/share/dwm/larbs.mom"
       substituteInPlace config.h \
         --replace-fail '{ "xbacklight", "-inc", "15", NULL }' '{ "brightnessctl", "set", "10%+", NULL }' \
