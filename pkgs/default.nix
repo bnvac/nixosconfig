@@ -24,6 +24,7 @@ in
       sed -i '/MODKEY,.*XK_space,.*zoom/d' config.h
       cat > larbs-extra-keys.h <<'KEYS'
       { MODKEY,           XK_space,     spawn, {.v = (const char*[]){ "neb", "hotkey", NULL } } },
+      { MODKEY|ShiftMask, XK_grave,     spawn, {.v = (const char*[]){ "dash", NULL } } },
       { MODKEY|ShiftMask, XK_Tab,       spawn, {.v = (const char*[]){ "tor-browser", NULL } } },
       { MODKEY|ShiftMask, XK_backslash, spawn, {.v = (const char*[]){ TERMINAL, "-e", "tmux", "new-session", "-A", "-s", "main", NULL } } },
       { MODKEY|ShiftMask, XK_Escape,    spawn, SHCMD(TERMINAL " -e sh -c 'fastfetch; read -r _'") },

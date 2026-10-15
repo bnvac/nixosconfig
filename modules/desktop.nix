@@ -4,6 +4,35 @@ let
   s = import ../settings.nix;
   wallpaper = pkgs.runCommand "wallpaper.png" { nativeBuildInputs = [ pkgs.imagemagick ]; }
     ''magick -size 3840x2160 gradient:'#0d1117-#1b2733' -define png:color-type=2 "$out"'';
+
+  # ── self-hosted dashboards (label → URL). Each needs its module on. ─────────
+  dashboards = {
+    "Neb"        = "http://127.0.0.1:7000";   # assistant
+    "Open-WebUI" = "http://127.0.0.1:8088";   # assistant (desktop)
+    "Backoffice" = "http://127.0.0.1:8080";   # backoffice (run `backoffice` first)
+    "DeviceLink" = "http://127.0.0.1:7010";   # sync
+    "Syncthing"  = "http://127.0.0.1:8384";   # sync
+    "I2P"        = "http://127.0.0.1:7657";   # privacy
+  };
+  dashArray = lib.concatStringsSep "\n"
+    (lib.mapAttrsToList (k: v: ''  ["${k}"]="${v}"'') dashboards);
+
+  # `dash` — dmenu picker that opens the chosen dashboard as an app window.
+  dash = pkgs.writeShellScriptBin "dash" ''
+    export PATH=${lib.makeBinPath [ pkgs.larbs-dmenu pkgs.chromium pkgs.coreutils ]}:$PATH
+    declare -A D=(
+    ${dashArray}
+    )
+    sel=$(printf '%s\n' "''${!D[@]}" | sort | dmenu -i -p "open dashboard:") || exit 0
+    [ -n "''${D[$sel]:-}" ] && exec chromium --app="''${D[$sel]}"
+  '';
+
+  # one desktop launcher per dashboard, for any app menu.
+  dashItems = lib.mapAttrsToList (name: url: pkgs.makeDesktopItem {
+    name = "dash-${lib.toLower name}"; desktopName = "${name} dashboard";
+    exec = "${pkgs.chromium}/bin/chromium --app=${url}";
+    icon = "web-browser"; categories = [ "Network" ];
+  }) dashboards;
 in
 {
   services.xserver = {
@@ -54,7 +83,7 @@ in
     '';
   };
 
-  environment.systemPackages = with pkgs; [
+  environment.systemPackages = [ dash ] ++ dashItems ++ (with pkgs; [
     larbs-st larbs-dmenu larbs-dwmblocks larbs-scripts
     xorg.xinit xrdb xprop xwininfo xset setxkbmap xbacklight xorg.xrandr slop
     xclip xdotool xcape xwallpaper xcompmgr unclutter-xfixes maim slock
@@ -62,7 +91,7 @@ in
     brightnessctl xev lf ueberzugpp zathura nsxiv
     gruvbox-gtk-theme papirus-icon-theme lxappearance
     (writeShellScriptBin "zzz" ''exec systemctl suspend "$@"'')
-  ];
+  ]);
   programs.dconf.enable = true;
   services.gnome.gnome-keyring.enable = true;
   programs.gnupg.agent = { enable = true; pinentryPackage = pkgs.pinentry-gtk2; };
