@@ -74,6 +74,20 @@ class H(BaseHTTPRequestHandler):
             if p == "/api/link":
                 Syncthing().link(str(data["id"]).strip(), str(tray.tray_dir()), str(data.get("name", "")))
                 return self._json(200, {"ok": True})
+            if p == "/api/pin":
+                import socket as _socket
+                from . import pairing
+                code = str(data.get("code", "")).strip()
+                if not code:
+                    return self._json(400, {"error": "enter a code"})
+                st = Syncthing()
+                mine = st.my_id()
+                peer = pairing.pair(code, mine, _socket.gethostname(), float(data.get("timeout", 45)))
+                if peer is None:
+                    return self._json(200, {"ok": False, "error": "no peer found — use the same code on the other machine at the same time"})
+                peer_id, peer_name = peer
+                st.link(peer_id, str(tray.tray_dir()), peer_name)
+                return self._json(200, {"ok": True, "peer": peer_name})
         except (SyncthingError, KeyError, RuntimeError) as e:
             return self._json(400, {"error": str(e)})
         self._json(404, {"error": "not found"})

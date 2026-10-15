@@ -1,6 +1,7 @@
 """devlink — link this machine to the other over Syncthing, and send anything
 between them from one window.
 
+  devlink pin <CODE>         type the same code on both machines → they link
   devlink id                 print this machine's Syncthing ID (paste on the other)
   devlink link <ID> [--name] add the peer + share the tray (the peer auto-accepts)
   devlink status             show linked devices and connection state
@@ -32,6 +33,7 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="devlink")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("id")
+    pn = sub.add_parser("pin"); pn.add_argument("code"); pn.add_argument("--timeout", type=float, default=120.0)
     lk = sub.add_parser("link"); lk.add_argument("peer_id"); lk.add_argument("--name", default="")
     sub.add_parser("status")
     sd = sub.add_parser("send"); sd.add_argument("files", nargs="*")
@@ -62,6 +64,20 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.cmd == "id":
             print(st.my_id()); return 0
+        if args.cmd == "pin":
+            import socket as _socket
+            from . import pairing
+            mine = st.my_id()
+            print(f"searching for a machine using code … (same code on the other, Ctrl-C to stop)", file=sys.stderr)
+            peer = pairing.pair(args.code, mine, _socket.gethostname(), args.timeout)
+            if peer is None:
+                print("devlink: no peer found with that code. Run `devlink pin <CODE>` on the other machine at the same time.", file=sys.stderr)
+                return 1
+            peer_id, peer_name = peer
+            st.link(peer_id, path, peer_name)
+            _notify("Linked", f"with {peer_name} ({peer_id[:7]})")
+            print(f"linked with {peer_name} ({peer_id[:7]})")
+            return 0
         if args.cmd == "link":
             st.link(args.peer_id, path, args.name)
             _notify("Linked", f"sharing {tray.FOLDER_LABEL if hasattr(tray,'FOLDER_LABEL') else 'DeviceLink'} with {args.name or args.peer_id[:7]}")

@@ -27,16 +27,20 @@ textarea { min-height:70px; resize:vertical; }
   <button class="ghost" onclick="load()">Refresh</button></header>
 <main>
   <section class="card">
-    <h2>This machine</h2>
-    <div class="row"><code id="myid">…</code><button class="ghost" onclick="copyId()">Copy ID</button></div>
-    <p class="mut" style="margin:8px 0 0">On the other machine, open DeviceLink and paste this ID to link. You only do it once.</p>
+    <h2>Pair with a code</h2>
+    <div class="row"><input id="pin" placeholder="make up a code, e.g. 4921" autocomplete="off">
+      <button id="pinbtn" onclick="pair()">Pair</button></div>
+    <p class="mut" style="margin:8px 0 0">Type the <b>same code</b> here and on the other machine's DeviceLink window, then press Pair on both. They find each other on your network and link — no IDs to copy.</p>
+    <div id="pinmsg" class="mut" style="margin-top:8px"></div>
+    <div id="devs" style="margin-top:8px"></div>
   </section>
 
   <section class="card">
-    <h2>Link a device</h2>
-    <div class="row"><input id="peer" placeholder="paste the other machine's ID"><input id="pname" placeholder="name" style="max-width:120px">
-      <button onclick="link()">Link</button></div>
-    <div id="devs" style="margin-top:8px"></div>
+    <h2>This machine &amp; manual link</h2>
+    <div class="row"><code id="myid">…</code><button class="ghost" onclick="copyId()">Copy ID</button></div>
+    <div class="row" style="margin-top:10px"><input id="peer" placeholder="…or paste the other machine's ID"><input id="pname" placeholder="name" style="max-width:120px">
+      <button class="ghost" onclick="link()">Link</button></div>
+    <p class="mut" style="margin:8px 0 0">The code pairing above is easier; this is here if the two machines can't see each other on the network.</p>
   </section>
 
   <section class="card">
@@ -73,6 +77,18 @@ async function post(path, body) {
 }
 function copyId() { navigator.clipboard?.writeText($('#myid').textContent); }
 async function link() { await post('/api/link', {id:$('#peer').value, name:$('#pname').value}); $('#peer').value=''; load(); }
+async function pair() {
+  const code = $('#pin').value.trim(); if (!code) { $('#pinmsg').textContent='enter a code first'; return; }
+  const btn=$('#pinbtn'), msg=$('#pinmsg');
+  btn.disabled=true; btn.textContent='Searching…';
+  msg.textContent='looking for the other machine — press Pair there too with the same code…';
+  try {
+    const j = await post('/api/pin', {code});
+    if (j.ok) { msg.textContent='✅ linked with '+(j.peer||'the other machine'); $('#pin').value=''; }
+    else msg.textContent='⚠️ '+(j.error||'no peer found');
+  } catch(e) { msg.textContent='pairing failed — is DeviceLink running?'; }
+  finally { btn.disabled=false; btn.textContent='Pair'; load(); }
+}
 async function sendText() { const t=$('#text').value; if(!t.trim())return; await post('/api/send-text', {text:t}); $('#text').value=''; load(); }
 load(); setInterval(load, 4000);
 </script>

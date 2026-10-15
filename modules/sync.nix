@@ -50,11 +50,18 @@ in
     "d /home/${s.username}/DeviceLink 0755 ${s.username} users -"
   ];
 
-  # ── devlink: link the two machines in one paste, send anything between them ─
-  # `devlink` manages its own Syncthing folder (~/DeviceLink) through the API,
-  # so linking is: run `devlink id` on one box, paste it into the other's window
-  # (or `devlink link <id>`), and the peer auto-accepts. Files dropped in
-  # ~/DeviceLink — or sent from the window — appear on the other side.
+  # devlink PIN pairing shouts its device ID over link-local multicast
+  # (239.255.77.77:58846, TTL 1) so `devlink pin <code>` on both machines can
+  # find each other. Only this UDP port; the shout never leaves the LAN.
+  networking.firewall.allowedUDPPorts = [ 58846 ];
+
+  # ── devlink: link the two machines with a code, send anything between them ──
+  # `devlink` manages its own Syncthing folder (~/DeviceLink) through the API.
+  # Easiest linking: run `devlink pin <code>` (or type the code in the window)
+  # on BOTH machines with the same code — they find each other on the LAN and
+  # link, no IDs to copy. (Manual fallback: `devlink id` then `devlink link
+  # <id>`.) Files dropped in ~/DeviceLink — or sent from the window — appear on
+  # the other side.
   systemd.user.services.devlink = {
     description = "DeviceLink: auto-accept peers + notify on arrivals";
     wantedBy = [ "default.target" ];
