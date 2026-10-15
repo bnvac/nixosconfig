@@ -46,6 +46,11 @@ let
       brain is local Ollama; on the laptop it's an API key. This file is Neb's
       machine context — Neb reads it via its read_system_notes tool.
     - `modtui` — a TUI to toggle modules, rebuild, open Neb's dashboard.
+    - **DeviceLink** (`sync` module) links this machine to the other over
+      Syncthing: `devlink id` prints this box's ID, paste it on the other (its
+      window, or `devlink link <id>`) and the peer auto-accepts. Send files/text
+      between them from the window (`devlink-window`, port 7010) or by dropping
+      into ~/DeviceLink. `devlink send FILE|-t TEXT|-c` from the shell.
     - `setbg <image>` — set the wallpaper.
     - `nrs` — `sudo nixos-rebuild switch`.
 

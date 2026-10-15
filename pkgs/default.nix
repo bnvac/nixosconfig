@@ -123,6 +123,16 @@ in
     '';
   };
 
+  # ── devlink — link two machines over Syncthing, send anything between them ──
+  devlink = final.python3Packages.buildPythonApplication {
+    pname = "devlink"; version = "0.1.0"; pyproject = true;
+    src = ./devlink;
+    build-system = [ final.python3Packages.hatchling ];
+    dependencies = [ ];           # stdlib only
+    doCheck = false;
+    meta.mainProgram = "devlink";
+  };
+
   # ── Neb — the user's local voice assistant (stdlib-only Python) ────────────
   neb = final.python3Packages.buildPythonApplication {
     pname = "neb"; version = "0.1.0"; pyproject = true;

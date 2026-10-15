@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DeviceLink</title>
+<style>
+:root { color-scheme: dark; --bg:#0d1117; --panel:#161b22; --line:#30363d; --fg:#e6edf3; --mut:#8b949e; --acc:#2f81f7; }
+* { box-sizing:border-box; } body { margin:0; font:14px/1.5 system-ui,sans-serif; background:var(--bg); color:var(--fg); }
+header { padding:14px 18px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:10px; }
+header b { font-size:16px; } .sp { flex:1; }
+main { max-width:760px; margin:0 auto; padding:18px; display:grid; gap:16px; }
+.card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+.card h2 { margin:0 0 10px; font-size:13px; text-transform:uppercase; letter-spacing:.05em; color:var(--mut); }
+.row { display:flex; gap:8px; align-items:center; }
+code { background:#0d1117; border:1px solid var(--line); border-radius:6px; padding:3px 7px; font-size:12px; word-break:break-all; }
+button { background:var(--acc); color:#fff; border:0; border-radius:7px; padding:8px 14px; font-weight:600; cursor:pointer; }
+button.ghost { background:#21262d; }
+input, textarea { width:100%; background:#0d1117; color:var(--fg); border:1px solid var(--line); border-radius:7px; padding:8px 10px; font:inherit; }
+textarea { min-height:70px; resize:vertical; }
+.dev { display:flex; gap:8px; align-items:center; padding:6px 0; border-top:1px solid var(--line); }
+.dot { width:9px; height:9px; border-radius:50%; background:#6e7681; } .dot.on { background:#3fb950; }
+.mut { color:var(--mut); } .tray a { color:var(--fg); text-decoration:none; }
+.item { display:flex; gap:8px; padding:5px 0; border-top:1px solid var(--line); }
+.empty { color:var(--mut); padding:6px 0; }
+</style></head>
+<body>
+<header><b>DeviceLink</b><span class="mut" id="err"></span><span class="sp"></span>
+  <button class="ghost" onclick="load()">Refresh</button></header>
+<main>
+  <section class="card">
+    <h2>This machine</h2>
+    <div class="row"><code id="myid">…</code><button class="ghost" onclick="copyId()">Copy ID</button></div>
+    <p class="mut" style="margin:8px 0 0">On the other machine, open DeviceLink and paste this ID to link. You only do it once.</p>
+  </section>
+
+  <section class="card">
+    <h2>Link a device</h2>
+    <div class="row"><input id="peer" placeholder="paste the other machine's ID"><input id="pname" placeholder="name" style="max-width:120px">
+      <button onclick="link()">Link</button></div>
+    <div id="devs" style="margin-top:8px"></div>
+  </section>
+
+  <section class="card">
+    <h2>Send to the other device</h2>
+    <textarea id="text" placeholder="type a note, or paste text…"></textarea>
+    <div class="row" style="margin-top:8px"><button onclick="sendText()">Send text</button>
+      <span class="mut">Files: drop them into <code>~/DeviceLink</code> (or <code>devlink send FILE</code>).</span></div>
+  </section>
+
+  <section class="card tray">
+    <h2>Shared tray</h2>
+    <div id="tray"></div>
+  </section>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+async function load() {
+  try {
+    const s = await (await fetch('/api/state')).json();
+    $('#err').textContent = s.error || '';
+    $('#myid').textContent = s.id || '(Syncthing not ready)';
+    $('#devs').innerHTML = s.devices.length ? s.devices.map(d =>
+      `<div class="dev"><span class="dot ${d.connected?'on':''}"></span><b>${d.name||'device'}</b>
+       <span class="mut">${d.connected?'connected':'offline'}</span><span class="sp" style="flex:1"></span>
+       <code>${d.id.slice(0,7)}</code></div>`).join('') : '<div class="empty">no linked devices yet</div>';
+    $('#tray').innerHTML = s.tray.length ? s.tray.map(t =>
+      `<div class="item"><span>${t.dir?'📁':'📄'}</span><span>${t.name}</span><span class="sp" style="flex:1"></span>
+       <span class="mut">${t.dir?'':(t.size/1024|0)+' KB'}</span></div>`).join('') : '<div class="empty">empty — nothing shared yet</div>';
+  } catch(e) { $('#err').textContent = 'window backend not reachable'; }
+}
+async function post(path, body) {
+  const r = await fetch(path, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  const j = await r.json(); if (j.error) alert(j.error); return j;
+}
+function copyId() { navigator.clipboard?.writeText($('#myid').textContent); }
+async function link() { await post('/api/link', {id:$('#peer').value, name:$('#pname').value}); $('#peer').value=''; load(); }
+async function sendText() { const t=$('#text').value; if(!t.trim())return; await post('/api/send-text', {text:t}); $('#text').value=''; load(); }
+load(); setInterval(load, 4000);
+</script>
+</body></html>
