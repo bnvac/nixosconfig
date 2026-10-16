@@ -7,6 +7,10 @@
 
   stAlpha = "0.72";          # terminal transparency (1.0 = opaque)
 
+  # `nixup` pulls this repo (cloned at /etc/nixos) and rebuilds — no re-cloning.
+  # autoUpdate = true adds a weekly timer that pulls + rebuilds on its own.
+  autoUpdate = false;
+
   # Boot. espMountPoint must match hardware-configuration.nix (checked at build).
   espMountPoint = "/boot/efi";
   useGrub = true;            # GRUB = themeable; false = systemd-boot

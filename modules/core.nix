@@ -53,6 +53,9 @@ let
       into ~/DeviceLink. `devlink send FILE|-t TEXT|-c` from the shell.
     - `setbg <image>` — set the wallpaper.
     - `nrs` — `sudo nixos-rebuild switch`.
+    - `nixup` — pull the config repo at /etc/nixos and rebuild (no re-cloning).
+    - **Super+Ctrl+Space** opens `nixmenu`, a dmenu of this system's actions
+      (update, modules, dashboards, DeviceLink, Bluetooth, Neb, Tor, suspend).
 
     ## To change the system (do this, not `nix profile install`)
     1. Edit the relevant file under /etc/nixos (a module, or settings.nix).
@@ -110,6 +113,23 @@ let
       off)  sudo rm -f "$m/$2" && sudo nixos-rebuild switch ;;
       *)    echo "usage: mod list | mod on <name> | mod off <name>" ;;
     esac
+  '';
+
+  # `nixup` — pull the config repo at /etc/nixos and rebuild. No re-cloning:
+  # your machine-local hardware-configuration.nix (untracked) is left alone.
+  nixup = pkgs.writeShellScriptBin "nixup" ''
+    export PATH=/run/wrappers/bin:/run/current-system/sw/bin:$PATH
+    dir=/etc/nixos
+    if [ ! -d "$dir/.git" ]; then
+      echo "nixup: $dir isn't a git clone. Clone your config there once:"
+      echo "  sudo git clone <your-repo-url> $dir   # keep hardware-configuration.nix"
+      exit 1
+    fi
+    echo ":: pulling $dir …"
+    sudo git -C "$dir" pull --ff-only || { echo "nixup: pull failed (local changes? uncommitted edits?)"; exit 1; }
+    echo ":: rebuilding …"
+    sudo nixos-rebuild switch
+    echo ":: done — now on generation $(readlink /run/current-system | sed 's|.*-||')"
   '';
 in
 {
@@ -199,9 +219,34 @@ in
                     escapeTime = 0; extraConfig = "set -g mouse on"; };
 
   environment.systemPackages = with pkgs; [
-    mod modtui git curl wget htop fastfetch fzf ripgrep fd bat eza zoxide starship
+    mod modtui nixup git curl wget htop fastfetch fzf ripgrep fd bat eza zoxide starship
     tree jq unzip zip gcc gnumake python3 psmisc usbutils pciutils xclip
   ];
+
+  # A few scratch directories, created on boot if missing (never clobbered).
+  systemd.tmpfiles.rules = [
+    "d /home/${s.username}/projects 0755 ${s.username} users -"
+    "d /home/${s.username}/notes    0755 ${s.username} users -"
+    "d /home/${s.username}/junk     0755 ${s.username} users -"
+  ];
+
+  # Optional weekly auto-update (settings.autoUpdate). Runs as root, so no sudo:
+  # pulls /etc/nixos and rebuilds. Skips quietly if the pull can't fast-forward.
+  systemd.services.nix-auto-update = lib.mkIf s.autoUpdate {
+    description = "Pull /etc/nixos and rebuild";
+    serviceConfig.Type = "oneshot";
+    path = [ pkgs.git pkgs.nix config.system.build.nixos-rebuild ];
+    script = ''
+      cd /etc/nixos || exit 0
+      [ -d .git ] || exit 0
+      git pull --ff-only || exit 0
+      nixos-rebuild switch
+    '';
+  };
+  systemd.timers.nix-auto-update = lib.mkIf s.autoUpdate {
+    wantedBy = [ "timers.target" ];
+    timerConfig = { OnCalendar = "weekly"; Persistent = true; RandomizedDelaySec = "1h"; };
+  };
 
   services.fstrim.enable = true;
   services.openssh.enable = false;

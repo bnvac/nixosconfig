@@ -24,8 +24,11 @@ in
       sed -i '/MODKEY,.*XK_space,.*zoom/d' config.h
       # Super+Shift+b opens the Bluetooth manager; drop any stock binding first.
       sed -i '/ShiftMask.*XK_b,/d' config.h
+      # Super+Ctrl+Space opens nixmenu (this system's action menu).
+      sed -i '/ControlMask.*XK_space,/d' config.h
       cat > larbs-extra-keys.h <<'KEYS'
       { MODKEY,           XK_space,     spawn, {.v = (const char*[]){ "neb", "hotkey", NULL } } },
+      { MODKEY|ControlMask, XK_space,   spawn, {.v = (const char*[]){ "nixmenu", NULL } } },
       { MODKEY|ShiftMask, XK_grave,     spawn, {.v = (const char*[]){ "dash", NULL } } },
       { MODKEY|ShiftMask, XK_b,         spawn, {.v = (const char*[]){ "blueman-manager", NULL } } },
       { MODKEY|ShiftMask, XK_Tab,       spawn, {.v = (const char*[]){ "tor-browser", NULL } } },

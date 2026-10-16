@@ -33,6 +33,36 @@ let
     exec = "${pkgs.chromium}/bin/chromium --app=${url}";
     icon = "web-browser"; categories = [ "Network" ];
   }) dashboards;
+
+  # `nixmenu` — Super+Ctrl+Space. A dmenu of this system's own actions. Entries
+  # only appear when the command behind them exists (its module is on), so it
+  # stays honest as modules come and go. Terminal actions open in st.
+  nixmenu = pkgs.writeShellScriptBin "nixmenu" ''
+    export PATH=${lib.makeBinPath [ pkgs.larbs-dmenu pkgs.larbs-st pkgs.coreutils ]}:/run/current-system/sw/bin:$PATH
+    have() { command -v "$1" >/dev/null 2>&1; }
+    labels=()
+    labels+=("Update system (pull + rebuild)")
+    have modtui          && labels+=("Modules (enable / disable)")
+    have dash            && labels+=("Dashboards")
+    have devlink-window  && labels+=("DeviceLink (send files)")
+    have blueman-manager && labels+=("Bluetooth devices")
+    have neb             && labels+=("Ask Neb")
+    have tormode         && labels+=("Tor: route everything ON")
+    have tormode         && labels+=("Tor: stop routing")
+    labels+=("Suspend")
+    sel=$(printf '%s\n' "''${labels[@]}" | dmenu -i -l 12 -p "nix:") || exit 0
+    case "$sel" in
+      Update*)                      exec st -e nixup ;;
+      Modules*)                     exec st -e modtui ;;
+      Dashboards)                   exec dash ;;
+      DeviceLink*)                  exec devlink-window ;;
+      Bluetooth*)                   exec blueman-manager ;;
+      "Ask Neb")                    exec neb hotkey ;;
+      "Tor: route everything ON")   exec st -e sh -c 'tormode on;  echo; read -p "[enter] " _' ;;
+      "Tor: stop routing")          exec st -e sh -c 'tormode off; echo; read -p "[enter] " _' ;;
+      Suspend)                      exec zzz ;;
+    esac
+  '';
 in
 {
   services.xserver = {
@@ -84,7 +114,7 @@ in
     '';
   };
 
-  environment.systemPackages = [ dash ] ++ dashItems ++ (with pkgs; [
+  environment.systemPackages = [ dash nixmenu ] ++ dashItems ++ (with pkgs; [
     larbs-st larbs-dmenu larbs-dwmblocks larbs-scripts
     xorg.xinit xrdb xprop xwininfo xset setxkbmap xbacklight xorg.xrandr slop
     xclip xdotool xcape xwallpaper xcompmgr unclutter-xfixes maim slock
