@@ -154,8 +154,12 @@ in
   networking.firewall.enable = true;
   hardware.enableRedistributableFirmware = true;          # laptop wifi blobs
   systemd.services.NetworkManager-wait-online.enable = false;
-  hardware.bluetooth = { enable = true; powerOnBoot = true; };
-  services.blueman.enable = true;
+  hardware.bluetooth = {
+    enable = true;
+    powerOnBoot = true;
+    settings.General.Experimental = true;   # battery % for mice/keyboards/headsets
+  };
+  services.blueman.enable = true;           # GUI: run `blueman-manager` (or Super+Shift+b)
   time.timeZone = s.timeZone;
   i18n.defaultLocale = "en_US.UTF-8";
 

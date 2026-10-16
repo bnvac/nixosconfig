@@ -47,6 +47,7 @@ in
         ${pkgs.xcompmgr}/bin/xcompmgr &
         ${pkgs.unclutter-xfixes}/bin/unclutter &
         ${pkgs.dunst}/bin/dunst &
+        ${pkgs.blueman}/bin/blueman-applet &
         ${pkgs.mpd}/bin/mpd &
         bg="$HOME/.local/share/bg"
         [ -e "$bg" ] || { mkdir -p "$HOME/.local/share"; ln -sfn ${wallpaper} "$bg"; }

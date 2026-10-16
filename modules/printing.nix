@@ -13,7 +13,7 @@
 # B) THIS machine hosts Klipper to drive a printer wired to it (USB/CAN/Ethernet
 #    MCU). Uncomment the self-host block. It needs a printer.cfg for YOUR exact
 #    printer, so it's left off until you drop one in /var/lib/moonraker.
-{ config, pkgs, lib, ... }:
+{ pkgs, ... }:
 {
   # mDNS: lets "printer.local" / "mainsail.local" resolve over Ethernet/Wi-Fi.
   services.avahi = {

@@ -1,7 +1,7 @@
 # Privacy / comms: passwords, Matrix, Tor (two modes), I2P, Proton VPN.
 #   torrun <app>  one app through Tor, leak-proof (oniux namespaces)
 #   tormode on    ALL traffic through Tor (nftables service; breaks voice/games)
-{ config, pkgs, lib, ... }:
+{ pkgs, ... }:
 let
   torrun = pkgs.writeShellScriptBin "torrun" ''exec ${pkgs.oniux}/bin/oniux "$@"'';
   tormode = pkgs.writeShellScriptBin "tormode" ''
