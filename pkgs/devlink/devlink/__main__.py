@@ -9,6 +9,8 @@ between them from one window.
   devlink send -t "text"     send a note;  -c  send the clipboard
   devlink auto               daemon: auto-accept new peers + notify on arrivals
   devlink ui [--port 7010]   the window (open http://127.0.0.1:7010, or --app)
+  devlink screen             share THIS machine's whole screen (peer runs view)
+  devlink view               open the other machine's screen in a window
 """
 
 from __future__ import annotations
@@ -40,6 +42,8 @@ def main(argv: list[str] | None = None) -> int:
     sd.add_argument("-t", "--text"); sd.add_argument("-c", "--clipboard", action="store_true")
     sub.add_parser("auto")
     ui = sub.add_parser("ui"); ui.add_argument("--port", type=int, default=7010)
+    sub.add_parser("screen")
+    sub.add_parser("view")
     args = ap.parse_args(argv)
 
     try:
@@ -58,6 +62,13 @@ def main(argv: list[str] | None = None) -> int:
         if args.cmd == "ui":
             from .ui import serve
             serve(args.port); return 0
+
+        if args.cmd == "screen":
+            from . import screen
+            return screen.share()
+        if args.cmd == "view":
+            from . import screen
+            return screen.view()
 
         st = Syncthing()
         path = str(tray.tray_dir())

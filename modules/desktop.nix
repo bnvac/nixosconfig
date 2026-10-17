@@ -45,6 +45,8 @@ let
     have modtui          && labels+=("Modules (enable / disable)")
     have dash            && labels+=("Dashboards")
     have devlink-window  && labels+=("DeviceLink (send files)")
+    have devlink         && labels+=("Share my screen (VNC)")
+    have devlink         && labels+=("View other screen (VNC)")
     have blueman-manager && labels+=("Bluetooth devices")
     have neb             && labels+=("Ask Neb")
     have tormode         && labels+=("Tor: route everything ON")
@@ -56,6 +58,8 @@ let
       Modules*)                     exec st -e modtui ;;
       Dashboards)                   exec dash ;;
       DeviceLink*)                  exec devlink-window ;;
+      "Share my screen (VNC)")      exec st -e sh -c 'devlink screen; echo; read -p "[enter] " _' ;;
+      "View other screen (VNC)")    exec devlink view ;;
       Bluetooth*)                   exec blueman-manager ;;
       "Ask Neb")                    exec neb hotkey ;;
       "Tor: route everything ON")   exec st -e sh -c 'tormode on;  echo; read -p "[enter] " _' ;;

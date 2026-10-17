@@ -51,6 +51,9 @@ let
       window, or `devlink link <id>`) and the peer auto-accepts. Send files/text
       between them from the window (`devlink-window`, port 7010) or by dropping
       into ~/DeviceLink. `devlink send FILE|-t TEXT|-c` from the shell.
+      `devlink pin <code>` links two machines by typing the same code on both.
+      `devlink screen` shares this whole screen over VNC (peer-restricted,
+      per-session password); the other machine runs `devlink view`.
     - `setbg <image>` — set the wallpaper.
     - `nrs` — `sudo nixos-rebuild switch`.
     - `nixup` — pull the config repo at /etc/nixos and rebuild (no re-cloning).

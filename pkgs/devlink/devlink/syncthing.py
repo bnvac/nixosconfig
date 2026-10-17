@@ -80,6 +80,27 @@ class Syncthing:
         except SyncthingError:
             return {}
 
+    def peer(self) -> tuple[str, str]:
+        """Return (device_id, ip) of the connected linked peer, else raise.
+
+        The ip is parsed from Syncthing's current connection address, so it's
+        the address the two machines actually reached each other on (the LAN
+        IP when they're on the same network).
+        """
+        me = self.my_id()
+        conns = self.connections().get("connections", {})
+        for d in self.devices():
+            did = d["deviceID"]
+            if did == me:
+                continue
+            c = conns.get(did, {})
+            if c.get("connected"):
+                addr = (c.get("address") or "").strip()      # "ip:port" / "[v6]:port"
+                ip = addr.rsplit(":", 1)[0].strip("[]") if addr else ""
+                return did, ip
+        raise SyncthingError("the other machine isn't connected right now "
+                             "(open DeviceLink / Syncthing and check it's online).")
+
     # --- writes --------------------------------------------------------
     def add_device(self, device_id: str, name: str = "") -> None:
         if any(d["deviceID"] == device_id for d in self.devices()):

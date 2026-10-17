@@ -54,6 +54,10 @@ in
   # (239.255.77.77:58846, TTL 1) so `devlink pin <code>` on both machines can
   # find each other. Only this UDP port; the shout never leaves the LAN.
   networking.firewall.allowedUDPPorts = [ 58846 ];
+  # VNC for `devlink screen` / `devlink view`. Nothing listens here until you
+  # actually share; while sharing, x11vnc is restricted to the linked peer's
+  # subnet and a fresh per-session password (handed over via the sync folder).
+  networking.firewall.allowedTCPPorts = [ 5900 ];
 
   # ── devlink: link the two machines with a code, send anything between them ──
   # `devlink` manages its own Syncthing folder (~/DeviceLink) through the API.
@@ -61,7 +65,8 @@ in
   # on BOTH machines with the same code — they find each other on the LAN and
   # link, no IDs to copy. (Manual fallback: `devlink id` then `devlink link
   # <id>`.) Files dropped in ~/DeviceLink — or sent from the window — appear on
-  # the other side.
+  # the other side. `devlink screen` / `devlink view` share a whole screen
+  # between the two over VNC (restricted to the peer + a per-session password).
   systemd.user.services.devlink = {
     description = "DeviceLink: auto-accept peers + notify on arrivals";
     wantedBy = [ "default.target" ];
@@ -77,6 +82,7 @@ in
 
   environment.systemPackages = [
     pkgs.devlink
+    pkgs.x11vnc pkgs.tigervnc          # `devlink screen` / `devlink view`
     # opens the window (the ui service serves it)
     (pkgs.makeDesktopItem {
       name = "devlink"; desktopName = "DeviceLink";
