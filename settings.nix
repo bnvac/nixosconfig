@@ -5,7 +5,9 @@
   hostName = "live";
   timeZone = "America/New_York";
 
-  stAlpha = "0.72";          # terminal transparency (1.0 = opaque)
+  # Terminal opacity, 0.0–1.0 (1.0 = fully opaque). The compositor (picom)
+  # applies it; a FULLSCREEN terminal (Super+f) is always forced fully opaque.
+  termOpacity = "0.72";
 
   # `nixup` pulls this repo (cloned at /etc/nixos) and rebuilds — no re-cloning.
   # autoUpdate = true adds a weekly timer that pulls + rebuilds on its own.

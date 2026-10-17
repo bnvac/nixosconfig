@@ -1,7 +1,6 @@
 # Custom packages built from source / upstream binaries. One overlay.
 final: prev:
 let
-  s = import ../settings.nix;
   gh = args: prev.fetchFromGitHub args;
 in
 {
@@ -50,7 +49,9 @@ in
       hash = "sha256-XFf48+6I3IHcRKGHRJIJb9u2sTKWyuWTb5lN+BILYYc="; };
     nativeBuildInputs = [ prev.pkg-config prev.ncurses ];
     buildInputs = with prev; [ libx11 libxft fontconfig freetype harfbuzz libxrender ];
-    postPatch = ''substituteInPlace config.h --replace-fail 'float alpha = 0.8;' 'float alpha = ${s.stAlpha};' '';
+    # Opaque surface: the compositor (picom) owns terminal opacity now, so a
+    # fullscreen terminal can be forced fully opaque. See modules/desktop.nix.
+    postPatch = ''substituteInPlace config.h --replace-fail 'float alpha = 0.8;' 'float alpha = 1.0;' '';
     makeFlags = [ "PREFIX=$(out)" "CC=cc" ];
     preInstall = ''export TERMINFO=$out/share/terminfo; mkdir -p "$TERMINFO"'';
     meta.mainProgram = "st";
@@ -108,7 +109,7 @@ in
       cp -r .config $out/share/larbs-dotfiles/config
       chmod -R +w $out/share/larbs-dotfiles
       substituteInPlace $out/share/larbs-dotfiles/config/x11/xresources \
-        --replace-fail '*.alpha: 0.8' '*.alpha: ${s.stAlpha}'
+        --replace-fail '*.alpha: 0.8' '*.alpha: 1.0'
       chmod -R +w $out/bin
       find $out/bin -type f -exec sed -i '1s|^#!/usr/bin/sh|#!/bin/sh|' {} +
       patchShebangs $out/bin

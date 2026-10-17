@@ -63,6 +63,19 @@ let
       Suspend)                      exec zzz ;;
     esac
   '';
+
+  # Compositor config. Terminals (class St) are translucent, but ANY fullscreen
+  # window is forced fully opaque — rules match top-to-bottom and the last match
+  # wins, so the fullscreen rule overrides the terminal rule when you Super+f a
+  # terminal. (picom v13 `rules` syntax; `fullscreen` is a built-in condition.)
+  picomConf = pkgs.writeText "picom.conf" ''
+    backend = "glx";
+    vsync = true;
+    rules = (
+      { match = "class_g = 'St'"; opacity = ${s.termOpacity}; },
+      { match = "fullscreen";     opacity = 1.0; }
+    );
+  '';
 in
 {
   services.xserver = {
@@ -74,7 +87,7 @@ in
         export _JAVA_AWT_WM_NONREPARENTING=1
         [ -f "$HOME/.config/x11/xresources" ] && ${pkgs.xrdb}/bin/xrdb -merge "$HOME/.config/x11/xresources"
         ${pkgs.larbs-dwmblocks}/bin/dwmblocks &
-        ${pkgs.xcompmgr}/bin/xcompmgr &
+        ${pkgs.picom}/bin/picom --config ${picomConf} &
         ${pkgs.unclutter-xfixes}/bin/unclutter &
         ${pkgs.dunst}/bin/dunst &
         ${pkgs.blueman}/bin/blueman-applet &
@@ -117,7 +130,7 @@ in
   environment.systemPackages = [ dash nixmenu ] ++ dashItems ++ (with pkgs; [
     larbs-st larbs-dmenu larbs-dwmblocks larbs-scripts
     xorg.xinit xrdb xprop xwininfo xset setxkbmap xbacklight xorg.xrandr slop
-    xclip xdotool xcape xwallpaper xcompmgr unclutter-xfixes maim slock
+    xclip xdotool xcape xwallpaper picom unclutter-xfixes maim slock
     dunst libnotify arandr screenkey tesseract wmctrl groff feh imagemagick
     brightnessctl xev lf ueberzugpp zathura nsxiv
     gruvbox-gtk-theme papirus-icon-theme lxappearance
