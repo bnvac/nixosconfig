@@ -74,6 +74,9 @@ class H(BaseHTTPRequestHandler):
             if p == "/api/link":
                 Syncthing().link(str(data["id"]).strip(), str(tray.tray_dir()), str(data.get("name", "")))
                 return self._json(200, {"ok": True})
+            if p == "/api/accept":
+                name = Syncthing().accept(str(data["id"]).strip(), str(tray.tray_dir()))
+                return self._json(200, {"ok": True, "peer": name})
             if p == "/api/pin":
                 import socket as _socket
                 from . import pairing
@@ -93,16 +96,12 @@ class H(BaseHTTPRequestHandler):
         self._json(404, {"error": "not found"})
 
     def state(self) -> dict:
-        out = {"tray": tray.listing(), "id": "", "devices": [], "error": ""}
+        out = {"tray": tray.listing(), "id": "", "devices": [], "pending": [], "error": ""}
         try:
             st = Syncthing()
-            out["id"] = st.my_id()
-            conns = st.connections().get("connections", {})
-            out["devices"] = [
-                {"name": d["name"], "id": d["deviceID"],
-                 "connected": bool(conns.get(d["deviceID"], {}).get("connected"))}
-                for d in st.devices() if d["deviceID"] != out["id"]
-            ]
+            out["id"], out["devices"] = st.others()
+            out["pending"] = [{"id": d, "name": info.get("name") or d[:7]}
+                              for d, info in st.pending_devices().items()]
         except SyncthingError as e:
             out["error"] = str(e)
         return out

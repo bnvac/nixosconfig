@@ -32,6 +32,7 @@ textarea { min-height:70px; resize:vertical; }
       <button id="pinbtn" onclick="pair()">Pair</button></div>
     <p class="mut" style="margin:8px 0 0">Type the <b>same code</b> here and on the other machine's DeviceLink window, then press Pair on both. They find each other on your network and link — no IDs to copy.</p>
     <div id="pinmsg" class="mut" style="margin-top:8px"></div>
+    <div id="pending" style="margin-top:8px"></div>
     <div id="devs" style="margin-top:8px"></div>
   </section>
 
@@ -57,17 +58,26 @@ textarea { min-height:70px; resize:vertical; }
 </main>
 <script>
 const $ = s => document.querySelector(s);
+// Device names and tray filenames come from the OTHER machine (and a pending
+// device picks its own name), so everything interpolated into HTML is escaped.
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 async function load() {
   try {
     const s = await (await fetch('/api/state')).json();
     $('#err').textContent = s.error || '';
     $('#myid').textContent = s.id || '(Syncthing not ready)';
+    $('#pending').innerHTML = (s.pending || []).map(p =>
+      `<div class="dev"><span class="dot"></span><b>${esc(p.name)}</b>
+       <span class="mut">wants to link</span><span class="sp" style="flex:1"></span>
+       <code>${esc(p.id.slice(0,7))}</code>
+       <button data-id="${esc(p.id)}" onclick="accept(this.dataset.id)">Accept</button></div>`).join('');
     $('#devs').innerHTML = s.devices.length ? s.devices.map(d =>
-      `<div class="dev"><span class="dot ${d.connected?'on':''}"></span><b>${d.name||'device'}</b>
+      `<div class="dev"><span class="dot ${d.connected?'on':''}"></span><b>${esc(d.name||'device')}</b>
        <span class="mut">${d.connected?'connected':'offline'}</span><span class="sp" style="flex:1"></span>
-       <code>${d.id.slice(0,7)}</code></div>`).join('') : '<div class="empty">no linked devices yet</div>';
+       <code>${esc(d.id.slice(0,7))}</code></div>`).join('') : '<div class="empty">no linked devices yet</div>';
     $('#tray').innerHTML = s.tray.length ? s.tray.map(t =>
-      `<div class="item"><span>${t.dir?'📁':'📄'}</span><span>${t.name}</span><span class="sp" style="flex:1"></span>
+      `<div class="item"><span>${t.dir?'📁':'📄'}</span><span>${esc(t.name)}</span><span class="sp" style="flex:1"></span>
        <span class="mut">${t.dir?'':(t.size/1024|0)+' KB'}</span></div>`).join('') : '<div class="empty">empty — nothing shared yet</div>';
   } catch(e) { $('#err').textContent = 'window backend not reachable'; }
 }
@@ -77,6 +87,7 @@ async function post(path, body) {
 }
 function copyId() { navigator.clipboard?.writeText($('#myid').textContent); }
 async function link() { await post('/api/link', {id:$('#peer').value, name:$('#pname').value}); $('#peer').value=''; load(); }
+async function accept(id) { await post('/api/accept', {id}); load(); }
 async function pair() {
   const code = $('#pin').value.trim(); if (!code) { $('#pinmsg').textContent='enter a code first'; return; }
   const btn=$('#pinbtn'), msg=$('#pinmsg');

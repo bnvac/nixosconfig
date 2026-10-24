@@ -80,6 +80,19 @@ class Syncthing:
         except SyncthingError:
             return {}
 
+    def others(self) -> tuple[str, list[dict]]:
+        """(my id, [{id, name, connected}] for every other configured device).
+
+        One call each for status/devices/connections, however many devices.
+        """
+        me = self.my_id()
+        conns = self.connections().get("connections", {})
+        return me, [
+            {"id": d["deviceID"], "name": d.get("name") or d["deviceID"][:7],
+             "connected": bool(conns.get(d["deviceID"], {}).get("connected"))}
+            for d in self.devices() if d["deviceID"] != me
+        ]
+
     def peer(self) -> tuple[str, str]:
         """Return (device_id, ip) of the connected linked peer, else raise.
 
@@ -131,11 +144,15 @@ class Syncthing:
         self.add_device(peer_id, name)
         self.ensure_tray_folder(path, [peer_id])
 
-    def accept_pending(self, path: str) -> list[str]:
-        """Auto-accept any device trying to connect, and share the tray. Returns accepted IDs."""
-        accepted = []
-        for dev_id, info in self.pending_devices().items():
-            self.add_device(dev_id, info.get("name", ""))
-            self.ensure_tray_folder(path, [dev_id])
-            accepted.append(dev_id)
-        return accepted
+    def accept(self, device_id: str, path: str) -> str:
+        """Accept ONE pending link request the user chose, and share the tray.
+
+        Deliberately not automatic: anyone who learns this machine's ID can ask
+        to connect, and the tray carries files and the screen-share password.
+        """
+        info = self.pending_devices().get(device_id)
+        if info is None:
+            raise SyncthingError(f"{device_id[:7]} isn't asking to link (anymore).")
+        name = info.get("name") or device_id[:7]
+        self.link(device_id, path, name)
+        return name
