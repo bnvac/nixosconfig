@@ -7,5 +7,11 @@
     platformio arduino-ide avrdude openocd picocom minicom gdb
     # 3D printing / CAD
     orca-slicer freecad openscad
+    elegoo-slicer                     # `elegoo-slicer` (self-fetching AppImage)
+    (makeDesktopItem {
+      name = "elegoo-slicer"; desktopName = "Elegoo Slicer";
+      exec = "elegoo-slicer %F"; icon = "orca-slicer"; categories = [ "Graphics" "Engineering" ];
+      comment = "Elegoo Slicer (fetched on first run)";
+    })
   ];
 }

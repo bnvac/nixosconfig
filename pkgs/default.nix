@@ -18,21 +18,22 @@ in
       substituteInPlace config.h \
         --replace-fail '{ "xbacklight", "-inc", "15", NULL }' '{ "brightnessctl", "set", "10%+", NULL }' \
         --replace-fail '{ "xbacklight", "-dec", "15", NULL }' '{ "brightnessctl", "set", "10%-", NULL }'
-      # Super+Space talks to Jarvis. dwm binds Super+Space to zoom by default —
+      # Super+Space talks to Neb. dwm binds Super+Space to zoom by default —
       # dwm fires EVERY matching binding, so that line is deleted, not shadowed.
       sed -i '/MODKEY,.*XK_space,.*zoom/d' config.h
-      # Super+Shift+b opens the Bluetooth manager; drop any stock binding first.
-      sed -i '/ShiftMask.*XK_b,/d' config.h
-      # Super+Ctrl+Space opens nixmenu (this system's action menu).
-      sed -i '/ControlMask.*XK_space,/d' config.h
+      # All MY OWN functions live under Super+Alt (Mod1), a namespace LARBS
+      # leaves alone, so they never clash with the stock keys. Defensively drop
+      # any stock Super+Alt binding on the keys I claim, so none can double-fire.
+      for key in space d b t Return i F1; do sed -i "/Mod1Mask.*XK_$key,/d" config.h; done
       cat > larbs-extra-keys.h <<'KEYS'
-      { MODKEY,           XK_space,     spawn, {.v = (const char*[]){ "neb", "hotkey", NULL } } },
-      { MODKEY|ControlMask, XK_space,   spawn, {.v = (const char*[]){ "nixmenu", NULL } } },
-      { MODKEY|ShiftMask, XK_grave,     spawn, {.v = (const char*[]){ "dash", NULL } } },
-      { MODKEY|ShiftMask, XK_b,         spawn, {.v = (const char*[]){ "blueman-manager", NULL } } },
-      { MODKEY|ShiftMask, XK_Tab,       spawn, {.v = (const char*[]){ "tor-browser", NULL } } },
-      { MODKEY|ShiftMask, XK_backslash, spawn, {.v = (const char*[]){ TERMINAL, "-e", "tmux", "new-session", "-A", "-s", "main", NULL } } },
-      { MODKEY|ShiftMask, XK_Escape,    spawn, SHCMD(TERMINAL " -e sh -c 'fastfetch; read -r _'") },
+      { MODKEY,          XK_space,  spawn, {.v = (const char*[]){ "neb", "hotkey", NULL } } },
+      { MODKEY|Mod1Mask, XK_space,  spawn, {.v = (const char*[]){ "nixmenu", NULL } } },
+      { MODKEY|Mod1Mask, XK_d,      spawn, {.v = (const char*[]){ "dash", NULL } } },
+      { MODKEY|Mod1Mask, XK_b,      spawn, {.v = (const char*[]){ "blueman-manager", NULL } } },
+      { MODKEY|Mod1Mask, XK_t,      spawn, {.v = (const char*[]){ "tor-browser", NULL } } },
+      { MODKEY|Mod1Mask, XK_Return, spawn, {.v = (const char*[]){ TERMINAL, "-e", "tmux", "new-session", "-A", "-s", "main", NULL } } },
+      { MODKEY|Mod1Mask, XK_i,      spawn, SHCMD(TERMINAL " -e sh -c 'fastfetch; read -r _'") },
+      { MODKEY|Mod1Mask, XK_F1,     spawn, SHCMD(TERMINAL " -e sh -c 'mykeys; read -r _'") },
       KEYS
       substituteInPlace config.h --replace-fail 'static const Key keys[] = {' 'static const Key keys[] = {
       #include "larbs-extra-keys.h"'
@@ -140,6 +141,28 @@ in
     doCheck = false;
     meta.mainProgram = "devlink";
   };
+
+  # ── Elegoo Slicer → `elegoo-slicer` command ───────────────────────────────
+  # Elegoo ships it only as a Linux AppImage (an OrcaSlicer fork), not in
+  # nixpkgs, so there's no store hash to pin here. This wrapper fetches the
+  # latest release's AppImage on first run, caches it under ~/.local/share,
+  # and runs it through appimage-run. `elegoo-slicer --update` re-fetches.
+  elegoo-slicer = prev.writeShellScriptBin "elegoo-slicer" ''
+    export PATH=${prev.lib.makeBinPath (with prev; [ curl jq gnugrep coreutils appimage-run ])}:$PATH
+    dir="''${XDG_DATA_HOME:-$HOME/.local/share}/elegoo-slicer"
+    app="$dir/ElegooSlicer.AppImage"
+    mkdir -p "$dir"
+    if [ "''${1:-}" = "--update" ]; then shift; rm -f "$app"; fi
+    if [ ! -x "$app" ]; then
+      echo "elegoo-slicer: fetching the latest release (one-time)…" >&2
+      url=$(curl -fsSL https://api.github.com/repos/elegooofficial/ElegooSlicer/releases/latest \
+            | jq -r '.assets[].browser_download_url' | grep -iE '\.AppImage$' | head -1) || true
+      [ -n "$url" ] || { echo "elegoo-slicer: couldn't find a Linux AppImage in the latest release." >&2; exit 1; }
+      curl -fL --progress-bar "$url" -o "$app.part" && mv "$app.part" "$app" || { echo "elegoo-slicer: download failed." >&2; rm -f "$app.part"; exit 1; }
+      chmod +x "$app"
+    fi
+    exec appimage-run "$app" "$@"
+  '';
 
   # ── Neb — the user's local voice assistant (stdlib-only Python) ────────────
   neb = final.python3Packages.buildPythonApplication {

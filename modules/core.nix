@@ -45,7 +45,8 @@ let
       `neb tui`, `neb ask "..."`, `neb chat`, `neb tools`. On the desktop its
       brain is local Ollama; on the laptop it's an API key. This file is Neb's
       machine context — Neb reads it via its read_system_notes tool.
-    - `modtui` — a TUI to toggle modules, rebuild, open Neb's dashboard.
+    - `modtui` — a TUI for first-run onboarding, toggling modules, editing
+      settings.nix, installing/choosing an AI model, and rebuilding.
     - **DeviceLink** (`sync` module) links this machine to the other over
       Syncthing: `devlink id` prints this box's ID, paste it on the other (its
       window, or `devlink link <id>`) and the peer auto-accepts. Send files/text
@@ -57,8 +58,13 @@ let
     - `setbg <image>` — set the wallpaper.
     - `nrs` — `sudo nixos-rebuild switch`.
     - `nixup` — pull the config repo at /etc/nixos and rebuild (no re-cloning).
-    - **Super+Ctrl+Space** opens `nixmenu`, a dmenu of this system's actions
-      (update, modules, dashboards, DeviceLink, Bluetooth, Neb, Tor, suspend).
+    - This machine's own functions live under **Super+Alt** (a namespace LARBS
+      leaves alone): **Super+Alt+Space** opens `nixmenu` (update, setup/modules,
+      dashboards, DeviceLink, Bluetooth, Neb, Elegoo Slicer, Tor, suspend),
+      **Super+Alt+F1** shows `mykeys` (the custom-keybind cheat sheet). Stock
+      LARBS keys stay on Super+F1's manual.
+    - `elegoo-slicer` — Elegoo Slicer; fetches its AppImage on first run,
+      `elegoo-slicer --update` re-fetches. (`orca-slicer` is the packaged one.)
 
     ## To change the system (do this, not `nix profile install`)
     1. Edit the relevant file under /etc/nixos (a module, or settings.nix).
@@ -80,27 +86,97 @@ let
     - Before any outward-facing or irreversible action, confirm with ${s.username}.
   '';
 
-  # A friendly TUI over `mod` and common actions. Run: modtui
+  # A friendly TUI: first-run onboarding, module toggles, settings editing, and
+  # installing/choosing an AI model. Run: modtui
   modtui = pkgs.writeShellScriptBin "modtui" ''
-    export PATH=${lib.makeBinPath (with pkgs; [ gum coreutils gnused ])}:$PATH
-    dir=/etc/nixos
+    export PATH=${lib.makeBinPath (with pkgs; [ gum coreutils gnused gnugrep curl jq ])}:/run/wrappers/bin:/run/current-system/sw/bin:$PATH
+    dir=/etc/nixos; set=$dir/settings.nix
+
+    # read a `key = value;` out of settings.nix (quotes optional)
+    getset() { sed -n "s/.*\\b$1 = \"\\?\\([^\";]*\\)\"\\?;.*/\\1/p" "$set" | head -1; }
+    # replace the value up to the FIRST ; (so inline comments survive)
+    setset() { sudo sed -i "s|\\($1 = \\)[^;]*;|\\1$2;|" "$set"; }
+    modules() { for f in "$dir"/modules/*.nix; do n=$(basename "$f" .nix); [ "$n" = core ] || echo "$n"; done; }
+
+    toggle_modules() {
+      mapfile -t mods < <(modules)
+      pre=(); for m in "''${mods[@]}"; do [ -e "$dir/mods/$m" ] && pre+=("$m"); done
+      sel=$(printf '%s\n' "''${mods[@]}" | gum choose --no-limit --height 20 \
+            --header "Space = toggle a module on/off, Enter = apply" \
+            $(printf -- '--selected=%s ' "''${pre[@]}")) || return
+      for m in "''${mods[@]}"; do
+        if printf '%s\n' "$sel" | grep -qx "$m"; then sudo mkdir -p "$dir/mods" && sudo touch "$dir/mods/$m"
+        else sudo rm -f "$dir/mods/$m"; fi
+      done
+      gum confirm "Rebuild now to apply?" && sudo nixos-rebuild switch
+    }
+
+    edit_settings() {
+      while true; do
+        f=$(gum choose --header "settings.nix — pick a value to change" \
+          "device: $(getset device)" "hostName: $(getset hostName)" \
+          "termOpacity: $(getset termOpacity)" "autoUpdate: $(getset autoUpdate)" \
+          "useGrub: $(getset useGrub)" "Back") || return
+        case "$f" in
+          device:*)      v=$(gum choose desktop laptop) && setset device "\"$v\"" ;;
+          hostName:*)    v=$(gum input --value "$(getset hostName)") && [ -n "$v" ] && setset hostName "\"$v\"" ;;
+          termOpacity:*) v=$(gum input --prompt "0.0–1.0 > " --value "$(getset termOpacity)") && setset termOpacity "\"$v\"" ;;
+          autoUpdate:*)  v=$(gum choose true false) && setset autoUpdate "$v" ;;
+          useGrub:*)     v=$(gum choose true false) && setset useGrub "$v" ;;
+          Back) return ;;
+        esac
+      done
+    }
+
+    ai_model() {
+      if ! command -v ollama >/dev/null 2>&1; then
+        gum style --border normal --padding "0 1" \
+          "Local models run on the desktop (settings device=desktop + the 'assistant' module)." \
+          "On the laptop, Neb uses an API brain — set the key in Neb's dashboard."
+        gum confirm "Open Neb's dashboard now?" && { command -v xdg-open >/dev/null && xdg-open http://127.0.0.1:7000 >/dev/null 2>&1 & } || true
+        return
+      fi
+      gum style --faint "Installed models:"; ollama list 2>/dev/null || true
+      m=$(printf '%s\n' llama3.2 qwen2.5 gemma3 mistral phi4 "other…" \
+          | gum choose --header "Install / update which model?") || return
+      [ "$m" = "other…" ] && m=$(gum input --placeholder "model[:tag], e.g. llama3.1:8b")
+      [ -n "$m" ] || return
+      gum spin --title "ollama pull $m" -- ollama pull "$m" || { gum style --foreground 1 "pull failed"; return; }
+      if gum confirm "Make Neb use $m as its brain?"; then
+        curl -fsS -X POST http://127.0.0.1:7000/api/settings -H 'Content-Type: application/json' \
+          -d "{\"providers\":{\"ollama\":{\"model\":\"$m\"}}}" >/dev/null 2>&1 \
+          && gum style --foreground 2 "Neb now uses $m." \
+          || gum style --faint "Pulled. Set it as Neb's model in the dashboard if it didn't stick."
+      fi
+    }
+
+    onboard() {
+      gum style --border double --padding "1 2" --margin "1 0" \
+        "Welcome. A few questions to set this machine up."
+      v=$(gum choose desktop laptop --header "Which machine is this?") && setset device "\"$v\""
+      h=$(gum input --header "Hostname" --value "$(getset hostName)") && [ -n "$h" ] && setset hostName "\"$h\""
+      gum confirm "Choose which modules are on?" && toggle_modules
+      gum confirm "Set up an AI model / brain now?" && ai_model
+      if gum confirm "Link this machine to your other one now?" && command -v devlink >/dev/null 2>&1; then
+        c=$(gum input --header "Make up a code; type the SAME one on the other machine" --placeholder "e.g. 4921")
+        [ -n "$c" ] && devlink pin "$c"
+      fi
+      gum confirm "Rebuild now to apply everything?" && sudo nixos-rebuild switch
+      gum style --foreground 2 "Done. Super+Alt+Space = your menu · Super+Alt+F1 = your keys."
+    }
+
     while true; do
-      action=$(gum choose --header "Neb / system control" \
-        "Toggle modules" "Rebuild now" "Show enabled" "Open Neb dashboard" "Quit") || exit 0
-      case "$action" in
-        "Toggle modules")
-          mapfile -t mods < <(for f in "$dir"/modules/*.nix; do n=$(basename "$f" .nix); [ "$n" = core ] || echo "$n"; done)
-          pre=(); for m in "''${mods[@]}"; do [ -e "$dir/mods/$m" ] && pre+=("$m"); done
-          sel=$(printf '%s\n' "''${mods[@]}" | gum choose --no-limit --header "Space=toggle, Enter=apply" \
-                $(printf -- '--selected=%s ' "''${pre[@]}")) || continue
-          for m in "''${mods[@]}"; do
-            if printf '%s\n' "$sel" | grep -qx "$m"; then sudo mkdir -p "$dir/mods" && sudo touch "$dir/mods/$m"
-            else sudo rm -f "$dir/mods/$m"; fi
-          done
-          gum confirm "Rebuild now to apply?" && sudo nixos-rebuild switch ;;
+      a=$(gum choose --header "nix control — $(getset hostName) [$(getset device)]" \
+        "Onboarding (guided setup)" "Modules on/off" "Edit settings" "AI model" \
+        "Update system (pull + rebuild)" "Rebuild now" "Open Neb dashboard" "Quit") || exit 0
+      case "$a" in
+        "Onboarding"*)        onboard ;;
+        "Modules on/off")     toggle_modules ;;
+        "Edit settings")      edit_settings ;;
+        "AI model")           ai_model ;;
+        "Update system"*)     command -v nixup >/dev/null && nixup || sudo nixos-rebuild switch ;;
         "Rebuild now")        sudo nixos-rebuild switch ;;
-        "Show enabled")       mod list | gum pager 2>/dev/null || mod list ;;
-        "Open Neb dashboard") (xdg-open http://127.0.0.1:7000 >/dev/null 2>&1 &) ;;
+        "Open Neb dashboard") { command -v xdg-open >/dev/null && xdg-open http://127.0.0.1:7000 >/dev/null 2>&1 & } || gum style "http://127.0.0.1:7000" ;;
         "Quit")               exit 0 ;;
       esac
     done
