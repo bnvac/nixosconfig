@@ -7,7 +7,7 @@
 #
 # Pairing: set both IDs in settings.nix (syncIds) and it's fully declarative.
 # Left blank, Syncthing still runs — pair by hand at http://127.0.0.1:8384.
-{ config, pkgs, lib, ... }:
+{ pkgs, lib, ... }:
 let
   s = import ../settings.nix;
   me = s.device;                    # "desktop" | "laptop"
@@ -33,12 +33,11 @@ in
           path = "/home/${s.username}/Sync";
           devices = peers;
         };
+        # Neb's live SQLite db (~/.local/share/neb) deliberately stays OUT of
+        # this — two writers would corrupt it. Share config + exported notes.
         "neb-shared" = {
           path = "/home/${s.username}/.config/neb-shared";
           devices = peers;
-          # Neb's live SQLite db must NOT sync (concurrent writers corrupt it);
-          # share config + any exported notes instead.
-          ignorePerms = false;
         };
       };
     };
@@ -63,12 +62,14 @@ in
   # `devlink` manages its own Syncthing folder (~/DeviceLink) through the API.
   # Easiest linking: run `devlink pin <code>` (or type the code in the window)
   # on BOTH machines with the same code — they find each other on the LAN and
-  # link, no IDs to copy. (Manual fallback: `devlink id` then `devlink link
-  # <id>`.) Files dropped in ~/DeviceLink — or sent from the window — appear on
-  # the other side. `devlink screen` / `devlink view` share a whole screen
-  # between the two over VNC (restricted to the peer + a per-session password).
+  # link, no IDs to copy. (Manual fallback: `devlink id` + `devlink link <id>`
+  # on one side, `devlink accept` — or the window's Accept button — on the
+  # other; nothing is ever accepted automatically.) Files dropped in
+  # ~/DeviceLink — or sent from the window — appear on the other side.
+  # `devlink screen` / `devlink view` share a whole screen between the two over
+  # VNC (restricted to the peer + a per-session password).
   systemd.user.services.devlink = {
-    description = "DeviceLink: auto-accept peers + notify on arrivals";
+    description = "DeviceLink: notify on link requests + arrivals";
     wantedBy = [ "default.target" ];
     after = [ "syncthing.service" ];
     path = [ pkgs.libnotify ];

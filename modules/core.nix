@@ -2,14 +2,7 @@
 { config, pkgs, lib, ... }:
 let
   s = import ../settings.nix;
-
-  # which feature modules are switched on (same marker files the picker reads)
-  allModules = lib.pipe (builtins.readDir ../modules) [
-    builtins.attrNames
-    (map (f: lib.removeSuffix ".nix" f))
-    (builtins.filter (m: m != "core"))
-  ];
-  enabledModules = builtins.filter (m: builtins.pathExists (../mods + "/${m}")) allModules;
+  picked = import ../picker.nix lib;     # same module list configuration.nix imports
 
   # ── Jarvis's note-to-self: regenerated from the live config every rebuild ──
   # Lands at /etc/jarvis/SYSTEM.md (and ~/SYSTEM.md). Written for an assistant
@@ -29,9 +22,9 @@ let
     - `/etc/nixos/pkgs/default.nix` — packages built from source (one overlay).
 
     ## Modules currently ON
-    ${lib.concatMapStringsSep "\n" (m: "- ${m}") enabledModules}
+    ${lib.concatMapStringsSep "\n" (m: "- ${m}") picked.on}
 
-    (Available but possibly off: ${lib.concatStringsSep ", " allModules})
+    (All modules: ${lib.concatStringsSep ", " picked.all})
 
     ## Commands this system adds
     - `mod list | mod on <name> | mod off <name>` — toggle a module + rebuild.
@@ -48,11 +41,11 @@ let
     - `modtui` — a TUI for first-run onboarding, toggling modules, editing
       settings.nix, installing/choosing an AI model, and rebuilding.
     - **DeviceLink** (`sync` module) links this machine to the other over
-      Syncthing: `devlink id` prints this box's ID, paste it on the other (its
-      window, or `devlink link <id>`) and the peer auto-accepts. Send files/text
+      Syncthing. Easiest: `devlink pin <code>` with the same code on both. Or
+      `devlink link <id>` here and `devlink accept` there — link requests are
+      never accepted automatically. Send files/text
       between them from the window (`devlink-window`, port 7010) or by dropping
       into ~/DeviceLink. `devlink send FILE|-t TEXT|-c` from the shell.
-      `devlink pin <code>` links two machines by typing the same code on both.
       `devlink screen` shares this whole screen over VNC (peer-restricted,
       per-session password); the other machine runs `devlink view`.
     - `setbg <image>` — set the wallpaper.
@@ -65,6 +58,12 @@ let
       LARBS keys stay on Super+F1's manual.
     - `elegoo-slicer` — Elegoo Slicer; fetches its AppImage on first run,
       `elegoo-slicer --update` re-fetches. (`orca-slicer` is the packaged one.)
+    - Files & drives (`desktop` module): Thunar is the GUI file manager
+      (Super+Alt+e); `lf` stays the terminal one. Nothing mounts on its own —
+      `drives` (Super+Alt+m, or Super+F9/F10) is a dmenu menu to mount, unlock
+      (LUKS) and unmount drives via udisks2, no sudo; Thunar's sidebar does the
+      same on click, and shows phones (MTP/iPhone) too. Mounts land in
+      /run/media/${s.username}/<label>.
 
     ## To change the system (do this, not `nix profile install`)
     1. Edit the relevant file under /etc/nixos (a module, or settings.nix).
@@ -78,7 +77,10 @@ let
     ## Conventions / safety for an assistant acting here
     - This is declarative: nothing is "installed" imperatively. Change files,
       rebuild. Never edit /nix/store.
-    - The firewall is on with no open ports; SSH is off. `sudo` needs a password.
+    - The firewall is on; SSH is off; `sudo` needs a password. Open ports come
+      only from modules: `sync` (Syncthing 22000 + 21027/udp, devlink pairing
+      58846/udp, VNC 5900 — nothing listens there until `devlink screen`) and
+      `printing` (mDNS 5353/udp). Don't open more without asking.
     - Desktop is dwm (suckless); the status bar clock + commands are in
       pkgs/default.nix → larbs-dwmblocks. Press Super+F1 for the keybind manual.
     - 3D printers: control over the LAN (mDNS is on, so `*.local` resolves).
@@ -97,6 +99,10 @@ let
     # replace the value up to the FIRST ; (so inline comments survive)
     setset() { sudo sed -i "s|\\($1 = \\)[^;]*;|\\1$2;|" "$set"; }
     modules() { for f in "$dir"/modules/*.nix; do n=$(basename "$f" .nix); [ "$n" = core ] || echo "$n"; done; }
+    neb_dash() {
+      if command -v xdg-open >/dev/null 2>&1; then xdg-open http://127.0.0.1:7000 >/dev/null 2>&1 &
+      else gum style "Open http://127.0.0.1:7000 in a browser."; fi
+    }
 
     toggle_modules() {
       mapfile -t mods < <(modules)
@@ -133,7 +139,7 @@ let
         gum style --border normal --padding "0 1" \
           "Local models run on the desktop (settings device=desktop + the 'assistant' module)." \
           "On the laptop, Neb uses an API brain — set the key in Neb's dashboard."
-        gum confirm "Open Neb's dashboard now?" && { command -v xdg-open >/dev/null && xdg-open http://127.0.0.1:7000 >/dev/null 2>&1 & } || true
+        gum confirm "Open Neb's dashboard now?" && neb_dash
         return
       fi
       gum style --faint "Installed models:"; ollama list 2>/dev/null || true
@@ -174,9 +180,9 @@ let
         "Modules on/off")     toggle_modules ;;
         "Edit settings")      edit_settings ;;
         "AI model")           ai_model ;;
-        "Update system"*)     command -v nixup >/dev/null && nixup || sudo nixos-rebuild switch ;;
+        "Update system"*)     nixup ;;
         "Rebuild now")        sudo nixos-rebuild switch ;;
-        "Open Neb dashboard") { command -v xdg-open >/dev/null && xdg-open http://127.0.0.1:7000 >/dev/null 2>&1 & } || gum style "http://127.0.0.1:7000" ;;
+        "Open Neb dashboard") neb_dash ;;
         "Quit")               exit 0 ;;
       esac
     done
@@ -187,8 +193,9 @@ let
     all() { for f in "$dir"/modules/*.nix; do n=$(basename "$f" .nix); [ "$n" = core ] || echo "$n"; done; }
     case "''${1:-list}" in
       list) for n in $(all); do [ -e "$m/$n" ] && echo "  on   $n" || echo "  off  $n"; done ;;
-      on)   [ -f "$dir/modules/$2.nix" ] || { echo "no module '$2'"; exit 1; }
-            sudo mkdir -p "$m" && sudo touch "$m/$2" && sudo nixos-rebuild switch ;;
+      on|off) [ -n "''${2:-}" ] && [ -f "$dir/modules/$2.nix" ] && [ "$2" != core ] \
+                || { echo "no module '$2' (try: mod list)"; exit 1; } ;;&
+      on)   sudo mkdir -p "$m" && sudo touch "$m/$2" && sudo nixos-rebuild switch ;;
       off)  sudo rm -f "$m/$2" && sudo nixos-rebuild switch ;;
       *)    echo "usage: mod list | mod on <name> | mod off <name>" ;;
     esac
@@ -257,8 +264,7 @@ in
     enable = true;
     powerOnBoot = true;
     settings.General.Experimental = true;   # battery % for mice/keyboards/headsets
-  };
-  services.blueman.enable = true;           # GUI: run `blueman-manager` (or Super+Shift+b)
+  };                                        # (the blueman GUI lives in desktop.nix)
   time.timeZone = s.timeZone;
   i18n.defaultLocale = "en_US.UTF-8";
 
@@ -299,7 +305,7 @@ in
 
   environment.systemPackages = with pkgs; [
     mod modtui nixup git curl wget htop fastfetch fzf ripgrep fd bat eza zoxide starship
-    tree jq unzip zip gcc gnumake python3 psmisc usbutils pciutils xclip
+    tree jq unzip zip gcc gnumake python3 psmisc usbutils pciutils
   ];
 
   # A few scratch directories, created on boot if missing (never clobbered).

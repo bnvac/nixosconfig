@@ -1,5 +1,5 @@
-# LARBS dwm desktop: X11, dwm, dotfile seeding, X utilities.
-{ config, pkgs, lib, ... }:
+# LARBS dwm desktop: X11, dwm, dotfile seeding, X utilities, files & drives.
+{ pkgs, lib, ... }:
 let
   s = import ../settings.nix;
   wallpaper = pkgs.runCommand "wallpaper.png" { nativeBuildInputs = [ pkgs.imagemagick ]; }
@@ -34,6 +34,54 @@ let
     icon = "web-browser"; categories = [ "Network" ];
   }) dashboards;
 
+  # `drives` — mount / unlock / unmount from dmenu (Super+Alt+m, Super+F9/F10).
+  # Nothing ever mounts on its own: you pick the drive. udisks2 does the work as
+  # your user (no sudo) under /run/media/<you>/<label>; LUKS drives ask for the
+  # passphrase in a dmenu password prompt. The same udisks2 backs Thunar's
+  # sidebar, so a drive mounted either way shows up in both.
+  drives = pkgs.writeShellScriptBin "drives" ''
+    export PATH=${lib.makeBinPath (with pkgs; [ larbs-dmenu udisks util-linux jq libnotify coreutils gawk gnugrep ])}:$PATH
+    say() { notify-send -i drive-removable-media "Drives" "$1" 2>/dev/null || echo "$1"; }
+    want=''${1:-any}                              # mount | unmount | any
+
+    # one row per actionable device:  ACTION <tab> DEVICE <tab> what dmenu shows
+    rows=$(lsblk -Jpo NAME,TYPE,SIZE,LABEL,FSTYPE,MOUNTPOINT | jq -r --arg want "$want" '
+      [.blockdevices[] | recurse(.children[]?)][]
+      | select(.type != "loop" and .fstype != null and .fstype != "swap")
+      | (.label // .fstype) as $what
+      | if .fstype == "crypto_LUKS" then
+          if ((.children // []) | length) == 0 and $want != "unmount"
+          then "unlock\t\(.name)\t🔒 \(.name)  \(.size)  \($what) (locked)" else empty end
+        elif .mountpoint == null then
+          if $want != "unmount" then "mount\t\(.name)\t💾 \(.name)  \(.size)  \($what)" else empty end
+        elif (.mountpoint | startswith("/run/media/")) and $want != "mount" then
+          "unmount\t\(.name)\t⏏ \(.mountpoint)  \(.size)"
+        else empty end')
+    [ -n "$rows" ] || { say "Nothing to $( [ "$want" = any ] && echo "mount or unmount" || echo "$want" )."; exit 0; }
+
+    pick=$(printf '%s\n' "$rows" | cut -f3 | dmenu -i -l 12 -p "drives:") || exit 0
+    row=$(printf '%s\n' "$rows" | awk -F'\t' -v p="$pick" '$3 == p { print; exit }')
+    [ -n "$row" ] || exit 0
+    action=$(printf '%s' "$row" | cut -f1); dev=$(printf '%s' "$row" | cut -f2)
+
+    case "$action" in
+      mount)
+        out=$(udisksctl mount -b "$dev" 2>&1) && say "$out" || say "Couldn't mount $dev: $out" ;;
+      unlock)
+        pw=$(dmenu -P -p "Passphrase for $dev:" <&-) || exit 0
+        out=$(printf '%s' "$pw" | udisksctl unlock -b "$dev" --key-file /dev/stdin 2>&1); unset pw
+        clear=$(printf '%s' "$out" | grep -o '/dev/dm-[0-9]*') || { say "Couldn't unlock $dev: $out"; exit 1; }
+        out=$(udisksctl mount -b "$clear" 2>&1) && say "Unlocked. $out" || say "Unlocked, but couldn't mount: $out" ;;
+      unmount)
+        out=$(udisksctl unmount -b "$dev" 2>&1) || { say "Couldn't unmount $dev: $out (a program may still be using it)"; exit 1; }
+        if [ "$(lsblk -no TYPE "$dev")" = crypt ]; then        # was a LUKS drive: lock it again
+          backing=$(lsblk -npo PKNAME "$dev")
+          udisksctl lock -b "$backing" >/dev/null 2>&1 && out="$out, and locked $backing"
+        fi
+        say "$out. Safe to unplug." ;;
+    esac
+  '';
+
   # `mykeys` — a printable cheat sheet of MY custom keybinds (Super+Alt+F1, and
   # an entry in nixmenu). Stock LARBS keys stay on Super+F1's manual.
   mykeys = pkgs.writeShellScriptBin "mykeys" ''
@@ -43,12 +91,19 @@ let
 
       Super + Space          talk to Neb  (listen → answer → speak)
       Super + Alt + Space    nixmenu — the menu of everything below
-      Super + Alt + d        dashboards (dash)
-      Super + Alt + b        Bluetooth manager
+      Super + Alt + e        file manager (Thunar)
+      Super + Alt + m        drives: mount / unlock / unmount
+      Super + Alt + d        dashboards
+      Super + Alt + b        Bluetooth
       Super + Alt + t        Tor Browser
-      Super + Alt + Return    tmux session
+      Super + Alt + Return   tmux session
       Super + Alt + i        system info (fastfetch)
       Super + Alt + F1       this sheet
+
+      Stock keys I changed:
+      Super + e              file manager (it opened neomutt, which is gone)
+      Super + F9 / F10       drives: mount / unmount
+      Super + r              lf, the terminal file manager (unchanged)
 
       Everything else is stock LARBS — press Super + F1 for that manual.
 
@@ -57,39 +112,38 @@ let
 
   # `nixmenu` — Super+Alt+Space. A dmenu of this system's own actions. Entries
   # only appear when the command behind them exists (its module is on), so it
-  # stays honest as modules come and go. Terminal actions open in st.
+  # stays honest as modules come and go. Terminal actions open in st and wait
+  # for Enter, so you can read the result before the window closes.
   nixmenu = pkgs.writeShellScriptBin "nixmenu" ''
     export PATH=${lib.makeBinPath [ pkgs.larbs-dmenu pkgs.larbs-st pkgs.coreutils ]}:/run/current-system/sw/bin:$PATH
     have() { command -v "$1" >/dev/null 2>&1; }
-    labels=()
-    labels+=("Setup / modules (TUI)")
-    labels+=("Update system (pull + rebuild)")
+    term() { exec st -e sh -c "$1; echo; printf '[enter] '; read -r _"; }
+    labels=("Setup / modules (TUI)" "Update system (pull + rebuild)" "Files" "Drives: mount / unmount")
     have dash            && labels+=("Dashboards")
     have devlink-window  && labels+=("DeviceLink (send files)")
-    have devlink         && labels+=("Share my screen (VNC)")
-    have devlink         && labels+=("View other screen (VNC)")
+    have devlink         && labels+=("Share my screen (VNC)" "View other screen (VNC)")
     have blueman-manager && labels+=("Bluetooth devices")
     have neb             && labels+=("Ask Neb")
     have elegoo-slicer   && labels+=("Elegoo Slicer")
-    have tormode         && labels+=("Tor: route everything ON")
-    have tormode         && labels+=("Tor: stop routing")
-    labels+=("My keybinds")
-    labels+=("Suspend")
-    sel=$(printf '%s\n' "''${labels[@]}" | dmenu -i -l 14 -p "nix:") || exit 0
+    have tormode         && labels+=("Tor: route everything ON" "Tor: stop routing")
+    labels+=("My keybinds" "Suspend")
+    sel=$(printf '%s\n' "''${labels[@]}" | dmenu -i -l 16 -p "nix:") || exit 0
     case "$sel" in
-      "Setup / modules (TUI)")      exec st -e modtui ;;
-      Update*)                      exec st -e nixup ;;
-      Dashboards)                   exec dash ;;
-      DeviceLink*)                  exec devlink-window ;;
-      "Share my screen (VNC)")      exec st -e sh -c 'devlink screen; echo; read -p "[enter] " _' ;;
-      "View other screen (VNC)")    exec devlink view ;;
-      Bluetooth*)                   exec blueman-manager ;;
-      "Ask Neb")                    exec neb hotkey ;;
-      "Elegoo Slicer")              exec elegoo-slicer ;;
-      "Tor: route everything ON")   exec st -e sh -c 'tormode on;  echo; read -p "[enter] " _' ;;
-      "Tor: stop routing")          exec st -e sh -c 'tormode off; echo; read -p "[enter] " _' ;;
-      "My keybinds")                exec st -e sh -c 'mykeys; read -p "[enter] " _' ;;
-      Suspend)                      exec zzz ;;
+      "Setup / modules (TUI)")     term modtui ;;
+      Update*)                     term nixup ;;
+      Files)                       exec thunar ;;
+      Drives*)                     exec drives ;;
+      Dashboards)                  exec dash ;;
+      DeviceLink*)                 exec devlink-window ;;
+      "Share my screen (VNC)")     term "devlink screen" ;;
+      "View other screen (VNC)")   exec devlink view ;;
+      Bluetooth*)                  exec blueman-manager ;;
+      "Ask Neb")                   exec neb hotkey ;;
+      "Elegoo Slicer")             exec elegoo-slicer ;;
+      "Tor: route everything ON")  term "tormode on" ;;
+      "Tor: stop routing")         term "tormode off" ;;
+      "My keybinds")               term mykeys ;;
+      Suspend)                     exec zzz ;;
     esac
   '';
 
@@ -120,6 +174,7 @@ in
         ${pkgs.unclutter-xfixes}/bin/unclutter &
         ${pkgs.dunst}/bin/dunst &
         ${pkgs.blueman}/bin/blueman-applet &
+        ${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1 &   # password prompts (drives, etc.)
         ${pkgs.mpd}/bin/mpd &
         bg="$HOME/.local/share/bg"
         [ -e "$bg" ] || { mkdir -p "$HOME/.local/share"; ln -sfn ${wallpaper} "$bg"; }
@@ -132,6 +187,17 @@ in
   services.libinput.enable = true;
   services.displayManager.ly.enable = true;
   hardware.graphics.enable = true;
+  services.blueman.enable = true;            # Bluetooth GUI (Super+Alt+b)
+
+  # ── files & drives ─────────────────────────────────────────────────────────
+  # Thunar is the GUI file manager; lf (Super+r) stays the terminal one. No
+  # automounting anywhere (no thunar-volman, no udiskie): click a drive in
+  # Thunar's sidebar, or use `drives`. Both go through udisks2 as your user.
+  programs.thunar = { enable = true; plugins = [ pkgs.thunar-archive-plugin ]; };
+  services.udisks2.enable = true;
+  services.gvfs.enable = true;               # Thunar's drive sidebar, trash, phones (MTP/iPhone)
+  services.tumbler.enable = true;            # thumbnails
+  xdg.mime.defaultApplications."inode/directory" = "thunar.desktop";   # "open folder" → Thunar
 
   environment.variables = {
     TERMINAL = "st"; BROWSER = "firefox"; READER = "zathura"; FILE = "lfub";
@@ -156,13 +222,14 @@ in
     '';
   };
 
-  environment.systemPackages = [ dash nixmenu mykeys ] ++ dashItems ++ (with pkgs; [
+  environment.systemPackages = [ dash drives nixmenu mykeys ] ++ dashItems ++ (with pkgs; [
     larbs-st larbs-dmenu larbs-dwmblocks larbs-scripts
-    xorg.xinit xrdb xprop xwininfo xset setxkbmap xbacklight xorg.xrandr slop
+    xinit xrdb xprop xwininfo xset setxkbmap xbacklight xrandr slop
     xclip xdotool xcape xwallpaper picom unclutter-xfixes maim slock
     dunst libnotify arandr screenkey tesseract wmctrl groff feh imagemagick
     brightnessctl xev lf ueberzugpp zathura nsxiv
     gruvbox-gtk-theme papirus-icon-theme lxappearance
+    xarchiver ntfs3g exfatprogs dosfstools   # archives (Thunar plugin) + fs tools for drives
     (writeShellScriptBin "zzz" ''exec systemctl suspend "$@"'')
   ]);
   programs.dconf.enable = true;

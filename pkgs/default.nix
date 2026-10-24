@@ -1,7 +1,7 @@
 # Custom packages built from source / upstream binaries. One overlay.
 final: prev:
 let
-  gh = args: prev.fetchFromGitHub args;
+  gh = prev.fetchFromGitHub;
 in
 {
   # ── LARBS suckless desktop (Luke Smith's pinned forks) ─────────────────────
@@ -21,13 +21,19 @@ in
       # Super+Space talks to Neb. dwm binds Super+Space to zoom by default —
       # dwm fires EVERY matching binding, so that line is deleted, not shadowed.
       sed -i '/MODKEY,.*XK_space,.*zoom/d' config.h
-      # All MY OWN functions live under Super+Alt (Mod1), a namespace LARBS
-      # leaves alone, so they never clash with the stock keys. Defensively drop
-      # any stock Super+Alt binding on the keys I claim, so none can double-fire.
-      for key in space d b t Return i F1; do sed -i "/Mod1Mask.*XK_$key,/d" config.h; done
+      # Stock keys repointed: Super+e opened neomutt (not installed) → Thunar;
+      # Super+F9/F10 ran the sudo-based mounter/unmounter → the udisks `drives`.
+      substituteInPlace config.h \
+        --replace-fail 'SHCMD(TERMINAL " -e neomutt ; pkill -RTMIN+12 dwmblocks")' '{.v = (const char*[]){ "thunar", NULL } }' \
+        --replace-fail '{ "mounter", NULL }'   '{ "drives", "mount", NULL }' \
+        --replace-fail '{ "unmounter", NULL }' '{ "drives", "unmount", NULL }'
+      # All MY OWN functions live under Super+Alt (Mod1). Stock LARBS binds
+      # nothing with Mod1Mask, so these can't collide (checked at this rev).
       cat > larbs-extra-keys.h <<'KEYS'
       { MODKEY,          XK_space,  spawn, {.v = (const char*[]){ "neb", "hotkey", NULL } } },
       { MODKEY|Mod1Mask, XK_space,  spawn, {.v = (const char*[]){ "nixmenu", NULL } } },
+      { MODKEY|Mod1Mask, XK_e,      spawn, {.v = (const char*[]){ "thunar", NULL } } },
+      { MODKEY|Mod1Mask, XK_m,      spawn, {.v = (const char*[]){ "drives", NULL } } },
       { MODKEY|Mod1Mask, XK_d,      spawn, {.v = (const char*[]){ "dash", NULL } } },
       { MODKEY|Mod1Mask, XK_b,      spawn, {.v = (const char*[]){ "blueman-manager", NULL } } },
       { MODKEY|Mod1Mask, XK_t,      spawn, {.v = (const char*[]){ "tor-browser", NULL } } },

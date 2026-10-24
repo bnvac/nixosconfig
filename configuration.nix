@@ -4,16 +4,9 @@
 # named <name> exists in ./mods. New modules register themselves — no list here.
 #   mod list          show every module and whether it's on
 #   mod on gaming     enable + rebuild        mod off osint   disable + rebuild
+#   modtui            the same, plus onboarding / settings / AI model, as a TUI
 { lib, ... }:
-let
-  names = lib.pipe (builtins.readDir ./modules) [
-    builtins.attrNames
-    (map (lib.removeSuffix ".nix"))
-    (builtins.filter (m: m != "core"))
-  ];
-  isOn = m: builtins.pathExists (./mods + "/${m}");
-in
 {
   imports = [ ./hardware-configuration.nix ./modules/core.nix ]
-    ++ map (m: ./modules + "/${m}.nix") (builtins.filter isOn names);
+    ++ map (m: ./modules + "/${m}.nix") (import ./picker.nix lib).on;
 }

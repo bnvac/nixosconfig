@@ -10,7 +10,7 @@
 #
 # Dashboard: http://127.0.0.1:7000 — switch brains, set API keys (write-only),
 # edit the command allowlist, see tools/memory. Open it with: chromium http://127.0.0.1:7000
-{ config, pkgs, lib, ... }:
+{ pkgs, lib, ... }:
 let
   s = import ../settings.nix;
   isDesktop = s.device == "desktop";
@@ -89,6 +89,6 @@ in
   environment.systemPackages = with pkgs; [
     neb                                   # neb / neb tui / neb ask / neb chat
     whisper-cpp piper-tts sox alsa-utils  # voice I/O
-    uv python3                            # agent dev
+    uv                                    # agent dev (python3 is in core)
   ];
 }

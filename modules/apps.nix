@@ -25,9 +25,9 @@ in
                                              # poster grid, click to stream via
                                              # addons (install Torrentio in-app).
                                              # Simpler classic alternative: popcorntime
-    usbmuxd libimobiledevice balena-cli appimage-run flatpak
+    libimobiledevice balena-cli appimage-run flatpak   # (usbmuxd comes with its service)
     nodejs
-    networkmanagerapplet lm_sensors ntfs3g exfatprogs dosfstools simple-mtpfs
+    networkmanagerapplet lm_sensors
     poppler-utils man-pages xdg-utils trash-cli lynx
   ];
 }
