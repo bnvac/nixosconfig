@@ -9,12 +9,25 @@ from __future__ import annotations
 import json
 import os
 import urllib.error
+import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
 FOLDER_ID = "devlink"          # the shared tray folder's Syncthing id
 FOLDER_LABEL = "DeviceLink"
+# More folders linking should create + share with the peer (Sync, neb-shared,
+# backoffice, bookmarks…): whitespace-separated "id=/path" pairs, set by sync.nix.
+FOLDERS_ENV = "DEVLINK_FOLDERS"
+
+
+def extra_folders() -> list[tuple[str, str]]:
+    out = []
+    for pair in (os.environ.get(FOLDERS_ENV) or "").split():
+        fid, sep, path = pair.partition("=")
+        if sep and fid and path:
+            out.append((fid, os.path.expanduser(path)))
+    return out
 
 
 class SyncthingError(RuntimeError):
@@ -124,25 +137,44 @@ class Syncthing:
             "autoAcceptFolders": True,          # accept folders the peer shares
         })
 
-    def ensure_tray_folder(self, path: str, share_with: list[str]) -> None:
-        folders = self.folders()
-        existing = next((f for f in folders if f["id"] == FOLDER_ID), None)
-        want = sorted(set(share_with) | ({d["deviceID"] for d in existing["devices"]} if existing else set()))
-        devices = [{"deviceID": d} for d in want]
+    def ensure_folder(self, fid: str, path: str, share_with: list[str], label: str = "") -> None:
+        """Create folder `fid` (or keep it) and make sure it's shared with these devices."""
+        existing = next((f for f in self.folders() if f["id"] == fid), None)
+        have = {d["deviceID"] for d in existing["devices"]} if existing else set()
+        devices = [{"deviceID": d} for d in sorted(set(share_with) | have)]
         if existing is None:
             self._req("POST", "/rest/config/folders", {
-                "id": FOLDER_ID, "label": FOLDER_LABEL, "path": path,
+                "id": fid, "label": label or fid, "path": path,
                 "type": "sendreceive", "devices": devices, "fsWatcherEnabled": True,
             })
-        else:
+        elif set(share_with) - have:
             existing["devices"] = devices
             existing["path"] = existing.get("path") or path
-            self._req("PUT", f"/rest/config/folders/{FOLDER_ID}", existing)
+            self._req("PUT", f"/rest/config/folders/{urllib.parse.quote(fid, safe='')}", existing)
+
+    def ensure_tray_folder(self, path: str, share_with: list[str]) -> None:
+        self.ensure_folder(FOLDER_ID, path, share_with, FOLDER_LABEL)
+
+    def modified_by(self, name: str, folder: str = FOLDER_ID) -> str:
+        """Short id of the device that last changed a file, or '' if unknown yet."""
+        q = urllib.parse.urlencode({"folder": folder, "file": name})
+        try:
+            info = self._req("GET", f"/rest/db/file?{q}") or {}
+        except (SyncthingError, ValueError):
+            return ""
+        return str((info.get("global") or {}).get("modifiedBy") or "")
 
     def link(self, peer_id: str, path: str, name: str = "") -> None:
-        """Add the peer and share the tray folder with it (idempotent)."""
+        """Add the peer; share the tray and every folder in $DEVLINK_FOLDERS with it.
+
+        Idempotent. These folders are created here, at runtime, rather than
+        declared in NixOS: the NixOS module re-POSTs declared folders on every
+        start, which would drop a peer added this way.
+        """
         self.add_device(peer_id, name)
         self.ensure_tray_folder(path, [peer_id])
+        for fid, fpath in extra_folders():
+            self.ensure_folder(fid, fpath, [peer_id])
 
     def accept(self, device_id: str, path: str) -> str:
         """Accept ONE pending link request the user chose, and share the tray.

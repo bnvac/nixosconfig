@@ -19,8 +19,16 @@ textarea { min-height:70px; resize:vertical; }
 .dev { display:flex; gap:8px; align-items:center; padding:6px 0; border-top:1px solid var(--line); }
 .dot { width:9px; height:9px; border-radius:50%; background:#6e7681; } .dot.on { background:#3fb950; }
 .mut { color:var(--mut); } .tray a { color:var(--fg); text-decoration:none; }
-.item { display:flex; gap:8px; padding:5px 0; border-top:1px solid var(--line); }
+.item { display:flex; gap:8px; padding:5px 0; border-top:1px solid var(--line); align-items:center; }
+.item .nm { cursor:pointer; } .item .nm:hover { text-decoration:underline; }
+.item.sel { background:#1f2630; }
 .empty { color:var(--mut); padding:6px 0; }
+button.sm { padding:4px 10px; font-size:12px; }
+#preview { margin-top:12px; } #preview:empty { display:none; }
+#preview img, #preview video { max-width:100%; max-height:420px; border-radius:8px; display:block; }
+#preview iframe { width:100%; height:520px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+#preview pre { max-height:420px; overflow:auto; background:#0d1117; border:1px solid var(--line);
+               border-radius:8px; padding:10px; white-space:pre-wrap; word-break:break-word; font-size:12px; }
 </style></head>
 <body>
 <header><b>DeviceLink</b><span class="mut" id="err"></span><span class="sp"></span>
@@ -48,12 +56,15 @@ textarea { min-height:70px; resize:vertical; }
     <h2>Send to the other device</h2>
     <textarea id="text" placeholder="type a note, or paste text…"></textarea>
     <div class="row" style="margin-top:8px"><button onclick="sendText()">Send text</button>
+      <button id="tabsbtn" class="ghost" onclick="sendTabs()">Send my browser tabs</button>
       <span class="mut">Files: drop them into <code>~/DeviceLink</code> (or <code>devlink send FILE</code>).</span></div>
+    <div id="tabsmsg" class="mut" style="margin-top:6px"></div>
   </section>
 
   <section class="card tray">
     <h2>Shared tray</h2>
     <div id="tray"></div>
+    <div id="preview"></div>
   </section>
 </main>
 <script>
@@ -76,9 +87,18 @@ async function load() {
       `<div class="dev"><span class="dot ${d.connected?'on':''}"></span><b>${esc(d.name||'device')}</b>
        <span class="mut">${d.connected?'connected':'offline'}</span><span class="sp" style="flex:1"></span>
        <code>${esc(d.id.slice(0,7))}</code></div>`).join('') : '<div class="empty">no linked devices yet</div>';
-    $('#tray').innerHTML = s.tray.length ? s.tray.map(t =>
-      `<div class="item"><span>${t.dir?'📁':'📄'}</span><span>${esc(t.name)}</span><span class="sp" style="flex:1"></span>
-       <span class="mut">${t.dir?'':(t.size/1024|0)+' KB'}</span></div>`).join('') : '<div class="empty">empty — nothing shared yet</div>';
+    $('#tray').innerHTML = s.tray.length ? s.tray.map(t => {
+      const n = esc(t.name), icon = t.dir ? '📁' : t.tabs != null ? '🗂' : kindIcon(t.mime);
+      const label = t.tabs != null ? `${t.tabs} tabs from ${esc(t.from || 'the other machine')}` : n;
+      const acts = t.tabs != null
+        ? `<button class="sm" data-n="${n}" onclick="openTabs(this.dataset.n)">Open tabs</button>`
+        : `<button class="sm ghost" data-n="${n}" onclick="openHere(this.dataset.n)">Open</button>` +
+          (t.dir ? '' : `<a href="/api/file?download=1&name=${encodeURIComponent(t.name)}"><button class="sm ghost">Download</button></a>`);
+      return `<div class="item${t.name === shown ? ' sel' : ''}"><span>${icon}</span>
+        <span class="nm" data-n="${n}" onclick="preview(this.dataset.n)">${label}</span><span class="sp" style="flex:1"></span>
+        <span class="mut">${t.dir ? '' : (t.size/1024|0) + ' KB'}</span>${acts}</div>`;
+    }).join('') : '<div class="empty">empty — nothing shared yet</div>';
+    items = Object.fromEntries(s.tray.map(t => [t.name, t]));
   } catch(e) { $('#err').textContent = 'window backend not reachable'; }
 }
 async function post(path, body) {
@@ -88,6 +108,41 @@ async function post(path, body) {
 function copyId() { navigator.clipboard?.writeText($('#myid').textContent); }
 async function link() { await post('/api/link', {id:$('#peer').value, name:$('#pname').value}); $('#peer').value=''; load(); }
 async function accept(id) { await post('/api/accept', {id}); load(); }
+let items = {}, shown = '';
+const kindIcon = m => m.startsWith('image/') ? '🖼' : m.startsWith('video/') ? '🎞' : m.startsWith('audio/') ? '🎵'
+                    : m === 'application/pdf' ? '📕' : m.startsWith('text/') ? '📝' : '📄';
+const fileUrl = n => '/api/file?name=' + encodeURIComponent(n);
+async function preview(name) {
+  const t = items[name], box = $('#preview');
+  if (!t || shown === name) { shown = ''; box.replaceChildren(); return load(); }
+  shown = name; box.replaceChildren();
+  const m = t.mime || '';
+  let el;
+  if (t.dir || t.tabs != null) {
+    el = document.createElement('div'); el.className = 'mut';
+    el.textContent = t.dir ? 'A folder — use Open to see it in the file manager.' : 'A tab set — use Open tabs.';
+  } else if (/^image\/(png|jpeg|gif|webp|avif|bmp)$/.test(m)) {
+    el = document.createElement('img'); el.src = fileUrl(name); el.alt = name;
+  } else if (m.startsWith('video/') || m.startsWith('audio/')) {
+    el = document.createElement(m.startsWith('video/') ? 'video' : 'audio'); el.src = fileUrl(name); el.controls = true;
+  } else if (m === 'application/pdf') {
+    el = document.createElement('iframe'); el.src = fileUrl(name);
+  } else if (m.startsWith('text/') || /json|xml|yaml|toml|x-sh|javascript|svg/.test(m)) {
+    el = document.createElement('pre'); el.textContent = 'loading…';
+    const r = await fetch(fileUrl(name)), txt = await r.text();
+    el.textContent = txt.length > 200000 ? txt.slice(0, 200000) + '\n… (truncated)' : txt;   // textContent: never parsed as HTML
+  } else {
+    el = document.createElement('div'); el.className = 'mut'; el.textContent = 'No preview for this kind of file — Download or Open it.';
+  }
+  box.append(el); load();
+}
+async function openHere(name) { await post('/api/open', {name}); }
+async function openTabs(name) { const j = await post('/api/open-tabs', {name}); if (j.ok) $('#tabsmsg').textContent = `opened ${j.count} tabs`; }
+async function sendTabs() {
+  const b = $('#tabsbtn'); b.disabled = true;
+  try { const j = await post('/api/send-tabs', {}); if (j.ok) $('#tabsmsg').textContent = `sent ${j.count} tabs — they'll open on the other machine`; }
+  finally { b.disabled = false; load(); }
+}
 async function pair() {
   const code = $('#pin').value.trim(); if (!code) { $('#pinmsg').textContent='enter a code first'; return; }
   const btn=$('#pinbtn'), msg=$('#pinmsg');

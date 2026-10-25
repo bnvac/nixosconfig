@@ -8,7 +8,10 @@ between them from one window.
   devlink status             linked devices, connection state, pending requests
   devlink send <files...>    drop files into the shared tray (appear on the other)
   devlink send -t "text"     send a note;  -c  send the clipboard
-  devlink auto               daemon: notify on link requests + arrivals
+  devlink tabs [--all]       send your open Firefox tabs; the other reopens them
+  devlink open-tabs FILE     reopen a received tab set by hand
+  devlink auto               daemon: notify on link requests + arrivals,
+                             reopen tab sets that arrive from the other machine
   devlink ui [--port 7010]   the window (open http://127.0.0.1:7010, or --app)
   devlink screen             share THIS machine's whole screen (peer runs view)
   devlink view               open the other machine's screen in a window
@@ -80,6 +83,52 @@ def _watch_requests(st: Syncthing) -> None:
         time.sleep(5)
 
 
+def _arrived(path) -> None:
+    """Something the OTHER machine put in the tray just landed here."""
+    if path.name.endswith(tray.TABS_SUFFIX):
+        from . import tabs
+        try:
+            n = tabs.reopen(path)
+            src = _safe(tabs.load(path).get("from"))
+            _notify("Tabs arrived", f"opened {n} tab{'s' * (n != 1)} from {src}")
+        except (OSError, ValueError, KeyError) as e:
+            _notify("Tabs arrived", f"couldn't open them: {e}")
+    else:
+        _notify("Received", _safe(path.name))
+
+
+def _watch_tray(st: Syncthing) -> None:
+    """Poll the tray. A new name is held until Syncthing has indexed it and can
+    say which device made it — our own sends stay quiet; after 30 s unknown,
+    it's announced anyway."""
+    root = tray.tray_dir()
+    root.mkdir(parents=True, exist_ok=True)
+    me = st.my_id()[:7]
+    seen = {p.name for p in root.iterdir()}
+    waiting: dict[str, float] = {}
+    while True:
+        time.sleep(2)
+        try:
+            now = {p.name for p in root.iterdir()}
+        except FileNotFoundError:
+            continue
+        for name in now - seen:
+            if not name.startswith("."):
+                waiting[name] = time.time()
+        seen = now
+        for name, first in list(waiting.items()):
+            if name not in now:
+                del waiting[name]
+                continue
+            by = st.modified_by(name)
+            if not by and time.time() - first < 30:
+                continue
+            del waiting[name]
+            if by == me or (not by and name in tray.sent_names()):
+                continue
+            _arrived(root / name)
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="devlink")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -90,6 +139,8 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("status")
     sd = sub.add_parser("send"); sd.add_argument("files", nargs="*")
     sd.add_argument("-t", "--text"); sd.add_argument("-c", "--clipboard", action="store_true")
+    tb = sub.add_parser("tabs"); tb.add_argument("--all", action="store_true")
+    ot = sub.add_parser("open-tabs"); ot.add_argument("file")
     sub.add_parser("auto")
     ui = sub.add_parser("ui"); ui.add_argument("--port", type=int, default=7010)
     sub.add_parser("screen")
@@ -109,6 +160,16 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 print("nothing to send (give files, -t TEXT, or -c)", file=sys.stderr)
                 return 2
+            return 0
+        if args.cmd == "tabs":
+            from . import tabs
+            dest, n = tabs.send(args.all)
+            _notify("Tabs sent", f"{n} tab{'s' * (n != 1)} — they'll open on the other machine")
+            print(dest)
+            return 0
+        if args.cmd == "open-tabs":
+            from . import tabs
+            print(f"opened {tabs.reopen(args.file)} tabs")
             return 0
         if args.cmd == "ui":
             from .ui import serve
@@ -157,9 +218,9 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.cmd == "auto":
             threading.Thread(target=_watch_requests, args=(st,), daemon=True).start()
-            tray.watch(lambda p: _notify("Received", p.name))
+            _watch_tray(st)
             return 0
-    except (SyncthingError, FileNotFoundError, RuntimeError) as e:
+    except (SyncthingError, OSError, RuntimeError, ValueError) as e:
         print(f"devlink: {e}", file=sys.stderr)
         return 1
     return 0
