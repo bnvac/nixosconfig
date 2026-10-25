@@ -1,9 +1,9 @@
 # Syncthing between the desktop and laptop, plus DeviceLink on top of it.
 #
 # Shared folders (my.syncFolders — other modules add theirs, e.g. backoffice):
-#   ~/Sync                       general shared files
+#   ~/Sync                       general shared files (browser bookmark exports
+#                                live in ~/Sync/browser — see browser-sync below)
 #   ~/.config/neb-shared         Neb-to-Neb notes (never his live SQLite db)
-#   ~/.local/share/bookmarks-sync   browser bookmarks (floccus, see below)
 #
 # Pairing: `devlink pin <code>` on both machines links them AND creates/shares
 # every folder above. (Filling settings.syncIds instead makes it declarative.
@@ -19,37 +19,11 @@ let
   havePeer = otherId != "";
   folders = config.my.syncFolders;
   devlinkFolders = lib.concatStringsSep " " (lib.mapAttrsToList (id: path: "${id}=${path}") folders);
-
-  # Bookmarks: floccus (in Firefox + Chromium, see apps.nix) syncs to this
-  # local WebDAV; Syncthing carries the file to the other machine. Basic auth
-  # with a per-machine random password, because a loopback server without one
-  # can be read by any website through DNS rebinding.
-  bookmarksDav = pkgs.writeShellScript "bookmarks-webdav" ''
-    pass="$HOME/.config/bookmarks-sync/pass"
-    umask 077; mkdir -p "''${pass%/*}"
-    [ -s "$pass" ] || head -c 24 /dev/urandom | base64 | tr -d '/+=' > "$pass"
-    exec ${pkgs.rclone}/bin/rclone serve webdav "${home}/.local/share/bookmarks-sync" \
-      --addr 127.0.0.1:7020 --user floccus --pass "$(cat "$pass")"
-  '';
-  bookmarksLogin = pkgs.writeShellScriptBin "bookmarks-login" ''
-    f="$HOME/.config/bookmarks-sync/pass"
-    [ -s "$f" ] || { echo "bookmark sync hasn't started yet (systemctl --user status bookmarks-webdav)"; exit 1; }
-    printf %s "$(cat "$f")" | ${pkgs.xclip}/bin/xclip -selection clipboard 2>/dev/null || true
-    cat <<EOF
-    In each browser (Firefox and Chromium, on each machine), once:
-      floccus icon → Add account → "WebDAV share" (XBEL)
-        Server URL           http://127.0.0.1:7020/
-        Username             floccus
-        Password             $(cat "$f")    (also copied to your clipboard)
-        Bookmarks file path  bookmarks.xbel
-    EOF
-  '';
 in
 {
   my.syncFolders = {
     Sync = "${home}/Sync";
     neb-shared = "${home}/.config/neb-shared";
-    bookmarks = "${home}/.local/share/bookmarks-sync";
   };
 
   services.syncthing = {
@@ -103,14 +77,21 @@ in
     environment.DEVLINK_FOLDERS = devlinkFolders;
     serviceConfig = { ExecStart = "${pkgs.devlink}/bin/devlink ui --port 7010"; Restart = "on-failure"; RestartSec = 5; };
   };
-  systemd.user.services.bookmarks-webdav = {
-    description = "Local WebDAV for browser bookmark sync (floccus)";
-    wantedBy = [ "default.target" ];
-    serviceConfig = { ExecStart = bookmarksDav; Restart = "on-failure"; RestartSec = 5; };
+  # Bookmarks: no live sync service. At login (before the browsers start)
+  # `browser-sync` writes this machine's bookmarks to ~/Sync/browser and merges
+  # in whatever the other machine last exported there. Run it by hand too, or
+  # from nixmenu. Passwords are NOT bookmarks — those stay in Bitwarden;
+  # `browser-sync passwords` just feeds each browser's own export into it.
+  systemd.user.services.browser-sync = {
+    description = "Sync browser bookmarks via an export in ~/Sync";
+    wantedBy = [ "graphical-session.target" ];
+    after = [ "syncthing.service" ];
+    path = [ "/run/current-system/sw" ];
+    serviceConfig = { Type = "oneshot"; ExecStart = "${pkgs.browser-sync}/bin/browser-sync"; };
   };
 
   environment.systemPackages = [
-    pkgs.devlink bookmarksLogin
+    pkgs.devlink pkgs.browser-sync
     pkgs.x11vnc pkgs.tigervnc          # `devlink screen` / `devlink view`
     # opens the window (the ui service serves it)
     (pkgs.makeDesktopItem {

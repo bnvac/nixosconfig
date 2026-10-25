@@ -42,10 +42,10 @@ ESP isn't mounted where `settings.nix` says.
 | module | what |
 |---|---|
 | desktop | dwm/st/dmenu/dwmblocks (LARBS), picom, snowy live wallpaper, lock screen, Thunar + drives, apps menu, Bluetooth GUI |
-| apps | browsers (+ Bitwarden & floccus), Discord/Slack, media, Calibre, torrents + Stremio, Onshape |
+| apps | browsers (+ Bitwarden), Discord/Slack, media, Calibre, torrents + Stremio, Onshape |
 | assistant | Neb (voice assistant, desktop actions, own workspace) + Ollama (Vulkan) / Open-WebUI on the desktop |
 | ai | Claude Code |
-| sync | Syncthing between the machines, DeviceLink, bookmark sync |
+| sync | Syncthing between the machines, DeviceLink, bookmark export/import |
 | ee | KiCad, EDA tools, OrcaSlicer (has Elegoo profiles), FreeCAD |
 | printing | mDNS + printrun for Klipper printers on the LAN |
 | gaming | Steam + Proton-GE, Prism Launcher |
@@ -80,7 +80,8 @@ mod off gaming      # disable + rebuild (the module stays written, just unbuilt)
 | `neb-space` | Neb's workspace (tag 9) + his terminal — **Super+Alt+Shift+n** |
 | `devlink …` | `pin` to pair, `send`, `tabs` (your browser tabs → the other machine), `screen` / `view` |
 | `backoffice-sync` | inventory hand-off between machines (`--status`) |
-| `bookmarks-login` | one-time floccus setup details for bookmark sync |
+| `browser-sync` | export bookmarks to ~/Sync + merge the other machine's back (runs at login too) |
+| `browser-sync passwords` | push each browser's own password export into Bitwarden |
 | `torrun <app>` / `tormode on\|off` | one app / everything through Tor |
 | `backoffice` | parts-inventory web app on :8080 |
 
@@ -92,9 +93,15 @@ mod off gaming      # disable + rebuild (the module stays written, just unbuilt)
   support the 6750 XT and silently fell back to the CPU). Default model
   `qwen3.5:9b` with thinking off; `modtui` → AI model to pick another. He can act
   on the desktop through `desk`; typing, keys and closing windows ask first.
-- **Passwords/bookmarks**: Bitwarden + floccus are pre-installed in Firefox and
-  Chromium. Sign in to Bitwarden once per browser; run `bookmarks-login` and add
-  the floccus account it shows, once per browser.
+- **Passwords/bookmarks**: Bitwarden is pre-installed in Firefox and Chromium —
+  sign in once per browser; it's the password vault and syncs itself. Bookmarks
+  move with `browser-sync`: no live sync service, it just exports them to an
+  HTML file in `~/Sync` (Syncthing carries it over) and merges the other
+  machine's file back, at login and whenever you run it. To pull in your
+  browser-saved passwords, export them from each browser's own Passwords screen
+  and run `browser-sync passwords` — it imports the CSV into Bitwarden and
+  shreds it. It never touches a browser's encrypted password store itself, and
+  no password ever lands in the Sync folder.
 - **Drives**: nothing mounts by itself. `drives`, or click the drive in Thunar's
   sidebar — both use udisks2 as you (no sudo), mount under
   `/run/media/samadams/<label>`, and handle LUKS. Phones show up in Thunar.

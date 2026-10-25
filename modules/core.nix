@@ -61,7 +61,8 @@ let
       per-session password); the other machine runs `devlink view`.
       `devlink tabs` sends the open Firefox window's tabs; they reopen on the
       other machine by themselves. The window previews and opens tray files.
-      Linking also shares ~/Sync, Neb's shared notes, backoffice and bookmarks.
+      Linking also shares ~/Sync (which carries the bookmark exports), Neb's
+      shared notes and backoffice.
     - `setbg <image>` — set the wallpaper.
     - `rebuild` (alias `nrs`) — `nixos-rebuild switch` with a live progress display.
     - `nixup` — pull the config repo at /etc/nixos and rebuild (no re-cloning).
@@ -74,9 +75,13 @@ let
       duplicates go to Downloads/Duplicates (never deleted); `--undo` reverts.
     - `lock` (Super+Alt+l) — lock screen; also on suspend and after 10 idle min.
     - `snow on|off|toggle` — the live falling snow over the snowy wallpaper.
-    - Browsers: Bitwarden (passwords) and floccus (bookmarks) are pre-installed
-      in Firefox and Chromium; floccus syncs through a local WebDAV at
-      http://127.0.0.1:7020 kept in step between the machines by Syncthing.
+    - Browsers: Bitwarden holds the passwords in Firefox and Chromium (sign in
+      once per browser). `browser-sync` moves bookmarks between the machines
+      with no live sync service: it exports them to an HTML file in ~/Sync (so
+      Syncthing carries it over) and merges the other machine's file back in,
+      at login and on demand. `browser-sync passwords` pushes each browser's
+      own password export into Bitwarden (which is what syncs them) and shreds
+      the file; it never reads a browser's encrypted password store itself.
     - Files & drives (`desktop` module): Thunar is the GUI file manager
       (Super+Alt+e); `lf` stays the terminal one. Nothing mounts on its own —
       `drives` (Super+Alt+m, or Super+F9/F10) is a dmenu menu to mount, unlock

@@ -126,6 +126,7 @@ let
     have devlink-window  && labels+=("DeviceLink (send files)")
     have devlink         && labels+=("Send my browser tabs to the other machine"
                                      "Share my screen (VNC)" "View other screen (VNC)")
+    have browser-sync    && labels+=("Sync bookmarks" "Browser passwords → Bitwarden")
     have blueman-manager && labels+=("Bluetooth devices")
     have neb-voice       && labels+=("Talk to Neb" "Neb's workspace")
     have tormode         && labels+=("Tor: route everything ON" "Tor: stop routing")
@@ -143,6 +144,8 @@ let
       "Send my browser tabs"*)     exec devlink tabs ;;
       "Share my screen (VNC)")     term "devlink screen" ;;
       "View other screen (VNC)")   exec devlink view ;;
+      "Sync bookmarks")            term "browser-sync" ;;
+      "Browser passwords"*)        term "browser-sync passwords" ;;
       Bluetooth*)                  exec blueman-manager ;;
       "Talk to Neb")               exec neb-voice ;;
       "Neb's workspace")           xdotool key super+9; exec neb-space ;;

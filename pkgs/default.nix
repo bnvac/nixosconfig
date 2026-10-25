@@ -188,6 +188,7 @@ in
   };
   neb-voice       = py "neb-voice" ./scripts/neb-voice.py;
   tidy-downloads  = py "tidy-downloads" ./scripts/tidy-downloads.py;
+  browser-sync    = py "browser-sync" ./scripts/browser-sync.py;
   snow-wallpaper  = final.runCommand "snow-wallpaper.png" { nativeBuildInputs = [ final.imagemagick ]; }
     "bash ${./scripts/snow-wallpaper.sh} $out";
 

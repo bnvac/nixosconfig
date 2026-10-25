@@ -9,10 +9,12 @@ let
 in
 {
   # Passwords + bookmarks across browsers AND machines:
-  #   Bitwarden — one end-to-end-encrypted vault in Firefox, Chromium and the
-  #               desktop app; sign in once per browser.
-  #   floccus   — bookmarks, synced through the local WebDAV in sync.nix
-  #               (`bookmarks-login` prints the one-time setup).
+  #   Bitwarden  — one end-to-end-encrypted vault in Firefox, Chromium and the
+  #                desktop app; sign in once per browser. It's also where your
+  #                browser-saved passwords go: `browser-sync passwords` pushes
+  #                each browser's own password export into it (see sync.nix).
+  #   Bookmarks  — no live sync service; `browser-sync` exports them to an HTML
+  #                file that rides ~/Sync to the other machine and imports back.
   # (Firefox's own Sync also works for Firefox-to-Firefox, if you prefer it.)
   programs.firefox = {
     enable = true;
@@ -21,17 +23,12 @@ in
         installation_mode = "normal_installed";
         install_url = "https://addons.mozilla.org/firefox/downloads/latest/bitwarden-password-manager/latest.xpi";
       };
-      "floccus@handmadeideas.org" = {                       # floccus
-        installation_mode = "normal_installed";
-        install_url = "https://addons.mozilla.org/firefox/downloads/latest/floccus/latest.xpi";
-      };
     };
   };
   programs.chromium = {                                     # policies only; the browser is below
     enable = true;
     extensions = [
       "nngceckbapebfimnlniiiahkandclblb"                    # Bitwarden
-      "fnaicdffflnofjppbagibeoednhnbjhg"                    # floccus
     ];
   };
   programs.nix-ld.enable = true;   # lets prebuilt/AppImage binaries run
