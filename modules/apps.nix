@@ -8,7 +8,32 @@ let
   };
 in
 {
-  programs.firefox.enable = true;
+  # Passwords + bookmarks across browsers AND machines:
+  #   Bitwarden — one end-to-end-encrypted vault in Firefox, Chromium and the
+  #               desktop app; sign in once per browser.
+  #   floccus   — bookmarks, synced through the local WebDAV in sync.nix
+  #               (`bookmarks-login` prints the one-time setup).
+  # (Firefox's own Sync also works for Firefox-to-Firefox, if you prefer it.)
+  programs.firefox = {
+    enable = true;
+    policies.ExtensionSettings = {
+      "{446900e4-71c2-419f-a6a7-df9c091e268b}" = {          # Bitwarden
+        installation_mode = "normal_installed";
+        install_url = "https://addons.mozilla.org/firefox/downloads/latest/bitwarden-password-manager/latest.xpi";
+      };
+      "floccus@handmadeideas.org" = {                       # floccus
+        installation_mode = "normal_installed";
+        install_url = "https://addons.mozilla.org/firefox/downloads/latest/floccus/latest.xpi";
+      };
+    };
+  };
+  programs.chromium = {                                     # policies only; the browser is below
+    enable = true;
+    extensions = [
+      "nngceckbapebfimnlniiiahkandclblb"                    # Bitwarden
+      "fnaicdffflnofjppbagibeoednhnbjhg"                    # floccus
+    ];
+  };
   programs.nix-ld.enable = true;   # lets prebuilt/AppImage binaries run
   programs.nix-ld.libraries = with pkgs; [ webkitgtk_4_1 libappindicator-gtk3 librsvg gtk3 openssl ];
   services.usbmuxd.enable = true;  # iPhone/iPad over USB

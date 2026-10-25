@@ -1,11 +1,13 @@
 # Neb — local voice assistant — plus the AI stack it talks to.
 #
 #   neb serve    HTTP endpoint + dashboard   http://127.0.0.1:7000   (user service)
-#   neb hotkey   Super+Space: listen → answer → speak (opens a `neb tui` window)
+#   neb-voice    Super+Alt+n: listen → answer, as a small corner notification
+#   neb-space    Super+Alt+Shift+n: his workspace (tag 9) + his terminal
 #   neb tui / chat / ask / tools             terminal faces of the same agent
+#   desk …       the desktop actions he's allowed (see `commands` below)
 #
 # BRAIN depends on settings.nix `device`:
-#   desktop → local Ollama on the RX 6750 XT (free, offline)
+#   desktop → local Ollama on the RX 6750 XT (free, offline), Vulkan backend
 #   laptop  → an API brain (set a key in the dashboard, or ANTHROPIC_API_KEY)
 #
 # Dashboard: http://127.0.0.1:7000 — switch brains, set API keys (write-only),
@@ -22,10 +24,28 @@ let
     sox whisper-cpp piper-tts libnotify xdotool coreutils curl jq
   ]);
 
+  # What Neb may run (his run_command allowlist; extra words only where
+  # args = true, and never flags or shell syntax). His stock 8, plus `desk`
+  # for the desktop. Anything that types, presses keys or closes a window
+  # needs your yes first.
+  nebCommands =
+    map (cmd: { inherit cmd; }) [ "uptime" "df -h" "free -h" "nixos-version" "mod list"
+                                  "systemctl --failed --no-pager" ]
+    ++ map (cmd: { inherit cmd; args = true; }) [ "systemctl status --no-pager"
+                                                  "systemctl --user status --no-pager" ]
+    ++ map (cmd: { inherit cmd; }) [ "desk apps" "desk windows" "desk workspace" "desk screenshot" "desk lock" ]
+    ++ map (cmd: { inherit cmd; args = true; }) [ "desk open" "desk web" "desk search" "desk focus"
+                                                  "desk volume" "desk media" "desk brightness" "desk notify" ]
+    ++ map (cmd: { inherit cmd; args = true; confirm = true; }) [ "desk type" "desk key" "desk close" ];
+
   # Seed ~/.local/share/neb/settings.json on first run only (Neb owns it after).
   # Picks the brain by device and teaches the voice loop about st + X11 focus.
   nebSeed = pkgs.writeText "neb-settings.json" (builtins.toJSON {
     provider = if isDesktop then "ollama" else "anthropic";
+    # qwen3.5:9b: strong tool use, fits the 12 GB card. Thinking off so voice
+    # replies come straight back; 8k context holds his tools + notes.
+    providers.ollama = { model = "qwen3.5:9b"; num_ctx = 8192; think = false; };
+    commands = nebCommands;
     voice = {
       record = [ "rec" "-q" "-c" "1" "-r" "16000" "-b" "16" "{wav}"
                  "silence" "1" "0.1" "2%" "1" "1.5" "2%" "trim" "0" "30" ];
@@ -43,10 +63,13 @@ let
 in
 {
   # ── local model stack — desktop only (the laptop uses an API brain) ────────
+  # Vulkan, not ROCm: the RX 6750 XT (gfx1031) isn't a supported ROCm target —
+  # the override hack is fragile and Ollama silently falls back to the CPU,
+  # which is what made replies crawl. Vulkan runs on the stock Mesa driver.
   services.ollama = lib.mkIf isDesktop {
     enable = true;
-    package = pkgs.ollama-rocm;      # AMD GPU build
-    rocmOverrideGfx = "10.3.0";      # RX 6750 XT (gfx1031) → acts as gfx1030
+    package = pkgs.ollama-vulkan;
+    environmentVariables.OLLAMA_VULKAN = "1";
   };
   services.open-webui = lib.mkIf isDesktop {
     enable = true; port = 8088; openFirewall = false;
@@ -69,10 +92,13 @@ in
   };
 
   # ── Neb server (the dashboard + /ask endpoint) as a user service ───────────
+  # Bound to the desktop session (not plain login) so he gets DISPLAY and can
+  # act on the desktop; NixOS's X session wrapper starts graphical-session.
   systemd.user.services.neb = {
     description = "Neb assistant server";
-    wantedBy = [ "default.target" ];
-    after = [ "neb-voice-setup.service" ];
+    wantedBy = [ "graphical-session.target" ];
+    partOf = [ "graphical-session.target" ];
+    after = [ "neb-voice-setup.service" "graphical-session.target" ];
     path = [ "/run/wrappers/bin" "/run/current-system/sw/bin" ];  # sudo, mod, systemctl…
     environment.PATH = lib.mkForce "/run/wrappers/bin:/run/current-system/sw/bin:${nebPath}";
     preStart = ''
@@ -88,6 +114,7 @@ in
 
   environment.systemPackages = with pkgs; [
     neb                                   # neb / neb tui / neb ask / neb chat
+    neb-voice neb-space desk              # corner-notification voice, his workspace, desktop actions
     whisper-cpp piper-tts sox alsa-utils  # voice I/O
     uv                                    # agent dev (python3 is in core)
   ];

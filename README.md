@@ -9,6 +9,7 @@ desktop with an RX 6750 XT, and a laptop) — `settings.nix` says which is which
 ```
 configuration.nix     imports core + every module that's switched on
 picker.nix            works out which modules exist / are on (reads ./mods)
+options.nix           shared options (my.syncFolders: what syncs between machines)
 settings.nix          the few values you'd change (user, host, device, ESP, look)
 modules/core.nix      always on: boot, net, user, audio, shell, hardening,
                       mod / modtui / nixup, and the SYSTEM.md note for Neb
@@ -16,6 +17,7 @@ modules/*.nix         one feature each (table below)
 pkgs/default.nix      everything built from source (dwm/st/dmenu, Neb,
                       backoffice, devlink, SpiderFoot, GRUB theme, …)
 pkgs/devlink/         the DeviceLink app (stdlib-only Python)
+pkgs/scripts/         the small tools (apps, desk, lock, snow, rebuild, backoffice-sync…)
 mods/<name>           an empty marker file = that module is ON
 ```
 
@@ -39,17 +41,17 @@ ESP isn't mounted where `settings.nix` says.
 
 | module | what |
 |---|---|
-| desktop | dwm/st/dmenu/dwmblocks (LARBS), picom, Thunar + drives, Bluetooth GUI |
-| apps | browsers, Discord/Slack, media, Calibre, torrents + Stremio, Onshape |
-| assistant | Neb (voice assistant) + local Ollama/Open-WebUI on the desktop |
+| desktop | dwm/st/dmenu/dwmblocks (LARBS), picom, snowy live wallpaper, lock screen, Thunar + drives, apps menu, Bluetooth GUI |
+| apps | browsers (+ Bitwarden & floccus), Discord/Slack, media, Calibre, torrents + Stremio, Onshape |
+| assistant | Neb (voice assistant, desktop actions, own workspace) + Ollama (Vulkan) / Open-WebUI on the desktop |
 | ai | Claude Code |
-| sync | Syncthing between the machines + DeviceLink |
-| ee | KiCad, EDA tools, OrcaSlicer, Elegoo Slicer, FreeCAD |
+| sync | Syncthing between the machines, DeviceLink, bookmark sync |
+| ee | KiCad, EDA tools, OrcaSlicer (has Elegoo profiles), FreeCAD |
 | printing | mDNS + printrun for Klipper printers on the LAN |
 | gaming | Steam + Proton-GE, Prism Launcher |
-| privacy | Tor (per-app + system-wide), I2P, Bitwarden, nheko, Proton VPN |
+| privacy | Tor (per-app + system-wide, off until you turn it on), I2P, Bitwarden, nheko, Proton VPN |
 | virt | QEMU/KVM + virt-manager |
-| backoffice | the parts-inventory web app |
+| backoffice | the parts-inventory web app, synced between machines |
 | osint | security / OSINT toolkit — **off by default** |
 
 ```sh
@@ -62,25 +64,42 @@ mod off gaming      # disable + rebuild (the module stays written, just unbuilt)
 
 | command | what |
 |---|---|
-| `modtui` | TUI: onboarding, modules, settings, AI model, update |
+| `modtui` | TUI: onboarding, modules, settings, AI model (with download bar), update |
+| `rebuild` (`nrs`) | `nixos-rebuild switch` with a live progress bar |
 | `nixup` | `git pull` /etc/nixos + rebuild (`autoUpdate = true` does it weekly) |
 | `nixmenu` | dmenu of everything here — **Super+Alt+Space** |
 | `mykeys` | your keybind cheat sheet — **Super+Alt+F1** |
+| `apps` | every app, by category — **Super+Alt+a** |
 | `drives` | mount / unlock / unmount drives, never automatic — **Super+Alt+m** |
+| `tidy-downloads` | sort ~/Downloads into folders, catch duplicates (`--undo`) |
+| `lock` | lock screen — **Super+Alt+l** (also on suspend / 10 idle min) |
+| `snow on\|off` | the live falling snow |
 | `thunar` | GUI file manager — **Super+Alt+e** (`lf` is still Super+r) |
 | `dash` | open a self-hosted dashboard — **Super+Alt+d** |
-| `neb …` | the assistant — **Super+Space** to talk |
-| `devlink …` | `pin` to pair, `send`, `screen` / `view` to share a screen |
-| `elegoo-slicer` | Elegoo Slicer (fetches its AppImage on first run) |
+| `neb-voice` | talk to Neb, answer in a corner notification — **Super+Alt+n** |
+| `neb-space` | Neb's workspace (tag 9) + his terminal — **Super+Alt+Shift+n** |
+| `devlink …` | `pin` to pair, `send`, `tabs` (your browser tabs → the other machine), `screen` / `view` |
+| `backoffice-sync` | inventory hand-off between machines (`--status`) |
+| `bookmarks-login` | one-time floccus setup details for bookmark sync |
 | `torrun <app>` / `tormode on\|off` | one app / everything through Tor |
 | `backoffice` | parts-inventory web app on :8080 |
 
 ## Notes
 
+- **Keys**: Super+Enter is the terminal and Super+Space is stock again; everything
+  of yours is under Super+Alt (`mykeys` lists it).
+- **Neb**: on the desktop his brain is Ollama on the GPU via Vulkan (ROCm doesn't
+  support the 6750 XT and silently fell back to the CPU). Default model
+  `qwen3.5:9b` with thinking off; `modtui` → AI model to pick another. He can act
+  on the desktop through `desk`; typing, keys and closing windows ask first.
+- **Passwords/bookmarks**: Bitwarden + floccus are pre-installed in Firefox and
+  Chromium. Sign in to Bitwarden once per browser; run `bookmarks-login` and add
+  the floccus account it shows, once per browser.
 - **Drives**: nothing mounts by itself. `drives`, or click the drive in Thunar's
   sidebar — both use udisks2 as you (no sudo), mount under
   `/run/media/samadams/<label>`, and handle LUKS. Phones show up in Thunar.
 - **Top bar**: clock + net/volume/battery — `pkgs/default.nix` → `larbs-dwmblocks`.
 - **Terminal transparency**: `termOpacity` in settings; fullscreen is always opaque.
 - **Minecraft**: Prism Launcher; Feather/Fabric install into it from Modrinth.
-- **Wallpaper**: `setbg /path/to/image.png`.
+- **Wallpaper**: a snowy night with live snow by default; `setbg /path/to/image.png`
+  to change it, `snow off` (or `liveSnow = false`) to stop the snow.

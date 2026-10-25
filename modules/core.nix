@@ -28,16 +28,27 @@ let
 
     ## Commands this system adds
     - `mod list | mod on <name> | mod off <name>` — toggle a module + rebuild.
-    - `backoffice` — parts-inventory web app, http://localhost:8080.
+    - `backoffice` — opens the parts-inventory app (http://127.0.0.1:8080; it
+      runs as a user service, data in ~/.local/share/backoffice). With the
+      `sync` module its inventory hands off between the two machines as
+      consistent snapshots (`backoffice-sync --status`); photos sync live.
     - `claude-code` — Claude Code.
     - `torrun <app>` — run one app through Tor (leak-proof). `tormode on|off` —
-      route everything through Tor (only if the `privacy` module is on).
+      route everything through Tor (only if the `privacy` module is on). The
+      Tor daemon is OFF until `tormode on`; Tor Browser and torrun bring their own.
     - **Neb** is the assistant (the `assistant` module). `neb` server runs on
       http://127.0.0.1:7000 (dashboard: switch brain, set API keys, allowlist).
-      Keybind **Super+Space** = `neb hotkey` (listen → answer → speak). Also
-      `neb tui`, `neb ask "..."`, `neb chat`, `neb tools`. On the desktop its
-      brain is local Ollama; on the laptop it's an API key. This file is Neb's
-      machine context — Neb reads it via its read_system_notes tool.
+      **Super+Alt+n** = `neb-voice`: listen → answer, shown only as a small
+      corner notification (and spoken). **Super+Alt+Shift+n** = Neb's own
+      workspace, tag 9, where his terminal lives; Enter on an empty line there
+      talks out loud. Also `neb ask "..."`, `neb chat`, `neb tools`. On the
+      desktop his brain is local Ollama (Vulkan GPU backend; default model
+      qwen3.5:9b, thinking off for speed); on the laptop it's an API key. He can
+      act on the desktop through `desk` (open apps/sites, list/focus/close
+      windows, type, keys, volume, media, screenshots, lock); typing, key
+      presses and closing windows ask for a yes first, and what he opens goes on
+      his workspace. This file is Neb's machine context — he reads it via his
+      read_system_notes tool.
     - `modtui` — a TUI for first-run onboarding, toggling modules, editing
       settings.nix, installing/choosing an AI model, and rebuilding.
     - **DeviceLink** (`sync` module) links this machine to the other over
@@ -48,16 +59,24 @@ let
       into ~/DeviceLink. `devlink send FILE|-t TEXT|-c` from the shell.
       `devlink screen` shares this whole screen over VNC (peer-restricted,
       per-session password); the other machine runs `devlink view`.
+      `devlink tabs` sends the open Firefox window's tabs; they reopen on the
+      other machine by themselves. The window previews and opens tray files.
+      Linking also shares ~/Sync, Neb's shared notes, backoffice and bookmarks.
     - `setbg <image>` — set the wallpaper.
-    - `nrs` — `sudo nixos-rebuild switch`.
+    - `rebuild` (alias `nrs`) — `nixos-rebuild switch` with a live progress display.
     - `nixup` — pull the config repo at /etc/nixos and rebuild (no re-cloning).
     - This machine's own functions live under **Super+Alt** (a namespace LARBS
-      leaves alone): **Super+Alt+Space** opens `nixmenu` (update, setup/modules,
-      dashboards, DeviceLink, Bluetooth, Neb, Elegoo Slicer, Tor, suspend),
+      leaves alone): **Super+Alt+Space** opens `nixmenu` (every function here),
       **Super+Alt+F1** shows `mykeys` (the custom-keybind cheat sheet). Stock
-      LARBS keys stay on Super+F1's manual.
-    - `elegoo-slicer` — Elegoo Slicer; fetches its AppImage on first run,
-      `elegoo-slicer --update` re-fetches. (`orca-slicer` is the packaged one.)
+      LARBS keys stay on Super+F1's manual; Super+Enter is the terminal.
+    - `apps` (Super+Alt+a) — every installed app, by category.
+    - `tidy-downloads` — sorts ~/Downloads into folders by type; content
+      duplicates go to Downloads/Duplicates (never deleted); `--undo` reverts.
+    - `lock` (Super+Alt+l) — lock screen; also on suspend and after 10 idle min.
+    - `snow on|off|toggle` — the live falling snow over the snowy wallpaper.
+    - Browsers: Bitwarden (passwords) and floccus (bookmarks) are pre-installed
+      in Firefox and Chromium; floccus syncs through a local WebDAV at
+      http://127.0.0.1:7020 kept in step between the machines by Syncthing.
     - Files & drives (`desktop` module): Thunar is the GUI file manager
       (Super+Alt+e); `lf` stays the terminal one. Nothing mounts on its own —
       `drives` (Super+Alt+m, or Super+F9/F10) is a dmenu menu to mount, unlock
@@ -67,8 +86,8 @@ let
 
     ## To change the system (do this, not `nix profile install`)
     1. Edit the relevant file under /etc/nixos (a module, or settings.nix).
-    2. `sudo nixos-rebuild switch`. Rollback: pick an older generation at boot,
-       or `sudo nixos-rebuild switch --rollback`.
+    2. `rebuild` (= `sudo nixos-rebuild switch` with progress). Rollback: pick
+       an older generation at boot, or `sudo nixos-rebuild switch --rollback`.
     - Add a package: put it in the fitting module's `environment.systemPackages`.
     - Add a service: a NixOS `services.*` option in the fitting module.
     - Add software built from Git: a derivation in pkgs/default.nix (copy the
@@ -114,7 +133,7 @@ let
         if printf '%s\n' "$sel" | grep -qx "$m"; then sudo mkdir -p "$dir/mods" && sudo touch "$dir/mods/$m"
         else sudo rm -f "$dir/mods/$m"; fi
       done
-      gum confirm "Rebuild now to apply?" && sudo nixos-rebuild switch
+      gum confirm "Rebuild now to apply?" && rebuild
     }
 
     edit_settings() {
@@ -143,14 +162,24 @@ let
         return
       fi
       gum style --faint "Installed models:"; ollama list 2>/dev/null || true
-      m=$(printf '%s\n' llama3.2 qwen2.5 gemma3 mistral phi4 "other…" \
-          | gum choose --header "Install / update which model?") || return
-      [ "$m" = "other…" ] && m=$(gum input --placeholder "model[:tag], e.g. llama3.1:8b")
+      m=$(printf '%s\n' \
+            "qwen3.5:9b   recommended: best with Neb's tools · 6.6 GB" \
+            "qwen3.5:4b   fastest replies, still good · 3.3 GB" \
+            "gemma4:12b   strong all-rounder, can see images · 7.7 GB" \
+            "gemma4:e4b   small, quick Gemma · 6.6 GB" \
+            "other…" \
+          | gum choose --header "Install / update which model? (all of these fit the 12 GB card)") || return
+      m=''${m%% *}
+      [ "$m" = "other…" ] && m=$(gum input --placeholder "model[:tag], e.g. llama3.2")
       [ -n "$m" ] || return
-      gum spin --title "ollama pull $m" -- ollama pull "$m" || { gum style --foreground 1 "pull failed"; return; }
+      echo
+      ollama pull "$m" || { gum style --foreground 1 "pull failed"; return; }   # ollama draws its own progress bar
+      gum spin --title "warming $m up…" -- ollama run "$m" "Reply with one word: ready" || true
+      ollama ps
+      gum style --faint "PROCESSOR should say 100% GPU. If it says CPU, the GPU isn't being used — that's what makes replies slow."
       if gum confirm "Make Neb use $m as its brain?"; then
         curl -fsS -X POST http://127.0.0.1:7000/api/settings -H 'Content-Type: application/json' \
-          -d "{\"providers\":{\"ollama\":{\"model\":\"$m\"}}}" >/dev/null 2>&1 \
+          -d "{\"provider\":\"ollama\",\"providers\":{\"ollama\":{\"model\":\"$m\",\"think\":false}}}" >/dev/null 2>&1 \
           && gum style --foreground 2 "Neb now uses $m." \
           || gum style --faint "Pulled. Set it as Neb's model in the dashboard if it didn't stick."
       fi
@@ -167,7 +196,7 @@ let
         c=$(gum input --header "Make up a code; type the SAME one on the other machine" --placeholder "e.g. 4921")
         [ -n "$c" ] && devlink pin "$c"
       fi
-      gum confirm "Rebuild now to apply everything?" && sudo nixos-rebuild switch
+      gum confirm "Rebuild now to apply everything?" && rebuild
       gum style --foreground 2 "Done. Super+Alt+Space = your menu · Super+Alt+F1 = your keys."
     }
 
@@ -181,7 +210,7 @@ let
         "Edit settings")      edit_settings ;;
         "AI model")           ai_model ;;
         "Update system"*)     nixup ;;
-        "Rebuild now")        sudo nixos-rebuild switch ;;
+        "Rebuild now")        rebuild ;;
         "Open Neb dashboard") neb_dash ;;
         "Quit")               exit 0 ;;
       esac
@@ -195,8 +224,8 @@ let
       list) for n in $(all); do [ -e "$m/$n" ] && echo "  on   $n" || echo "  off  $n"; done ;;
       on|off) [ -n "''${2:-}" ] && [ -f "$dir/modules/$2.nix" ] && [ "$2" != core ] \
                 || { echo "no module '$2' (try: mod list)"; exit 1; } ;;&
-      on)   sudo mkdir -p "$m" && sudo touch "$m/$2" && sudo nixos-rebuild switch ;;
-      off)  sudo rm -f "$m/$2" && sudo nixos-rebuild switch ;;
+      on)   sudo mkdir -p "$m" && sudo touch "$m/$2" && rebuild ;;
+      off)  sudo rm -f "$m/$2" && rebuild ;;
       *)    echo "usage: mod list | mod on <name> | mod off <name>" ;;
     esac
   '';
@@ -214,11 +243,12 @@ let
     echo ":: pulling $dir …"
     sudo git -C "$dir" pull --ff-only || { echo "nixup: pull failed (local changes? uncommitted edits?)"; exit 1; }
     echo ":: rebuilding …"
-    sudo nixos-rebuild switch
+    rebuild
     echo ":: done — now on generation $(readlink /run/current-system | sed 's|.*-||')"
   '';
 in
 {
+  imports = [ ../options.nix ];
   nixpkgs.overlays = [ (import ../pkgs) ];
   nixpkgs.config.allowUnfree = true;
   # Allow-list only; harmless when the package isn't installed. Kept here in one
@@ -285,7 +315,7 @@ in
   # ── shell / editor ─────────────────────────────────────────────────────────
   programs.zsh = {
     enable = true; autosuggestions.enable = true; syntaxHighlighting.enable = true;
-    shellAliases = { v = "nvim"; nrs = "sudo nixos-rebuild switch"; ll = "ls -lah --color=auto"; };
+    shellAliases = { v = "nvim"; nrs = "rebuild"; ll = "ls -lah --color=auto"; };
     interactiveShellInit = ''
       bindkey -v; export KEYTIMEOUT=1
       eval "$(${pkgs.zoxide}/bin/zoxide init zsh)"
@@ -304,7 +334,7 @@ in
                     escapeTime = 0; extraConfig = "set -g mouse on"; };
 
   environment.systemPackages = with pkgs; [
-    mod modtui nixup git curl wget htop fastfetch fzf ripgrep fd bat eza zoxide starship
+    mod modtui nixup rebuild git curl wget htop fastfetch fzf ripgrep fd bat eza zoxide starship
     tree jq unzip zip gcc gnumake python3 psmisc usbutils pciutils
   ];
 

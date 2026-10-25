@@ -1,53 +1,74 @@
-# Syncthing — share files between the desktop and laptop, and sync Neb's state
-# so the two Neb instances share config/facts.
+# Syncthing between the desktop and laptop, plus DeviceLink on top of it.
 #
-# Two folders:
-#   ~/Sync        general shared files (both machines)
-#   ~/.config/neb-shared   Neb-to-Neb (settings + shared notes; see caveat)
+# Shared folders (my.syncFolders — other modules add theirs, e.g. backoffice):
+#   ~/Sync                       general shared files
+#   ~/.config/neb-shared         Neb-to-Neb notes (never his live SQLite db)
+#   ~/.local/share/bookmarks-sync   browser bookmarks (floccus, see below)
 #
-# Pairing: set both IDs in settings.nix (syncIds) and it's fully declarative.
-# Left blank, Syncthing still runs — pair by hand at http://127.0.0.1:8384.
-{ pkgs, lib, ... }:
+# Pairing: `devlink pin <code>` on both machines links them AND creates/shares
+# every folder above. (Filling settings.syncIds instead makes it declarative.
+# Without IDs the folders are deliberately NOT declared to NixOS: its module
+# re-applies declared folders on every start, which would drop a peer added
+# at runtime.)
+{ config, pkgs, lib, ... }:
 let
   s = import ../settings.nix;
-  me = s.device;                    # "desktop" | "laptop"
-  other = if me == "desktop" then "laptop" else "desktop";
+  home = "/home/${s.username}";
+  other = if s.device == "desktop" then "laptop" else "desktop";
   otherId = s.syncIds.${other} or "";
   havePeer = otherId != "";
-  peers = lib.optionals havePeer [ other ];
+  folders = config.my.syncFolders;
+  devlinkFolders = lib.concatStringsSep " " (lib.mapAttrsToList (id: path: "${id}=${path}") folders);
+
+  # Bookmarks: floccus (in Firefox + Chromium, see apps.nix) syncs to this
+  # local WebDAV; Syncthing carries the file to the other machine. Basic auth
+  # with a per-machine random password, because a loopback server without one
+  # can be read by any website through DNS rebinding.
+  bookmarksDav = pkgs.writeShellScript "bookmarks-webdav" ''
+    pass="$HOME/.config/bookmarks-sync/pass"
+    umask 077; mkdir -p "''${pass%/*}"
+    [ -s "$pass" ] || head -c 24 /dev/urandom | base64 | tr -d '/+=' > "$pass"
+    exec ${pkgs.rclone}/bin/rclone serve webdav "${home}/.local/share/bookmarks-sync" \
+      --addr 127.0.0.1:7020 --user floccus --pass "$(cat "$pass")"
+  '';
+  bookmarksLogin = pkgs.writeShellScriptBin "bookmarks-login" ''
+    f="$HOME/.config/bookmarks-sync/pass"
+    [ -s "$f" ] || { echo "bookmark sync hasn't started yet (systemctl --user status bookmarks-webdav)"; exit 1; }
+    printf %s "$(cat "$f")" | ${pkgs.xclip}/bin/xclip -selection clipboard 2>/dev/null || true
+    cat <<EOF
+    In each browser (Firefox and Chromium, on each machine), once:
+      floccus icon → Add account → "WebDAV share" (XBEL)
+        Server URL           http://127.0.0.1:7020/
+        Username             floccus
+        Password             $(cat "$f")    (also copied to your clipboard)
+        Bookmarks file path  bookmarks.xbel
+    EOF
+  '';
 in
 {
+  my.syncFolders = {
+    Sync = "${home}/Sync";
+    neb-shared = "${home}/.config/neb-shared";
+    bookmarks = "${home}/.local/share/bookmarks-sync";
+  };
+
   services.syncthing = {
     enable = true;
     user = s.username;
-    dataDir = "/home/${s.username}";
-    configDir = "/home/${s.username}/.config/syncthing";
+    dataDir = home;
+    configDir = "${home}/.config/syncthing";
     openDefaultPorts = true;
-    overrideDevices = false;        # don't fight hand-pairing when IDs are blank
+    overrideDevices = false;        # don't fight pairing done at runtime
     overrideFolders = false;
-
-    settings = {
-      devices = lib.mkIf havePeer { ${other}.id = otherId; };
-      folders = {
-        "Sync" = {
-          path = "/home/${s.username}/Sync";
-          devices = peers;
-        };
-        # Neb's live SQLite db (~/.local/share/neb) deliberately stays OUT of
-        # this — two writers would corrupt it. Share config + exported notes.
-        "neb-shared" = {
-          path = "/home/${s.username}/.config/neb-shared";
-          devices = peers;
-        };
-      };
+    settings = lib.mkIf havePeer {
+      devices.${other}.id = otherId;
+      folders = lib.mapAttrs (_: path: { inherit path; devices = [ other ]; }) folders;
     };
   };
 
-  systemd.tmpfiles.rules = [
-    "d /home/${s.username}/Sync 0755 ${s.username} users -"
-    "d /home/${s.username}/.config/neb-shared 0755 ${s.username} users -"
-    "d /home/${s.username}/DeviceLink 0755 ${s.username} users -"
-  ];
+  systemd.tmpfiles.rules =
+    map (p: "d ${p} 0755 ${s.username} users -") (lib.attrValues folders)
+    ++ [ "d ${home}/DeviceLink 0755 ${s.username} users -" ];
 
   # devlink PIN pairing shouts its device ID over link-local multicast
   # (239.255.77.77:58846, TTL 1) so `devlink pin <code>` on both machines can
@@ -59,30 +80,37 @@ in
   networking.firewall.allowedTCPPorts = [ 5900 ];
 
   # ── devlink: link the two machines with a code, send anything between them ──
-  # `devlink` manages its own Syncthing folder (~/DeviceLink) through the API.
-  # Easiest linking: run `devlink pin <code>` (or type the code in the window)
-  # on BOTH machines with the same code — they find each other on the LAN and
-  # link, no IDs to copy. (Manual fallback: `devlink id` + `devlink link <id>`
-  # on one side, `devlink accept` — or the window's Accept button — on the
-  # other; nothing is ever accepted automatically.) Files dropped in
-  # ~/DeviceLink — or sent from the window — appear on the other side.
-  # `devlink screen` / `devlink view` share a whole screen between the two over
-  # VNC (restricted to the peer + a per-session password).
+  # `devlink pin <code>` (or the window) on BOTH machines with the same code
+  # links them — nothing is ever accepted automatically. Files/text/tabs sent
+  # from the window or `devlink send|tabs` appear on the other side; tab sets
+  # reopen by themselves. `devlink screen` / `view` share a whole screen (VNC).
+  # Both services ride the desktop session: they open windows and files there.
+  environment.sessionVariables.DEVLINK_FOLDERS = devlinkFolders;
   systemd.user.services.devlink = {
-    description = "DeviceLink: notify on link requests + arrivals";
-    wantedBy = [ "default.target" ];
-    after = [ "syncthing.service" ];
-    path = [ pkgs.libnotify ];
+    description = "DeviceLink: notify on link requests + arrivals, reopen tab sets";
+    wantedBy = [ "graphical-session.target" ];
+    partOf = [ "graphical-session.target" ];
+    after = [ "syncthing.service" "graphical-session.target" ];
+    path = [ pkgs.libnotify "/run/current-system/sw" ];          # notify-send, firefox, xdg-open
+    environment.DEVLINK_FOLDERS = devlinkFolders;
     serviceConfig = { ExecStart = "${pkgs.devlink}/bin/devlink auto"; Restart = "on-failure"; RestartSec = 5; };
   };
   systemd.user.services.devlink-ui = {
     description = "DeviceLink window backend";
-    wantedBy = [ "default.target" ];
+    wantedBy = [ "graphical-session.target" ];
+    partOf = [ "graphical-session.target" ];
+    path = [ "/run/current-system/sw" ];
+    environment.DEVLINK_FOLDERS = devlinkFolders;
     serviceConfig = { ExecStart = "${pkgs.devlink}/bin/devlink ui --port 7010"; Restart = "on-failure"; RestartSec = 5; };
+  };
+  systemd.user.services.bookmarks-webdav = {
+    description = "Local WebDAV for browser bookmark sync (floccus)";
+    wantedBy = [ "default.target" ];
+    serviceConfig = { ExecStart = bookmarksDav; Restart = "on-failure"; RestartSec = 5; };
   };
 
   environment.systemPackages = [
-    pkgs.devlink
+    pkgs.devlink bookmarksLogin
     pkgs.x11vnc pkgs.tigervnc          # `devlink screen` / `devlink view`
     # opens the window (the ui service serves it)
     (pkgs.makeDesktopItem {

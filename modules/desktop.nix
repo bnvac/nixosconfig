@@ -2,14 +2,13 @@
 { pkgs, lib, ... }:
 let
   s = import ../settings.nix;
-  wallpaper = pkgs.runCommand "wallpaper.png" { nativeBuildInputs = [ pkgs.imagemagick ]; }
-    ''magick -size 3840x2160 gradient:'#0d1117-#1b2733' -define png:color-type=2 "$out"'';
+  wallpaper = pkgs.snow-wallpaper;          # snowy night, drawn at build time (pkgs/scripts)
 
   # ── self-hosted dashboards (label → URL). Each needs its module on. ─────────
   dashboards = {
     "Neb"        = "http://127.0.0.1:7000";   # assistant
     "Open-WebUI" = "http://127.0.0.1:8088";   # assistant (desktop)
-    "Backoffice" = "http://127.0.0.1:8080";   # backoffice (run `backoffice` first)
+    "Backoffice" = "http://127.0.0.1:8080";   # backoffice (runs as a service)
     "DeviceLink" = "http://127.0.0.1:7010";   # sync
     "Syncthing"  = "http://127.0.0.1:8384";   # sync
     "I2P"        = "http://127.0.0.1:7657";   # privacy
@@ -89,21 +88,24 @@ let
 
       MY KEYBINDS   (Super = the key that used to be CapsLock)
 
-      Super + Space          talk to Neb  (listen → answer → speak)
-      Super + Alt + Space    nixmenu — the menu of everything below
-      Super + Alt + e        file manager (Thunar)
-      Super + Alt + m        drives: mount / unlock / unmount
-      Super + Alt + d        dashboards
-      Super + Alt + b        Bluetooth
-      Super + Alt + t        Tor Browser
-      Super + Alt + Return   tmux session
-      Super + Alt + i        system info (fastfetch)
-      Super + Alt + F1       this sheet
+      Super + Alt + Space        nixmenu — the menu of everything here
+      Super + Alt + n            talk to Neb (a corner notification; press again to send now)
+      Super + Alt + Shift + n    Neb's workspace (tag 9) + his terminal — Enter on an empty line talks
+      Super + Alt + a            apps, by category
+      Super + Alt + e            file manager (Thunar)
+      Super + Alt + m            drives: mount / unlock / unmount
+      Super + Alt + l            lock the screen
+      Super + Alt + d            dashboards
+      Super + Alt + b            Bluetooth
+      Super + Alt + t            Tor Browser
+      Super + Alt + Return       tmux session
+      Super + Alt + i            system info (fastfetch)
+      Super + Alt + F1           this sheet
 
       Stock keys I changed:
       Super + e              file manager (it opened neomutt, which is gone)
       Super + F9 / F10       drives: mount / unmount
-      Super + r              lf, the terminal file manager (unchanged)
+      Stock and unchanged:   Super + Enter terminal · Super + Space zoom · Super + r lf
 
       Everything else is stock LARBS — press Super + F1 for that manual.
 
@@ -118,30 +120,36 @@ let
     export PATH=${lib.makeBinPath [ pkgs.larbs-dmenu pkgs.larbs-st pkgs.coreutils ]}:/run/current-system/sw/bin:$PATH
     have() { command -v "$1" >/dev/null 2>&1; }
     term() { exec st -e sh -c "$1; echo; printf '[enter] '; read -r _"; }
-    labels=("Setup / modules (TUI)" "Update system (pull + rebuild)" "Files" "Drives: mount / unmount")
+    labels=("Setup / modules (TUI)" "Update system (pull + rebuild)" "Apps" "Files" "Drives: mount / unmount"
+            "Tidy Downloads (sort + find duplicates)")
     have dash            && labels+=("Dashboards")
     have devlink-window  && labels+=("DeviceLink (send files)")
-    have devlink         && labels+=("Share my screen (VNC)" "View other screen (VNC)")
+    have devlink         && labels+=("Send my browser tabs to the other machine"
+                                     "Share my screen (VNC)" "View other screen (VNC)")
     have blueman-manager && labels+=("Bluetooth devices")
-    have neb             && labels+=("Ask Neb")
-    have elegoo-slicer   && labels+=("Elegoo Slicer")
+    have neb-voice       && labels+=("Talk to Neb" "Neb's workspace")
     have tormode         && labels+=("Tor: route everything ON" "Tor: stop routing")
-    labels+=("My keybinds" "Suspend")
-    sel=$(printf '%s\n' "''${labels[@]}" | dmenu -i -l 16 -p "nix:") || exit 0
+    labels+=("Toggle live snow" "Lock screen" "My keybinds" "Suspend")
+    sel=$(printf '%s\n' "''${labels[@]}" | dmenu -i -l 20 -p "nix:") || exit 0
     case "$sel" in
       "Setup / modules (TUI)")     term modtui ;;
       Update*)                     term nixup ;;
+      Apps)                        exec apps ;;
       Files)                       exec thunar ;;
       Drives*)                     exec drives ;;
+      Tidy*)                       exec tidy-downloads ;;
       Dashboards)                  exec dash ;;
       DeviceLink*)                 exec devlink-window ;;
+      "Send my browser tabs"*)     exec devlink tabs ;;
       "Share my screen (VNC)")     term "devlink screen" ;;
       "View other screen (VNC)")   exec devlink view ;;
       Bluetooth*)                  exec blueman-manager ;;
-      "Ask Neb")                   exec neb hotkey ;;
-      "Elegoo Slicer")             exec elegoo-slicer ;;
+      "Talk to Neb")               exec neb-voice ;;
+      "Neb's workspace")           xdotool key super+9; exec neb-space ;;
       "Tor: route everything ON")  term "tormode on" ;;
       "Tor: stop routing")         term "tormode off" ;;
+      "Toggle live snow")          exec snow toggle ;;
+      "Lock screen")               exec lock ;;
       "My keybinds")               term mykeys ;;
       Suspend)                     exec zzz ;;
     esac
@@ -179,7 +187,12 @@ in
         bg="$HOME/.local/share/bg"
         [ -e "$bg" ] || { mkdir -p "$HOME/.local/share"; ln -sfn ${wallpaper} "$bg"; }
         ${pkgs.xwallpaper}/bin/xwallpaper --zoom "$bg" &
+        ${lib.optionalString (s.liveSnow or true) "${pkgs.snow}/bin/snow on"}
         ${pkgs.larbs-scripts}/bin/remaps &
+        ${pkgs.xset}/bin/xset s 600 600          # 10 idle minutes → xss-lock locks the screen
+        # for user services that started before X (Neb's desktop actions, tab sets)
+        printf 'DISPLAY=%s\nXAUTHORITY=%s\n' "$DISPLAY" "''${XAUTHORITY:-$HOME/.Xauthority}" \
+          > "''${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/x-env"
         true
       '';
     };
@@ -188,6 +201,11 @@ in
   services.displayManager.ly.enable = true;
   hardware.graphics.enable = true;
   services.blueman.enable = true;            # Bluetooth GUI (Super+Alt+b)
+
+  # Lock screen: `lock` (snowy i3lock-color). xss-lock runs it on every
+  # suspend and when X's idle timer (set above) fires.
+  programs.i3lock = { enable = true; package = pkgs.i3lock-color; };
+  programs.xss-lock = { enable = true; lockerCommand = "${pkgs.lock-screen}/bin/lock"; };
 
   # ── files & drives ─────────────────────────────────────────────────────────
   # Thunar is the GUI file manager; lf (Super+r) stays the terminal one. No
@@ -223,6 +241,7 @@ in
   };
 
   environment.systemPackages = [ dash drives nixmenu mykeys ] ++ dashItems ++ (with pkgs; [
+    apps-menu tidy-downloads snow lock-screen
     larbs-st larbs-dmenu larbs-dwmblocks larbs-scripts
     xinit xrdb xprop xwininfo xset setxkbmap xbacklight xrandr slop
     xclip xdotool xcape xwallpaper picom unclutter-xfixes maim slock

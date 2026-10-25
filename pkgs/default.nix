@@ -2,6 +2,9 @@
 final: prev:
 let
   gh = prev.fetchFromGitHub;
+  # shell tool from pkgs/scripts/NAME.sh: deps on PATH, shellcheck at build
+  sh = name: deps: file: final.writeShellApplication { inherit name; runtimeInputs = deps; text = builtins.readFile file; };
+  py = name: file: final.writeScriptBin name ("#!${final.python3}/bin/python3 -I\n" + builtins.readFile file);
 in
 {
   # ── LARBS suckless desktop (Luke Smith's pinned forks) ─────────────────────
@@ -18,28 +21,44 @@ in
       substituteInPlace config.h \
         --replace-fail '{ "xbacklight", "-inc", "15", NULL }' '{ "brightnessctl", "set", "10%+", NULL }' \
         --replace-fail '{ "xbacklight", "-dec", "15", NULL }' '{ "brightnessctl", "set", "10%-", NULL }'
-      # Super+Space talks to Neb. dwm binds Super+Space to zoom by default —
-      # dwm fires EVERY matching binding, so that line is deleted, not shadowed.
-      sed -i '/MODKEY,.*XK_space,.*zoom/d' config.h
       # Stock keys repointed: Super+e opened neomutt (not installed) → Thunar;
       # Super+F9/F10 ran the sudo-based mounter/unmounter → the udisks `drives`.
+      # (Super+Space and Super+Enter are stock again: zoom, and a terminal.)
       substituteInPlace config.h \
         --replace-fail 'SHCMD(TERMINAL " -e neomutt ; pkill -RTMIN+12 dwmblocks")' '{.v = (const char*[]){ "thunar", NULL } }' \
         --replace-fail '{ "mounter", NULL }'   '{ "drives", "mount", NULL }' \
         --replace-fail '{ "unmounter", NULL }' '{ "drives", "unmount", NULL }'
+      # Live wallpaper: xsnow makes an ordinary window, which dwm would tile like
+      # an app (half the screen, black). Windows of class Xsnow are instead
+      # sized to the whole screen, mapped, pushed to the very bottom and never
+      # managed — a true background
+      # layer. Checked in maprequest (new windows) and scan (dwm restarts).
+      substituteInPlace dwm.c \
+        --replace-fail $'void\nmaprequest(XEvent *e)\n{' $'static int\nisbackground(Window w)\n{\n\tXClassHint ch = { NULL, NULL };\n\tint bg = 0;\n\n\tif (XGetClassHint(dpy, w, &ch)) {\n\t\tbg = ch.res_class && !strcmp(ch.res_class, "Xsnow");\n\t\tif (ch.res_class)\n\t\t\tXFree(ch.res_class);\n\t\tif (ch.res_name)\n\t\t\tXFree(ch.res_name);\n\t}\n\treturn bg;\n}\n\nvoid\nmaprequest(XEvent *e)\n{' \
+        --replace-fail $'\tif (!wintoclient(ev->window))\n\t\tmanage(ev->window, &wa);' $'\tif (isbackground(ev->window)) {\n\t\tXMoveResizeWindow(dpy, ev->window, 0, 0, sw, sh);\n\t\tXMapWindow(dpy, ev->window);\n\t\tXLowerWindow(dpy, ev->window);\n\t\treturn;\n\t}\n\tif (!wintoclient(ev->window))\n\t\tmanage(ev->window, &wa);' \
+        --replace-fail '|| wa.override_redirect || XGetTransientForHint(dpy, wins[i], &d1))' '|| wa.override_redirect || XGetTransientForHint(dpy, wins[i], &d1) || isbackground(wins[i]))'
+      # Neb's own workspace: his terminal (st -n neb) always lives on tag 9.
+      substituteInPlace config.h --replace-fail 'static const Rule rules[] = {' 'static const Rule rules[] = {
+        { TERMCLASS, "neb", NULL, 1 << 8, 0, 1, 0, -1 },'
       # All MY OWN functions live under Super+Alt (Mod1). Stock LARBS binds
       # nothing with Mod1Mask, so these can't collide (checked at this rev).
+      # Super+Alt+Shift+n is bound twice on purpose: dwm runs every matching
+      # binding, so one press switches to tag 9 AND opens Neb's terminal there.
       cat > larbs-extra-keys.h <<'KEYS'
-      { MODKEY,          XK_space,  spawn, {.v = (const char*[]){ "neb", "hotkey", NULL } } },
-      { MODKEY|Mod1Mask, XK_space,  spawn, {.v = (const char*[]){ "nixmenu", NULL } } },
-      { MODKEY|Mod1Mask, XK_e,      spawn, {.v = (const char*[]){ "thunar", NULL } } },
-      { MODKEY|Mod1Mask, XK_m,      spawn, {.v = (const char*[]){ "drives", NULL } } },
-      { MODKEY|Mod1Mask, XK_d,      spawn, {.v = (const char*[]){ "dash", NULL } } },
-      { MODKEY|Mod1Mask, XK_b,      spawn, {.v = (const char*[]){ "blueman-manager", NULL } } },
-      { MODKEY|Mod1Mask, XK_t,      spawn, {.v = (const char*[]){ "tor-browser", NULL } } },
-      { MODKEY|Mod1Mask, XK_Return, spawn, {.v = (const char*[]){ TERMINAL, "-e", "tmux", "new-session", "-A", "-s", "main", NULL } } },
-      { MODKEY|Mod1Mask, XK_i,      spawn, SHCMD(TERMINAL " -e sh -c 'fastfetch; read -r _'") },
-      { MODKEY|Mod1Mask, XK_F1,     spawn, SHCMD(TERMINAL " -e sh -c 'mykeys; read -r _'") },
+      { MODKEY|Mod1Mask,           XK_space,  spawn, {.v = (const char*[]){ "nixmenu", NULL } } },
+      { MODKEY|Mod1Mask,           XK_n,      spawn, {.v = (const char*[]){ "neb-voice", NULL } } },
+      { MODKEY|Mod1Mask|ShiftMask, XK_n,      view,  {.ui = 1 << 8} },
+      { MODKEY|Mod1Mask|ShiftMask, XK_n,      spawn, {.v = (const char*[]){ "neb-space", NULL } } },
+      { MODKEY|Mod1Mask,           XK_a,      spawn, {.v = (const char*[]){ "apps", NULL } } },
+      { MODKEY|Mod1Mask,           XK_e,      spawn, {.v = (const char*[]){ "thunar", NULL } } },
+      { MODKEY|Mod1Mask,           XK_m,      spawn, {.v = (const char*[]){ "drives", NULL } } },
+      { MODKEY|Mod1Mask,           XK_l,      spawn, {.v = (const char*[]){ "lock", NULL } } },
+      { MODKEY|Mod1Mask,           XK_d,      spawn, {.v = (const char*[]){ "dash", NULL } } },
+      { MODKEY|Mod1Mask,           XK_b,      spawn, {.v = (const char*[]){ "blueman-manager", NULL } } },
+      { MODKEY|Mod1Mask,           XK_t,      spawn, {.v = (const char*[]){ "tor-browser", NULL } } },
+      { MODKEY|Mod1Mask,           XK_Return, spawn, {.v = (const char*[]){ TERMINAL, "-e", "tmux", "new-session", "-A", "-s", "main", NULL } } },
+      { MODKEY|Mod1Mask,           XK_i,      spawn, SHCMD(TERMINAL " -e sh -c 'fastfetch; read -r _'") },
+      { MODKEY|Mod1Mask,           XK_F1,     spawn, SHCMD(TERMINAL " -e sh -c 'mykeys; read -r _'") },
       KEYS
       substituteInPlace config.h --replace-fail 'static const Key keys[] = {' 'static const Key keys[] = {
       #include "larbs-extra-keys.h"'
@@ -118,6 +137,13 @@ in
       substituteInPlace $out/share/larbs-dotfiles/config/x11/xresources \
         --replace-fail '*.alpha: 0.8' '*.alpha: 1.0'
       chmod -R +w $out/bin
+      # sysact's lock used slock (needs a setuid wrapper we don't ship); use
+      # our `lock`. Sleep/hibernate no longer wrap in slock: xss-lock locks
+      # the screen on every suspend anyway.
+      substituteInPlace $out/bin/sysact \
+        --replace-fail 'slock $ctl hibernate -i' '$ctl hibernate -i' \
+        --replace-fail 'slock $ctl suspend -i' '$ctl suspend -i' \
+        --replace-fail $'\tslock' $'\tlock'
       find $out/bin -type f -exec sed -i '1s|^#!/usr/bin/sh|#!/bin/sh|' {} +
       patchShebangs $out/bin
       runHook postInstall
@@ -148,27 +174,22 @@ in
     meta.mainProgram = "devlink";
   };
 
-  # ── Elegoo Slicer → `elegoo-slicer` command ───────────────────────────────
-  # Elegoo ships it only as a Linux AppImage (an OrcaSlicer fork), not in
-  # nixpkgs, so there's no store hash to pin here. This wrapper fetches the
-  # latest release's AppImage on first run, caches it under ~/.local/share,
-  # and runs it through appimage-run. `elegoo-slicer --update` re-fetches.
-  elegoo-slicer = prev.writeShellScriptBin "elegoo-slicer" ''
-    export PATH=${prev.lib.makeBinPath (with prev; [ curl jq gnugrep coreutils appimage-run ])}:$PATH
-    dir="''${XDG_DATA_HOME:-$HOME/.local/share}/elegoo-slicer"
-    app="$dir/ElegooSlicer.AppImage"
-    mkdir -p "$dir"
-    if [ "''${1:-}" = "--update" ]; then shift; rm -f "$app"; fi
-    if [ ! -x "$app" ]; then
-      echo "elegoo-slicer: fetching the latest release (one-time)…" >&2
-      url=$(curl -fsSL https://api.github.com/repos/elegooofficial/ElegooSlicer/releases/latest \
-            | jq -r '.assets[].browser_download_url' | grep -iE '\.AppImage$' | head -1) || true
-      [ -n "$url" ] || { echo "elegoo-slicer: couldn't find a Linux AppImage in the latest release." >&2; exit 1; }
-      curl -fL --progress-bar "$url" -o "$app.part" && mv "$app.part" "$app" || { echo "elegoo-slicer: download failed." >&2; rm -f "$app.part"; exit 1; }
-      chmod +x "$app"
-    fi
-    exec appimage-run "$app" "$@"
-  '';
+  # ── small tools (sources in pkgs/scripts/, shellchecked at build) ─────────
+  rebuild         = sh "rebuild" [ final.nix-output-monitor ] ./scripts/rebuild.sh;
+  apps-menu       = sh "apps" (with final; [ larbs-dmenu gawk coreutils gnused libnotify util-linux ]) ./scripts/apps.sh;
+  snow            = sh "snow" (with final; [ xsnow procps util-linux ]) ./scripts/snow.sh;
+  neb-space       = sh "neb-space" (with final; [ xdotool util-linux ]) ./scripts/neb-space.sh;
+  backoffice-sync = sh "backoffice-sync" (with final; [ sqlite coreutils util-linux libnotify systemd ]) ./scripts/backoffice-sync.sh;
+  desk = sh "desk" (with final; [ final.apps-menu final.lock-screen xdotool xprop jq gawk coreutils gnused
+                                  procps wireplumber playerctl brightnessctl libnotify maim util-linux ]) ./scripts/desk.sh;
+  lock-screen = final.writeShellApplication {
+    name = "lock"; runtimeInputs = with final; [ i3lock-color file coreutils ];
+    text = "LOCK_IMAGE=${final.snow-wallpaper}\n" + builtins.readFile ./scripts/lock.sh;
+  };
+  neb-voice       = py "neb-voice" ./scripts/neb-voice.py;
+  tidy-downloads  = py "tidy-downloads" ./scripts/tidy-downloads.py;
+  snow-wallpaper  = final.runCommand "snow-wallpaper.png" { nativeBuildInputs = [ final.imagemagick ]; }
+    "bash ${./scripts/snow-wallpaper.sh} $out";
 
   # ── Neb — the user's local voice assistant (stdlib-only Python) ────────────
   neb = final.python3Packages.buildPythonApplication {
@@ -176,6 +197,20 @@ in
     src = gh { owner = "bnvac"; repo = "neb";
       rev = "e75b6e00f68201fd0555eee2f815170e792c93a5";
       hash = "sha256-QrR/xkJ007306UTaAlzhasifymFQjuz8+6p2OTm3KtE="; };
+    # Two small local changes (worth upstreaming to bnvac/neb):
+    #  - In Neb's terminal, Enter on an empty line talks out loud (runs
+    #    neb-voice: listen → answer in a corner notification).
+    #  - Ollama `think` comes from settings, so thinking models (qwen3.5,
+    #    gemma4) can answer straight away instead of reasoning first.
+    postPatch = ''
+      substituteInPlace neb/tui.py \
+        --replace-fail 'import shutil' $'import shutil\nimport subprocess' \
+        --replace-fail '    ("/tools", "what Neb can call"),' $'    ("Enter (empty line)", "talk out loud: Neb listens, answers in a corner notification"),\n    ("/tools", "what Neb can call"),' \
+        --replace-fail $'            if not line:\n                continue' $'            if not line:\n                if shutil.which("neb-voice"):\n                    subprocess.Popen(["neb-voice"], start_new_session=True, stdin=subprocess.DEVNULL,\n                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\n                continue'
+      substituteInPlace neb/backends.py \
+        --replace-fail '        self.num_ctx = int(cfg.get("num_ctx") or 0)' $'        self.num_ctx = int(cfg.get("num_ctx") or 0)\n        self.think = cfg.get("think")' \
+        --replace-fail '            body["options"] = {"num_ctx": self.num_ctx}' $'            body["options"] = {"num_ctx": self.num_ctx}\n        if self.think is not None:\n            body["think"] = bool(self.think)'
+    '';
     build-system = [ final.python3Packages.hatchling ];
     dependencies = [ ];           # stdlib only
     doCheck = false;
