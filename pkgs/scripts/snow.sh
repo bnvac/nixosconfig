@@ -10,7 +10,7 @@ running() { pgrep -f "$pattern" >/dev/null; }
 start() {
   running && return 0
   setsid -f xsnow -nomenu -noconfig -nosanta -notrees -nometeors -moon 0 -stars 0 -aurora 0 \
-    -nowind -snowflakes 70 -snowsize 7 -nokeepsnowonwindows >/dev/null 2>&1
+    -showbirds 0 -nowind -snowflakes 70 -snowsize 7 -nokeepsnowonwindows >/dev/null 2>&1
 }
 stop() {                      # xsnow can ignore SIGTERM; give it 2 s, then make sure
   pkill -f "$pattern" || return 0
