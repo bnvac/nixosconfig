@@ -260,7 +260,14 @@ let
       exit 1
     fi
     echo ":: pulling $dir …"
-    sudo git -C "$dir" pull --ff-only || { echo "nixup: pull failed (local changes? uncommitted edits?)"; exit 1; }
+    # --autostash: shelve your local edits (e.g. this machine's settings.nix),
+    # pull, then put them back — so an uncommitted tweak no longer blocks an
+    # update. If reapplying them hits a real conflict, git stops and leaves the
+    # markers in the file for you to fix; rerun nixup after.
+    if ! sudo git -C "$dir" pull --rebase --autostash; then
+      echo "nixup: pull hit a conflict in $dir — fix the marked file(s), then run nixup again."
+      exit 1
+    fi
     echo ":: rebuilding …"
     rebuild
     echo ":: done — now on generation $(readlink /run/current-system | sed 's|.*-||')"

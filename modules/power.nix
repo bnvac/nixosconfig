@@ -4,9 +4,10 @@
 # TLP does the real work on battery: a power-saving CPU governor and energy
 # policy on battery, full performance on AC, and USB autosuspend. It replaces
 # GNOME's power-profiles-daemon, so that one is forced off to avoid a clash.
-# Battery charge-stop thresholds (great for longevity) are left commented
-# because they only work on specific hardware (ThinkPad, some ASUS/LG) and do
-# nothing — or warn — elsewhere; uncomment if your laptop supports them.
+# The governor/energy-policy settings below are generic and work on any laptop.
+# (Battery charge-limit thresholds aren't set here — they depend on specific
+#  vendor kernel support and this laptop isn't a ThinkPad; if you ever want them
+#  on a supported machine, `tlp-stat -b` shows whether the hardware allows it.)
 { pkgs, lib, ... }:
 let
   s = import ../settings.nix;
@@ -34,11 +35,6 @@ in
       # Spin down idle USB devices, but never the keyboard/mouse receiver.
       USB_AUTOSUSPEND = 1;
       USB_EXCLUDE_WWAN = 1;
-
-      # Keep the battery between these to stop it sitting at 100% on AC.
-      # Only some laptops honour this — uncomment if yours does:
-      # START_CHARGE_THRESH_BAT0 = 75;
-      # STOP_CHARGE_THRESH_BAT0 = 80;
     };
   };
 
