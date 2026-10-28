@@ -186,9 +186,11 @@ in
     name = "lock"; runtimeInputs = with final; [ i3lock-color file coreutils ];
     text = "LOCK_IMAGE=${final.snow-wallpaper}\n" + builtins.readFile ./scripts/lock.sh;
   };
+  backup          = sh "backup" (with final; [ restic coreutils util-linux libnotify ]) ./scripts/backup.sh;
   neb-voice       = py "neb-voice" ./scripts/neb-voice.py;
   tidy-downloads  = py "tidy-downloads" ./scripts/tidy-downloads.py;
   browser-sync    = py "browser-sync" ./scripts/browser-sync.py;
+  printer-notify  = py "printer-notify" ./scripts/printer-notify.py;
   snow-wallpaper  = final.runCommand "snow-wallpaper.png" { nativeBuildInputs = [ final.imagemagick ]; }
     "bash ${./scripts/snow-wallpaper.sh} $out";
 

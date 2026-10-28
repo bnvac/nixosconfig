@@ -13,7 +13,11 @@
 # B) THIS machine hosts Klipper to drive a printer wired to it (USB/CAN/Ethernet
 #    MCU). Uncomment the self-host block. It needs a printer.cfg for YOUR exact
 #    printer, so it's left off until you drop one in /var/lib/moonraker.
-{ pkgs, ... }:
+{ pkgs, lib, ... }:
+let
+  s = import ../settings.nix;
+  printers = s.printers or [ ];
+in
 {
   # mDNS: lets "printer.local" / "mainsail.local" resolve over Ethernet/Wi-Fi.
   services.avahi = {
@@ -24,8 +28,24 @@
 
   environment.systemPackages = with pkgs; [
     printrun          # pronterface GUI + pronsole: direct jog, temps, G-code
+    printer-notify    # desktop ping when a print finishes/fails (watches Moonraker)
     # orca-slicer is in the ee module; it sends prints to Moonraker over LAN
   ];
+
+  # Watch each Moonraker printer in settings.printers and pop a notification
+  # when a print finishes or fails. Only runs if you've listed any printers.
+  systemd.user.services.printer-notify = lib.mkIf (printers != [ ]) {
+    description = "Notify when a 3D print finishes or fails";
+    wantedBy = [ "graphical-session.target" ];
+    partOf = [ "graphical-session.target" ];
+    after = [ "graphical-session.target" ];
+    environment.PRINTER_HOSTS = lib.concatStringsSep " " printers;
+    path = [ pkgs.libnotify ];
+    serviceConfig = {
+      ExecStart = "${pkgs.printer-notify}/bin/printer-notify";
+      Restart = "on-failure"; RestartSec = 30;
+    };
+  };
 
   # ── B) self-hosted Klipper stack (uncomment to drive a local printer) ──────
   # services.klipper = {

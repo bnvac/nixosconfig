@@ -53,6 +53,9 @@ ESP isn't mounted where `settings.nix` says.
 | virt | QEMU/KVM + virt-manager |
 | backoffice | the parts-inventory web app, synced between machines |
 | intraweb | your own local-first neighborhood web on the LAN (no server, no internet) |
+| backups | daily restic snapshots of home + config to an external drive |
+| power | laptop battery/thermal tuning (TLP); near no-op on the desktop |
+| secrets | keep passwords/keys out of git with sops-nix — **off by default** |
 | osint | security / OSINT toolkit — **off by default** |
 
 ```sh
@@ -86,6 +89,7 @@ mod off gaming      # disable + rebuild (the module stays written, just unbuilt)
 | `torrun <app>` / `tormode on\|off` | one app / everything through Tor |
 | `backoffice` | parts-inventory web app on :8080 |
 | `intraweb` | neighborhood web on the LAN; dashboard on :8420 (runs at login) |
+| `backup` | restic snapshot to the external drive; `backup now`, `backup snapshots`, `backup restore …` |
 
 ## Notes
 
@@ -109,6 +113,21 @@ mod off gaming      # disable + rebuild (the module stays written, just unbuilt)
   and no internet. Your identity is a key in `~/.intraweb`; copy that folder to
   stay yourself on another machine. nixmenu → **Neighborhood** opens it. To host
   a hub (claims `intranet.local`), run `sudo intraweb up --hub` by hand.
+- **Backups**: the `backups` module takes daily restic snapshots of `~` and
+  `/etc/nixos` to the drive at `backupRepo` (settings). Set it up once — plug in
+  the drive, put a passphrase in `~/.config/restic/password` (or use the
+  `secrets` module), run `backup now`. It skips quietly with a reminder when the
+  drive isn't plugged in, so the daily timer never nags with failures. **Keep a
+  copy of the passphrase** — without it the backup can't be restored.
+- **Secrets**: off by default. `mod on secrets` sets up sops-nix so passwords
+  and keys live encrypted in `secrets/` (safe to commit) and decrypt to
+  `/run/secrets/*` with a machine-local age key that never enters git. See
+  `secrets/README.md`.
+- **Power (laptop)**: the `power` module runs TLP — powersave governor on
+  battery, performance on AC, USB autosuspend. On the desktop it does almost
+  nothing. `powertop` is there for a look at what's drawing power.
+- **3D printers**: list your printers' Moonraker URLs in `settings.printers` and
+  you get a desktop notification when a print finishes or fails.
 - **Drives**: nothing mounts by itself. `drives`, or click the drive in Thunar's
   sidebar — both use udisks2 as you (no sudo), mount under
   `/run/media/samadams/<label>`, and handle LUKS. Phones show up in Thunar.

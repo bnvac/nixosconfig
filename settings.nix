@@ -18,6 +18,19 @@
   espMountPoint = "/boot/efi";
   useGrub = true;            # GRUB = themeable; false = systemd-boot
 
+  # ── Backups (`backups` module): restic to an external drive ────────────────
+  # The restic repository on your backup drive. Backups run only while the drive
+  # is mounted — if it isn't plugged in you get a reminder, not a failure. The
+  # repo password lives in a file (see the module header); `backup` wraps restic
+  # (snapshots / restore / check), `backup now` runs one immediately.
+  backupRepo = "/run/media/samadams/BACKUP/restic";
+
+  # ── 3D printers (`printing` module): Moonraker URLs to watch ───────────────
+  # Each printer's Moonraker API base URL. A desktop notification pops when a
+  # print finishes or fails. Empty = nothing watched.
+  #   e.g. [ "http://ender.local:7125" "http://voron.local:7125" ]
+  printers = [ ];
+
   # ── WHICH MACHINE IS THIS? ─────────────────────────────────────────────────
   # Set this per machine (it's the only line that differs between them).
   #   "desktop" — has the RX 6750 XT: Neb runs a LOCAL model (Ollama, free).

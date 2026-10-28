@@ -39,6 +39,14 @@ let
       files, signed mail and channels — no server, no internet. Identity is an
       Ed25519 key in ~/.intraweb. `intraweb surf|ls|get|mail|say|doctor|id`;
       running a hub (`intranet.local`) is a manual `sudo intraweb up --hub`.
+    - `backup` (its own module) — restic snapshots of ~ and /etc/nixos to the
+      external drive in settings.backupRepo, on a daily timer that skips quietly
+      when the drive is unplugged. `backup now`, `backup snapshots`, `backup
+      restore latest --target DIR`. Password in ~/.config/restic/password or
+      /run/secrets/restic-password; without it a restore is impossible.
+    - The `power` module tunes the laptop's battery (TLP). The `secrets` module
+      (off by default) keeps passwords/keys encrypted in secrets/ via sops-nix.
+      3D-print done/failed notifications come from settings.printers.
     - `torrun <app>` — run one app through Tor (leak-proof). `tormode on|off` —
       route everything through Tor (only if the `privacy` module is on). The
       Tor daemon is OFF until `tormode on`; Tor Browser and torrun bring their own.
