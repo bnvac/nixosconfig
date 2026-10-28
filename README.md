@@ -52,6 +52,7 @@ ESP isn't mounted where `settings.nix` says.
 | privacy | Tor (per-app + system-wide, off until you turn it on), I2P, Bitwarden, nheko, Proton VPN |
 | virt | QEMU/KVM + virt-manager |
 | backoffice | the parts-inventory web app, synced between machines |
+| intraweb | your own local-first neighborhood web on the LAN (no server, no internet) |
 | osint | security / OSINT toolkit — **off by default** |
 
 ```sh
@@ -67,7 +68,7 @@ mod off gaming      # disable + rebuild (the module stays written, just unbuilt)
 | `modtui` | TUI: onboarding, modules, settings, AI model (with download bar), update |
 | `rebuild` (`nrs`) | `nixos-rebuild switch` with a live progress bar |
 | `nixup` | `git pull` /etc/nixos + rebuild (`autoUpdate = true` does it weekly) |
-| `nixmenu` | dmenu of everything here — **Super+Alt+Space** |
+| `nixmenu` | this system's actions, grouped into categories — **Super+Alt+Space** |
 | `mykeys` | your keybind cheat sheet — **Super+Alt+F1** |
 | `apps` | every app, by category — **Super+Alt+a** |
 | `drives` | mount / unlock / unmount drives, never automatic — **Super+Alt+m** |
@@ -84,6 +85,7 @@ mod off gaming      # disable + rebuild (the module stays written, just unbuilt)
 | `browser-sync passwords` | push each browser's own password export into Bitwarden |
 | `torrun <app>` / `tormode on\|off` | one app / everything through Tor |
 | `backoffice` | parts-inventory web app on :8080 |
+| `intraweb` | neighborhood web on the LAN; dashboard on :8420 (runs at login) |
 
 ## Notes
 
@@ -102,6 +104,11 @@ mod off gaming      # disable + rebuild (the module stays written, just unbuilt)
   and run `browser-sync passwords` — it imports the CSV into Bitwarden and
   shreds it. It never touches a browser's encrypted password store itself, and
   no password ever lands in the Sync folder.
+- **Neighborhood (intraweb)**: joins the LAN's neighborhood web at login — a
+  dashboard on `:8420`, with pages, files, signed mail and channels, no server
+  and no internet. Your identity is a key in `~/.intraweb`; copy that folder to
+  stay yourself on another machine. nixmenu → **Neighborhood** opens it. To host
+  a hub (claims `intranet.local`), run `sudo intraweb up --hub` by hand.
 - **Drives**: nothing mounts by itself. `drives`, or click the drive in Thunar's
   sidebar — both use udisks2 as you (no sudo), mount under
   `/run/media/samadams/<label>`, and handle LUKS. Phones show up in Thunar.

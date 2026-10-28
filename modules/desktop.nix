@@ -112,49 +112,86 @@ let
     SHEET
   '';
 
-  # `nixmenu` — Super+Alt+Space. A dmenu of this system's own actions. Entries
-  # only appear when the command behind them exists (its module is on), so it
+  # `nixmenu` — Super+Alt+Space. This system's own actions, in two short levels:
+  # pick a category, then an action — so everything fits on screen without
+  # scrolling. Actions only appear when the command behind them exists (its
+  # module is on), and a category with nothing in it is hidden, so the menu
   # stays honest as modules come and go. Terminal actions open in st and wait
-  # for Enter, so you can read the result before the window closes.
+  # for Enter so you can read the result before the window closes.
   nixmenu = pkgs.writeShellScriptBin "nixmenu" ''
     export PATH=${lib.makeBinPath [ pkgs.larbs-dmenu pkgs.larbs-st pkgs.coreutils ]}:/run/current-system/sw/bin:$PATH
     have() { command -v "$1" >/dev/null 2>&1; }
     term() { exec st -e sh -c "$1; echo; printf '[enter] '; read -r _"; }
-    labels=("Setup / modules (TUI)" "Update system (pull + rebuild)" "Apps" "Files" "Drives: mount / unmount"
-            "Tidy Downloads (sort + find duplicates)")
-    have dash            && labels+=("Dashboards")
-    have devlink-window  && labels+=("DeviceLink (send files)")
-    have devlink         && labels+=("Send my browser tabs to the other machine"
-                                     "Share my screen (VNC)" "View other screen (VNC)")
-    have browser-sync    && labels+=("Sync bookmarks" "Browser passwords → Bitwarden")
-    have blueman-manager && labels+=("Bluetooth devices")
-    have neb-voice       && labels+=("Talk to Neb" "Neb's workspace")
-    have tormode         && labels+=("Tor: route everything ON" "Tor: stop routing")
-    labels+=("Toggle live snow" "Lock screen" "My keybinds" "Suspend")
-    sel=$(printf '%s\n' "''${labels[@]}" | dmenu -i -l 20 -p "nix:") || exit 0
+    menu() { dmenu -i -l 20 -p "$1"; }
+
+    # ── build each category's actions (guarded by what's installed) ──────────
+    sys=("Setup / modules (TUI)" "Update system (pull + rebuild)" "My keybinds" "Lock screen" "Toggle live snow" "Suspend")
+
+    aps=("Apps" "Files" "Drives: mount / unmount" "Tidy Downloads (sort + find duplicates)")
+    have dash && aps+=("Dashboards")
+
+    ai=()
+    have neb-voice && ai=("Talk to Neb" "Neb's workspace")
+
+    dev=()
+    have devlink-window && dev+=("DeviceLink (send files)")
+    have devlink        && dev+=("Send my browser tabs to the other machine" "Share my screen (VNC)" "View other screen (VNC)")
+    have browser-sync   && dev+=("Sync bookmarks" "Browser passwords → Bitwarden")
+    have blueman-manager && dev+=("Bluetooth devices")
+
+    hood=()
+    have intraweb && hood=("Open the neighborhood (dashboard)" "Surf the neighborhood" "Neighborhood (terminal)" "My intraweb fingerprint" "Why can't I see anyone? (doctor)")
+
+    net=()
+    have tormode && net=("Tor: route everything ON" "Tor: stop routing")
+
+    # ── top level: only categories that have something in them ───────────────
+    cats=("System" "Apps & files")
+    [ ''${#ai[@]}   -gt 0 ] && cats+=("Neb (AI)")
+    [ ''${#dev[@]}  -gt 0 ] && cats+=("Sync & devices")
+    [ ''${#hood[@]} -gt 0 ] && cats+=("Neighborhood")
+    [ ''${#net[@]}  -gt 0 ] && cats+=("Network & privacy")
+
+    cat=$(printf '%s\n' "''${cats[@]}" | menu "nix:") || exit 0
+    case "$cat" in
+      "System")            items=("''${sys[@]}")  ;;
+      "Apps & files")      items=("''${aps[@]}")  ;;
+      "Neb (AI)")          items=("''${ai[@]}")   ;;
+      "Sync & devices")    items=("''${dev[@]}")  ;;
+      "Neighborhood")      items=("''${hood[@]}") ;;
+      "Network & privacy") items=("''${net[@]}")  ;;
+      *) exit 0 ;;
+    esac
+    sel=$(printf '%s\n' "''${items[@]}" | menu "$cat:") || exit 0
+
     case "$sel" in
-      "Setup / modules (TUI)")     term modtui ;;
-      Update*)                     term nixup ;;
-      Apps)                        exec apps ;;
-      Files)                       exec thunar ;;
-      Drives*)                     exec drives ;;
-      Tidy*)                       exec tidy-downloads ;;
-      Dashboards)                  exec dash ;;
-      DeviceLink*)                 exec devlink-window ;;
-      "Send my browser tabs"*)     exec devlink tabs ;;
-      "Share my screen (VNC)")     term "devlink screen" ;;
-      "View other screen (VNC)")   exec devlink view ;;
-      "Sync bookmarks")            term "browser-sync" ;;
-      "Browser passwords"*)        term "browser-sync passwords" ;;
-      Bluetooth*)                  exec blueman-manager ;;
-      "Talk to Neb")               exec neb-voice ;;
-      "Neb's workspace")           xdotool key super+9; exec neb-space ;;
-      "Tor: route everything ON")  term "tormode on" ;;
-      "Tor: stop routing")         term "tormode off" ;;
-      "Toggle live snow")          exec snow toggle ;;
-      "Lock screen")               exec lock ;;
-      "My keybinds")               term mykeys ;;
-      Suspend)                     exec zzz ;;
+      "Setup / modules (TUI)")         term modtui ;;
+      Update*)                         term nixup ;;
+      "My keybinds")                   term mykeys ;;
+      "Lock screen")                   exec lock ;;
+      "Toggle live snow")              exec snow toggle ;;
+      Suspend)                         exec zzz ;;
+      Apps)                            exec apps ;;
+      Files)                           exec thunar ;;
+      Drives*)                         exec drives ;;
+      Tidy*)                           exec tidy-downloads ;;
+      Dashboards)                      exec dash ;;
+      "Talk to Neb")                   exec neb-voice ;;
+      "Neb's workspace")               xdotool key super+9; exec neb-space ;;
+      DeviceLink*)                     exec devlink-window ;;
+      "Send my browser tabs"*)         exec devlink tabs ;;
+      "Share my screen (VNC)")         term "devlink screen" ;;
+      "View other screen (VNC)")       exec devlink view ;;
+      "Sync bookmarks")                term "browser-sync" ;;
+      "Browser passwords"*)            term "browser-sync passwords" ;;
+      Bluetooth*)                      exec blueman-manager ;;
+      "Open the neighborhood"*)        exec chromium --app=http://localhost:8420 ;;
+      "Surf the neighborhood")         term "intraweb surf" ;;
+      "Neighborhood (terminal)")       exec st -e intraweb up --tui ;;
+      "My intraweb fingerprint")       term "intraweb id" ;;
+      "Why can't I see anyone?"*)      term "intraweb doctor" ;;
+      "Tor: route everything ON")      term "tormode on" ;;
+      "Tor: stop routing")             term "tormode off" ;;
     esac
   '';
 

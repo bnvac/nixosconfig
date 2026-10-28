@@ -229,6 +229,22 @@ in
     meta.mainProgram = "backoffice";
   };
 
+  # ── the user's local-first LAN intranet → `intraweb` ──────────────────────
+  # One static binary: neighbors on the same Wi-Fi find each other (mDNS + UDP
+  # broadcast), visit each other's pages, and send signed mail — no server, no
+  # internet. The dashboard is at http://localhost:8420 (http://intranet.local
+  # when a hub runs). Built from the pinned Cargo.lock, so no cargoHash to keep
+  # in step; bundled SQLite compiles with the stdenv C toolchain.
+  intraweb = prev.rustPlatform.buildRustPackage {
+    pname = "intraweb"; version = "0.1.0";
+    src = gh { owner = "bnvac"; repo = "intraweb";
+      rev = "724cb4924747195c8b9994c45fab3abcc9f8a1de";
+      hash = "sha256-cx7b1JwcBSFDgagMLb9VKQ6SyWxUyfYgzRtxS+OGcWk="; };
+    cargoLock.lockFile = ./intraweb/Cargo.lock;
+    doCheck = false;                 # its tests want live sockets / a LAN
+    meta.mainProgram = "intraweb";
+  };
+
   # ── OSINT TUI cheat-sheet ──────────────────────────────────────────────────
   osint-tools-cli = prev.rustPlatform.buildRustPackage {
     pname = "osint-tools-cli"; version = "0.2.0";

@@ -33,6 +33,12 @@ let
       `sync` module its inventory hands off between the two machines as
       consistent snapshots (`backoffice-sync --status`); photos sync live.
     - `claude-code` — Claude Code.
+    - `intraweb` (its own module) — a local-first neighborhood web on the LAN:
+      it runs `intraweb up` as a user service at login, giving a dashboard on
+      http://localhost:8420 where neighbors on the same Wi-Fi share pages,
+      files, signed mail and channels — no server, no internet. Identity is an
+      Ed25519 key in ~/.intraweb. `intraweb surf|ls|get|mail|say|doctor|id`;
+      running a hub (`intranet.local`) is a manual `sudo intraweb up --hub`.
     - `torrun <app>` — run one app through Tor (leak-proof). `tormode on|off` —
       route everything through Tor (only if the `privacy` module is on). The
       Tor daemon is OFF until `tormode on`; Tor Browser and torrun bring their own.
