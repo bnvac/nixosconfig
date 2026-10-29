@@ -360,7 +360,7 @@ in
                     escapeTime = 0; extraConfig = "set -g mouse on"; };
 
   environment.systemPackages = with pkgs; [
-    mod modtui nixup rebuild git curl wget htop fastfetch fzf ripgrep fd bat eza zoxide starship
+    mod modtui nixup rebuild git curl wget htop fastfetch-id fzf ripgrep fd bat eza zoxide starship
     tree jq unzip zip gcc gnumake python3 psmisc usbutils pciutils
   ];
 

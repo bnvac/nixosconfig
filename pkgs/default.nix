@@ -187,6 +187,23 @@ in
     text = "LOCK_IMAGE=${final.snow-wallpaper}\n" + builtins.readFile ./scripts/lock.sh;
   };
   backup          = sh "backup" (with final; [ restic coreutils util-linux libnotify ]) ./scripts/backup.sh;
+  # fastfetch, but the logo swaps to match the git repo you're standing in.
+  # Drop a <reponame>.txt in pkgs/fastfetch-logos/ to add one; default.txt
+  # shows everywhere else. Replaces the plain `fastfetch` on PATH, so the
+  # Super+Alt+i keybind and the shell both get it.
+  fastfetch-id = final.writeShellApplication {
+    name = "fastfetch";
+    runtimeInputs = with final; [ git coreutils ];
+    text = ''
+      logos=${./fastfetch-logos}
+      name=default
+      if top=$(git rev-parse --show-toplevel 2>/dev/null); then
+        n=$(basename "$top")
+        [ -f "$logos/$n.txt" ] && name="$n"
+      fi
+      exec ${final.fastfetch}/bin/fastfetch --logo-type file --logo "$logos/$name.txt" "$@"
+    '';
+  };
   neb-voice       = py "neb-voice" ./scripts/neb-voice.py;
   tidy-downloads  = py "tidy-downloads" ./scripts/tidy-downloads.py;
   browser-sync    = py "browser-sync" ./scripts/browser-sync.py;
