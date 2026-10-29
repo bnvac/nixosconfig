@@ -77,6 +77,7 @@ mod off gaming      # disable + rebuild (the module stays written, just unbuilt)
 | `nixmenu` | this system's actions, grouped into categories — **Super+Alt+Space** |
 | `mykeys` | your keybind cheat sheet — **Super+Alt+F1** |
 | `apps` | every app, by category — **Super+Alt+a** |
+| `audio` | pick output/mic device (speakers, headset, Bluetooth, HDMI), volume, mute — **Super+Alt+v** |
 | `drives` | mount / unlock / unmount drives, never automatic — **Super+Alt+m** |
 | `tidy-downloads` | sort ~/Downloads into folders, catch duplicates (`--undo`) |
 | `lock` | lock screen — **Super+Alt+l** (also on suspend / 10 idle min) |

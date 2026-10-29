@@ -68,6 +68,7 @@ in
       { MODKEY|Mod1Mask,           XK_l,      spawn, {.v = (const char*[]){ "lock", NULL } } },
       { MODKEY|Mod1Mask,           XK_d,      spawn, {.v = (const char*[]){ "dash", NULL } } },
       { MODKEY|Mod1Mask,           XK_b,      spawn, {.v = (const char*[]){ "blueman-manager", NULL } } },
+      { MODKEY|Mod1Mask,           XK_v,      spawn, {.v = (const char*[]){ "audio", NULL } } },
       { MODKEY|Mod1Mask,           XK_t,      spawn, {.v = (const char*[]){ "tor-browser", NULL } } },
       { MODKEY|Mod1Mask,           XK_Return, spawn, {.v = (const char*[]){ TERMINAL, "-e", "tmux", "new-session", "-A", "-s", "main", NULL } } },
       { MODKEY|Mod1Mask,           XK_i,      spawn, SHCMD(TERMINAL " -e sh -c 'fastfetch; read -r _'") },
@@ -189,6 +190,7 @@ in
 
   # ── small tools (sources in pkgs/scripts/, shellchecked at build) ─────────
   rebuild         = sh "rebuild" [ final.nix-output-monitor ] ./scripts/rebuild.sh;
+  audio           = sh "audio" (with final; [ larbs-dmenu pulseaudio jq libnotify procps gawk gnugrep gnused coreutils util-linux pavucontrol ]) ./scripts/audio.sh;
   update-mine     = sh "update-mine" (with final; [ git jq coreutils util-linux gnugrep gawk ]) ./scripts/update-mine.sh;
   apps-menu       = sh "apps" (with final; [ larbs-dmenu gawk coreutils gnused libnotify util-linux ]) ./scripts/apps.sh;
   snow            = sh "snow" (with final; [ xsnow procps util-linux ]) ./scripts/snow.sh;

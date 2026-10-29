@@ -97,6 +97,7 @@ let
       Super + Alt + l            lock the screen
       Super + Alt + d            dashboards
       Super + Alt + b            Bluetooth
+      Super + Alt + v            audio: output/mic device, volume, mute
       Super + Alt + t            Tor Browser
       Super + Alt + Return       tmux session
       Super + Alt + i            system info (fastfetch)
@@ -138,6 +139,7 @@ let
     have devlink-window && dev+=("DeviceLink (send files)")
     have devlink        && dev+=("Send my browser tabs to the other machine" "Share my screen (VNC)" "View other screen (VNC)")
     have browser-sync   && dev+=("Sync bookmarks" "Browser passwords → Bitwarden")
+    have audio           && dev+=("Audio (output, mic, volume)")
     have blueman-manager && dev+=("Bluetooth devices")
 
     hood=()
@@ -186,6 +188,7 @@ let
       "View other screen (VNC)")       exec devlink view ;;
       "Sync bookmarks")                term "browser-sync" ;;
       "Browser passwords"*)            term "browser-sync passwords" ;;
+      Audio*)                          exec audio ;;
       Bluetooth*)                      exec blueman-manager ;;
       "Open the neighborhood"*)        exec chromium --app=http://localhost:8420 ;;
       "Surf the neighborhood")         term "intraweb surf" ;;
@@ -283,7 +286,7 @@ in
   };
 
   environment.systemPackages = [ dash drives nixmenu mykeys ] ++ dashItems ++ (with pkgs; [
-    apps-menu tidy-downloads snow lock-screen
+    apps-menu tidy-downloads snow lock-screen audio
     larbs-st larbs-dmenu larbs-dwmblocks larbs-scripts
     xinit xrdb xprop xwininfo xset setxkbmap xbacklight xrandr slop
     xclip xdotool xcape xwallpaper picom unclutter-xfixes maim slock
