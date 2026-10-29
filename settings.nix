@@ -13,6 +13,9 @@
   # `nixup` pulls this repo (cloned at /etc/nixos) and rebuilds — no re-cloning.
   # autoUpdate = true adds a weekly timer that pulls + rebuilds on its own.
   autoUpdate = false;
+  # Your own packages (neb, backoffice, intraweb) check GitHub daily and update
+  # themselves when there's a new commit that builds. `rebuild` always does it.
+  autoUpdateMine = true;
 
   # Boot. espMountPoint must match hardware-configuration.nix (checked at build).
   espMountPoint = "/boot/efi";

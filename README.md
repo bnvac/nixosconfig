@@ -16,6 +16,8 @@ modules/core.nix      always on: boot, net, user, audio, shell, hardening,
 modules/*.nix         one feature each (table below)
 pkgs/default.nix      everything built from source (dwm/st/dmenu, Neb,
                       backoffice, devlink, SpiderFoot, GRUB theme, …)
+pkgs/pins.json        which commit of YOUR repos (neb, backoffice, intraweb) to
+                      build; `update-mine` keeps them current (pins.local.json)
 pkgs/devlink/         the DeviceLink app (stdlib-only Python)
 pkgs/scripts/         the small tools (apps, desk, lock, snow, rebuild, backoffice-sync…)
 mods/<name>           an empty marker file = that module is ON
@@ -69,7 +71,8 @@ mod off gaming      # disable + rebuild (the module stays written, just unbuilt)
 | command | what |
 |---|---|
 | `modtui` | TUI: onboarding, modules, settings, AI model (with download bar), update |
-| `rebuild` (`nrs`) | `nixos-rebuild switch` with a live progress bar |
+| `rebuild` (`nrs`) | update the channel + your own packages, then `nixos-rebuild switch` with a live progress bar (`--no-update` to skip updating) |
+| `update-mine` | move neb / backoffice / intraweb to their latest GitHub commit (only if it builds); runs daily too. `--status` to just look |
 | `nixup` | `git pull` /etc/nixos + rebuild (`autoUpdate = true` does it weekly) |
 | `nixmenu` | this system's actions, grouped into categories — **Super+Alt+Space** |
 | `mykeys` | your keybind cheat sheet — **Super+Alt+F1** |

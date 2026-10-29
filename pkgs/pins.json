@@ -1,0 +1,21 @@
+{
+  "neb": {
+    "owner": "bnvac",
+    "repo": "neb",
+    "rev": "e75b6e00f68201fd0555eee2f815170e792c93a5",
+    "hash": "sha256-QrR/xkJ007306UTaAlzhasifymFQjuz8+6p2OTm3KtE="
+  },
+  "backoffice": {
+    "owner": "bnvac",
+    "repo": "backoffice",
+    "rev": "8ec9c6416cfe8bdbf122eb6525bc62d72dafe0a8",
+    "hash": "sha256-C/6MRfs8rboLsYODuTnKuXUACZnLPdbjTKeVnFD+1zI=",
+    "vendorHash": "sha256-GzzJb8jVsck8Gji9/NvPq3b7TazjDq5o5zrZWH7gxjM="
+  },
+  "intraweb": {
+    "owner": "bnvac",
+    "repo": "intraweb",
+    "rev": "724cb4924747195c8b9994c45fab3abcc9f8a1de",
+    "hash": "sha256-cx7b1JwcBSFDgagMLb9VKQ6SyWxUyfYgzRtxS+OGcWk="
+  }
+}

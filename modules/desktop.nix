@@ -125,7 +125,8 @@ let
     menu() { dmenu -i -l 20 -p "$1"; }
 
     # ── build each category's actions (guarded by what's installed) ──────────
-    sys=("Setup / modules (TUI)" "Update system (pull + rebuild)" "My keybinds" "Lock screen" "Toggle live snow" "Suspend")
+    sys=("Setup / modules (TUI)" "Update system (pull + rebuild)" "Update my packages (neb, backoffice, intraweb)"
+         "My keybinds" "Lock screen" "Toggle live snow" "Suspend")
 
     aps=("Apps" "Files" "Drives: mount / unmount" "Tidy Downloads (sort + find duplicates)")
     have dash && aps+=("Dashboards")
@@ -166,6 +167,7 @@ let
 
     case "$sel" in
       "Setup / modules (TUI)")         term modtui ;;
+      "Update my packages"*)           term "update-mine --switch" ;;
       Update*)                         term nixup ;;
       "My keybinds")                   term mykeys ;;
       "Lock screen")                   exec lock ;;

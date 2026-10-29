@@ -80,6 +80,13 @@ let
     - `setbg <image>` — set the wallpaper.
     - `rebuild` (alias `nrs`) — `nixos-rebuild switch` with a live progress display.
     - `nixup` — pull the config repo at /etc/nixos and rebuild (no re-cloning).
+    - Every `rebuild` first updates the NixOS channel (all regular packages)
+      and the user's own packages (`update-mine`); `rebuild --no-update` skips
+      that (mod on/off use it). The user's own repos — neb, backoffice,
+      intraweb, listed in /etc/nixos/pkgs/pins.json — also update daily by
+      themselves (settings.autoUpdateMine). `update-mine --status` shows what's
+      pinned vs. on GitHub. A new commit that doesn't build is held back, and
+      the old version stays.
     - This machine's own functions live under **Super+Alt** (a namespace LARBS
       leaves alone): **Super+Alt+Space** opens `nixmenu` (every function here),
       **Super+Alt+F1** shows `mykeys` (the custom-keybind cheat sheet). Stock
@@ -152,7 +159,7 @@ let
         if printf '%s\n' "$sel" | grep -qx "$m"; then sudo mkdir -p "$dir/mods" && sudo touch "$dir/mods/$m"
         else sudo rm -f "$dir/mods/$m"; fi
       done
-      gum confirm "Rebuild now to apply?" && rebuild
+      gum confirm "Rebuild now to apply?" && rebuild --no-update
     }
 
     edit_settings() {
@@ -243,8 +250,8 @@ let
       list) for n in $(all); do [ -e "$m/$n" ] && echo "  on   $n" || echo "  off  $n"; done ;;
       on|off) [ -n "''${2:-}" ] && [ -f "$dir/modules/$2.nix" ] && [ "$2" != core ] \
                 || { echo "no module '$2' (try: mod list)"; exit 1; } ;;&
-      on)   sudo mkdir -p "$m" && sudo touch "$m/$2" && rebuild ;;
-      off)  sudo rm -f "$m/$2" && rebuild ;;
+      on)   sudo mkdir -p "$m" && sudo touch "$m/$2" && rebuild --no-update ;;
+      off)  sudo rm -f "$m/$2" && rebuild --no-update ;;
       *)    echo "usage: mod list | mod on <name> | mod off <name>" ;;
     esac
   '';
@@ -360,7 +367,7 @@ in
                     escapeTime = 0; extraConfig = "set -g mouse on"; };
 
   environment.systemPackages = with pkgs; [
-    mod modtui nixup rebuild git curl wget htop fastfetch-id fzf ripgrep fd bat eza zoxide starship
+    mod modtui nixup rebuild update-mine git curl wget htop fastfetch-id fzf ripgrep fd bat eza zoxide starship
     tree jq unzip zip gcc gnumake python3 psmisc usbutils pciutils
   ];
 
@@ -387,6 +394,24 @@ in
   systemd.timers.nix-auto-update = lib.mkIf s.autoUpdate {
     wantedBy = [ "timers.target" ];
     timerConfig = { OnCalendar = "weekly"; Persistent = true; RandomizedDelaySec = "1h"; };
+  };
+
+  # Your own packages (pkgs/pins.json: neb, backoffice, intraweb) follow their
+  # GitHub repos. `rebuild` runs update-mine first; this daily timer runs
+  # `update-mine --switch`: it pins any newer commit that builds and switches
+  # only if something changed. settings.autoUpdateMine = false turns it off.
+  systemd.services.update-mine = lib.mkIf (s.autoUpdateMine or true) {
+    description = "Update the user's own packages to their latest commits";
+    wants = [ "network-online.target" ];
+    after = [ "network-online.target" ];
+    path = [ pkgs.git config.nix.package config.system.build.nixos-rebuild ];
+    environment.HOME = "/root";
+    serviceConfig.Type = "oneshot";
+    script = "${pkgs.update-mine}/bin/update-mine --switch";
+  };
+  systemd.timers.update-mine = lib.mkIf (s.autoUpdateMine or true) {
+    wantedBy = [ "timers.target" ];
+    timerConfig = { OnCalendar = "daily"; Persistent = true; RandomizedDelaySec = "1h"; };
   };
 
   services.fstrim.enable = true;

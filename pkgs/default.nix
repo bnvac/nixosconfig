@@ -5,6 +5,19 @@ let
   # shell tool from pkgs/scripts/NAME.sh: deps on PATH, shellcheck at build
   sh = name: deps: file: final.writeShellApplication { inherit name; runtimeInputs = deps; text = builtins.readFile file; };
   py = name: file: final.writeScriptBin name ("#!${final.python3}/bin/python3 -I\n" + builtins.readFile file);
+
+  # The user's own repos (neb, backoffice, intraweb) follow GitHub. pins.json
+  # is the baseline kept in git; `update-mine` writes newer pins to
+  # pins.local.json (gitignored, so `nixup` pulls never conflict with it). A
+  # local pin only counts while it was made from the current baseline, so a
+  # newer baseline pulled from git always wins over a stale local one.
+  basePins = builtins.fromJSON (builtins.readFile ./pins.json);
+  localPins = if builtins.pathExists ./pins.local.json
+    then builtins.fromJSON (builtins.readFile ./pins.local.json) else { };
+  pin = n:
+    let b = basePins.${n}; l = localPins.${n} or null;
+    in if l != null && (l.base or null) == b.rev then b // l else b;
+  mine = n: let p = pin n; in gh { inherit (p) owner repo rev hash; };
 in
 {
   # ── LARBS suckless desktop (Luke Smith's pinned forks) ─────────────────────
@@ -176,6 +189,7 @@ in
 
   # ── small tools (sources in pkgs/scripts/, shellchecked at build) ─────────
   rebuild         = sh "rebuild" [ final.nix-output-monitor ] ./scripts/rebuild.sh;
+  update-mine     = sh "update-mine" (with final; [ git jq coreutils util-linux gnugrep gawk ]) ./scripts/update-mine.sh;
   apps-menu       = sh "apps" (with final; [ larbs-dmenu gawk coreutils gnused libnotify util-linux ]) ./scripts/apps.sh;
   snow            = sh "snow" (with final; [ xsnow procps util-linux ]) ./scripts/snow.sh;
   neb-space       = sh "neb-space" (with final; [ xdotool util-linux ]) ./scripts/neb-space.sh;
@@ -214,9 +228,7 @@ in
   # ── Neb — the user's local voice assistant (stdlib-only Python) ────────────
   neb = final.python3Packages.buildPythonApplication {
     pname = "neb"; version = "0.1.0"; pyproject = true;
-    src = gh { owner = "bnvac"; repo = "neb";
-      rev = "e75b6e00f68201fd0555eee2f815170e792c93a5";
-      hash = "sha256-QrR/xkJ007306UTaAlzhasifymFQjuz8+6p2OTm3KtE="; };
+    src = mine "neb";                # pin in pins.json, kept current by update-mine
     # Two small local changes (worth upstreaming to bnvac/neb):
     #  - In Neb's terminal, Enter on an empty line talks out loud (runs
     #    neb-voice: listen → answer in a corner notification).
@@ -240,10 +252,8 @@ in
   # ── the user's parts-inventory app → `backoffice` ──────────────────────────
   backoffice = prev.buildGoModule {
     pname = "backoffice"; version = "0-unstable";
-    src = gh { owner = "bnvac"; repo = "backoffice";
-      rev = "8ec9c6416cfe8bdbf122eb6525bc62d72dafe0a8";
-      hash = "sha256-C/6MRfs8rboLsYODuTnKuXUACZnLPdbjTKeVnFD+1zI="; };
-    vendorHash = "sha256-GzzJb8jVsck8Gji9/NvPq3b7TazjDq5o5zrZWH7gxjM=";
+    src = mine "backoffice";         # pin in pins.json, kept current by update-mine
+    inherit (pin "backoffice") vendorHash;
     env.CGO_ENABLED = 0; doCheck = false;
     meta.mainProgram = "backoffice";
   };
@@ -252,14 +262,13 @@ in
   # One static binary: neighbors on the same Wi-Fi find each other (mDNS + UDP
   # broadcast), visit each other's pages, and send signed mail — no server, no
   # internet. The dashboard is at http://localhost:8420 (http://intranet.local
-  # when a hub runs). Built from the pinned Cargo.lock, so no cargoHash to keep
-  # in step; bundled SQLite compiles with the stdenv C toolchain.
-  intraweb = prev.rustPlatform.buildRustPackage {
+  # when a hub runs). Dependencies come from the repo's own Cargo.lock (all
+  # crates.io, checksummed), so a new commit needs no extra hash; bundled
+  # SQLite compiles with the stdenv C toolchain.
+  intraweb = let src = mine "intraweb"; in prev.rustPlatform.buildRustPackage {
     pname = "intraweb"; version = "0.1.0";
-    src = gh { owner = "bnvac"; repo = "intraweb";
-      rev = "724cb4924747195c8b9994c45fab3abcc9f8a1de";
-      hash = "sha256-cx7b1JwcBSFDgagMLb9VKQ6SyWxUyfYgzRtxS+OGcWk="; };
-    cargoLock.lockFile = ./intraweb/Cargo.lock;
+    inherit src;                     # pin in pins.json, kept current by update-mine
+    cargoLock.lockFile = "${src}/Cargo.lock";
     doCheck = false;                 # its tests want live sockets / a LAN
     meta.mainProgram = "intraweb";
   };
