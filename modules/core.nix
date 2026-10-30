@@ -2,6 +2,7 @@
 { config, pkgs, lib, ... }:
 let
   s = import ../settings.nix;
+  removed = s.removePackages or [ ];
   picked = import ../picker.nix lib;     # same module list configuration.nix imports
 
   # ── Jarvis's note-to-self: regenerated from the live config every rebuild ──
@@ -47,9 +48,14 @@ let
     - The `power` module tunes the laptop's battery (TLP). The `secrets` module
       (off by default) keeps passwords/keys encrypted in secrets/ via sops-nix.
       3D-print done/failed notifications come from settings.printers.
-    - `torrun <app>` — run one app through Tor (leak-proof). `tormode on|off` —
-      route everything through Tor (only if the `privacy` module is on). The
-      Tor daemon is OFF until `tormode on`; Tor Browser and torrun bring their own.
+    - `torrun <app>` — run one app through Tor (leak-proof). `tormode on|off|status`
+      — route everything through Tor (privacy module). `tormode on` waits for
+      Tor to connect and proves it via check.torproject.org; anything that
+      can't go through Tor (IPv6, QUIC/UDP, LAN, Docker/VMs, a VPN) is refused,
+      not leaked. The Tor daemon is OFF until then; Tor Browser and torrun
+      bring their own. Proton VPN: `protonvpn-app` (GUI) / `protonvpn` (CLI);
+      its login lives in gnome-keyring (unlocked at the ly login). Don't run
+      tormode and the VPN at the same time.
     - **Neb** is the assistant (the `assistant` module). `neb` server runs on
       http://127.0.0.1:7000 (dashboard: switch brain, set API keys, allowlist).
       **Super+Alt+n** = `neb-voice`: listen → answer, shown only as a small
@@ -82,11 +88,24 @@ let
     - `nixup` — pull the config repo at /etc/nixos and rebuild (no re-cloning).
     - Every `rebuild` first updates the NixOS channel (all regular packages)
       and the user's own packages (`update-mine`); `rebuild --no-update` skips
-      that (mod on/off use it). The user's own repos — neb, backoffice,
-      intraweb, listed in /etc/nixos/pkgs/pins.json — also update daily by
-      themselves (settings.autoUpdateMine). `update-mine --status` shows what's
-      pinned vs. on GitHub. A new commit that doesn't build is held back, and
-      the old version stays.
+      that (mod on/off use it). Git-built apps — the built-ins neb, backoffice,
+      intraweb (pkgs/pins.json) plus anything in settings.gitApps (any repo,
+      any git server; types rust/go/node/python/make/script/docker) — also
+      update daily by themselves (settings.autoUpdateMine). `update-mine
+      --status` shows what's pinned vs. upstream. A new commit that doesn't
+      build is held back and the old version stays. pkgs/tracked.nix is the
+      single source of truth for which commit each one builds.
+    - `nixmenu` is data-driven: modules add entries via `my.menu`, web apps via
+      `my.selfhosted`; settings.menu (order/hide/extra) and
+      ~/.config/nixmenu/menu (no rebuild) customise it. Running Docker
+      containers with a published port appear under Self-hosted.
+    - Space: settings.removePackages drops an app from every module (all
+      modules install through `my.packages`). `debloat` reports what's big
+      and cleans (old generations, caches, logs, unused Docker images);
+      `debloat remove|keep <name>` edits that list. Kernel is zen by default
+      (settings.kernel); zram, systemd-oomd and ananicy keep it responsive.
+    - The `platform` module: Docker (socket-activated, weekly prune), Flatpak +
+      Flathub, AppImage, Distrobox, and the gitApps builds/services.
     - This machine's own functions live under **Super+Alt** (a namespace LARBS
       leaves alone): **Super+Alt+Space** opens `nixmenu` (every function here),
       **Super+Alt+F1** shows `mykeys` (the custom-keybind cheat sheet). Stock
@@ -114,7 +133,7 @@ let
     1. Edit the relevant file under /etc/nixos (a module, or settings.nix).
     2. `rebuild` (= `sudo nixos-rebuild switch` with progress). Rollback: pick
        an older generation at boot, or `sudo nixos-rebuild switch --rollback`.
-    - Add a package: put it in the fitting module's `environment.systemPackages`.
+    - Add a package: put it in the fitting module's `my.packages` (settings.removePackages strips any of them out).
     - Add a service: a NixOS `services.*` option in the fitting module.
     - Add software built from Git: a derivation in pkgs/default.nix (copy the
       `backoffice` block — it shows the fetchFromGitHub + hash pattern).
@@ -259,7 +278,9 @@ let
   # `nixup` — pull the config repo at /etc/nixos and rebuild. No re-cloning:
   # your machine-local hardware-configuration.nix (untracked) is left alone.
   nixup = pkgs.writeShellScriptBin "nixup" ''
-    export PATH=/run/wrappers/bin:/run/current-system/sw/bin:$PATH
+    # Tools the freshly pulled rebuild/update-mine scripts need (they're run
+    # straight from the repo, see below).
+    export PATH=${lib.makeBinPath (with pkgs; [ nix-output-monitor git jq util-linux gawk gnugrep gnused coreutils ])}:/run/wrappers/bin:/run/current-system/sw/bin:$PATH
     dir=/etc/nixos
     if [ ! -d "$dir/.git" ]; then
       echo "nixup: $dir isn't a git clone. Clone your config there once:"
@@ -276,7 +297,11 @@ let
       exit 1
     fi
     echo ":: rebuilding …"
-    rebuild
+    # Run the rebuild script from the repo we just pulled, not the installed
+    # one: the installed copy is from the PREVIOUS config, so a pull that
+    # changes how updating works (like adding update-mine) would otherwise
+    # only take effect one update later.
+    bash "$dir/pkgs/scripts/rebuild.sh" "$@"
     echo ":: done — now on generation $(readlink /run/current-system | sed 's|.*-||')"
   '';
 in
@@ -296,7 +321,29 @@ in
     auto-optimise-store = true;
     trusted-users = [ "root" s.username ];
   };
-  nix.gc = { automatic = true; dates = "weekly"; options = "--delete-older-than 30d"; };
+  nix.gc = { automatic = true; dates = "weekly"; options = "--delete-older-than 14d"; };
+
+  # ── lean + responsive (settings: kernel, removePackages) ─────────────────
+  # zen kernel: tuned for desktop latency (input, audio, frame pacing).
+  boot.kernelPackages = {
+    zen = pkgs.linuxPackages_zen;
+    latest = pkgs.linuxPackages_latest;
+    lts = pkgs.linuxPackages;
+  }.${s.kernel or "zen"} or (throw "settings.kernel should be \"zen\", \"latest\" or \"lts\"");
+  zramSwap.enable = true;                         # compressed RAM swap: no stalls under memory pressure
+  systemd.oomd.enableUserSlices = true;           # a runaway app gets killed, the desktop stays usable
+  services.ananicy = {                            # keeps foreground apps snappy, background stuff niced
+    enable = true;
+    package = pkgs.ananicy-cpp;
+    rulesProvider = pkgs.ananicy-rules-cachyos;
+  };
+  boot.tmp.cleanOnBoot = true;
+  services.journald.extraConfig = "SystemMaxUse=200M\nMaxRetentionSec=1month";
+  # No HTML docs / info pages / NixOS manual build (man pages stay).
+  documentation.doc.enable = false;
+  documentation.info.enable = false;
+  documentation.nixos.enable = false;
+  environment.defaultPackages = [ ];              # drops the perl/rsync/strace NixOS adds by default
 
   # ── boot ───────────────────────────────────────────────────────────────────
   boot.loader = lib.mkMerge [
@@ -366,17 +413,33 @@ in
   programs.tmux = { enable = true; shortcut = "a"; keyMode = "vi"; baseIndex = 1;
                     escapeTime = 0; extraConfig = "set -g mouse on"; };
 
+  # Packages. The core tools below always stay. Everything the modules add
+  # (my.packages) goes through settings.removePackages first, so one list
+  # there strips an app out of every module — `debloat` shows what's big and
+  # `debloat remove <name>` adds to that list.
   environment.systemPackages = with pkgs; [
-    mod modtui nixup rebuild update-mine git curl wget htop fastfetch-id fzf ripgrep fd bat eza zoxide starship
-    tree jq unzip zip gcc gnumake python3 psmisc usbutils pciutils
+    mod modtui nixup rebuild update-mine debloat git curl wget htop jq zoxide starship
+  ] ++ lib.filter (p: !(lib.elem (lib.getName p) removed)) config.my.packages;
+  my.packages = with pkgs; [
+    fastfetch-id fzf ripgrep fd bat eza tree unzip zip psmisc usbutils pciutils
+    gcc gnumake python3          # build tools — `debloat remove gcc-wrapper gnumake` if you never compile
+  ];
+  warnings = map (n: "settings.removePackages: \"${n}\" isn't installed by any module — `debloat list` shows the names")
+    (lib.filter (n: !(lib.elem n (map lib.getName config.my.packages))) removed);
+  environment.etc."debloat/packages".text =
+    lib.concatMapStrings (p: lib.getName p + "\n") (lib.unique config.my.packages);
+
+  my.menu."System" = lib.mkBefore [
+    { label = "Setup / modules (TUI)"; run = "modtui"; mode = "term"; }
+    { label = "Update system (pull + rebuild)"; run = "nixup"; mode = "term"; }
+    { label = "Update my git apps"; run = "update-mine --switch"; mode = "term"; }
+    { label = "Free up space (debloat)"; run = "debloat"; mode = "term"; }
   ];
 
-  # A few scratch directories, created on boot if missing (never clobbered).
-  systemd.tmpfiles.rules = [
-    "d /home/${s.username}/projects 0755 ${s.username} users -"
-    "d /home/${s.username}/notes    0755 ${s.username} users -"
-    "d /home/${s.username}/junk     0755 ${s.username} users -"
-  ];
+  # Your home folders (settings.homeFolders), created on boot if missing —
+  # never clobbered or removed. Nested paths work too ("projects/work").
+  systemd.tmpfiles.rules = map (d: "d /home/${s.username}/${d} 0755 ${s.username} users -")
+    (s.homeFolders or [ "projects" "notes" "junk" ]);
 
   # Optional weekly auto-update (settings.autoUpdate). Runs as root, so no sudo:
   # pulls /etc/nixos and rebuilds. Skips quietly if the pull can't fast-forward.
@@ -435,7 +498,7 @@ in
     "kernel.kptr_restrict" = 2;
     "kernel.dmesg_restrict" = 1;
     "kernel.yama.ptrace_scope" = 1;
-    "net.ipv4.conf.all.rp_filter" = 1;
+    "net.ipv4.conf.all.rp_filter" = 2;            # loose: strict breaks WireGuard VPNs (Proton)
     "net.ipv4.conf.all.accept_redirects" = 0;
     "net.ipv6.conf.all.accept_redirects" = 0;
   };

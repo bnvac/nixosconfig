@@ -1,37 +1,34 @@
 # LARBS dwm desktop: X11, dwm, dotfile seeding, X utilities, files & drives.
-{ pkgs, lib, ... }:
+{ config, pkgs, lib, ... }:
 let
   s = import ../settings.nix;
   wallpaper = pkgs.snow-wallpaper;          # snowy night, drawn at build time (pkgs/scripts)
 
-  # ── self-hosted dashboards (label → URL). Each needs its module on. ─────────
-  dashboards = {
-    "Neb"        = "http://127.0.0.1:7000";   # assistant
-    "Open-WebUI" = "http://127.0.0.1:8088";   # assistant (desktop)
-    "Backoffice" = "http://127.0.0.1:8080";   # backoffice (runs as a service)
-    "DeviceLink" = "http://127.0.0.1:7010";   # sync
-    "Syncthing"  = "http://127.0.0.1:8384";   # sync
-    "I2P"        = "http://127.0.0.1:7657";   # privacy
-  };
-  dashArray = lib.concatStringsSep "\n"
-    (lib.mapAttrsToList (k: v: ''  ["${k}"]="${v}"'') dashboards);
+  # `dash` (Super+Alt+d) — straight into the menu's Self-hosted section.
+  dash = pkgs.writeShellScriptBin "dash" ''exec ${pkgs.nixmenu}/bin/nixmenu "Self-hosted"'';
 
-  # `dash` — dmenu picker that opens the chosen dashboard as an app window.
-  dash = pkgs.writeShellScriptBin "dash" ''
-    export PATH=${lib.makeBinPath [ pkgs.larbs-dmenu pkgs.chromium pkgs.coreutils ]}:$PATH
-    declare -A D=(
-    ${dashArray}
-    )
-    sel=$(printf '%s\n' "''${!D[@]}" | sort | dmenu -i -p "open dashboard:") || exit 0
-    [ -n "''${D[$sel]:-}" ] && exec chromium --app="''${D[$sel]}"
-  '';
-
-  # one desktop launcher per dashboard, for any app menu.
+  # one app-menu launcher per self-hosted web app (my.selfhosted).
   dashItems = lib.mapAttrsToList (name: url: pkgs.makeDesktopItem {
-    name = "dash-${lib.toLower name}"; desktopName = "${name} dashboard";
+    name = "web-" + lib.toLower (builtins.replaceStrings [ " " "/" ] [ "-" "-" ] name);
+    desktopName = name;
     exec = "${pkgs.chromium}/bin/chromium --app=${url}";
     icon = "web-browser"; categories = [ "Network" ];
-  }) dashboards;
+  }) config.my.selfhosted;
+
+  # ── nixmenu (Super+Alt+Space): /etc/nixmenu/menu.tsv from every module's
+  # my.menu + settings.nix → menu. pkgs/scripts/nixmenu.sh reads it (plus
+  # ~/.config/nixmenu/menu) and shows it as category → action.
+  menuCfg = s.menu or { };
+  defaultOrder = [ "System" "Apps & files" "Self-hosted" "Neb (AI)" "Sync & devices"
+                   "Containers & apps" "Neighborhood" "Network & privacy" ];
+  allMenu = config.my.menu;
+  catOrder = lib.unique (lib.filter (c: (allMenu.${c} or [ ]) != [ ])
+    ((menuCfg.order or [ ]) ++ defaultOrder ++ lib.attrNames allMenu));
+  oneLine = builtins.replaceStrings [ "\t" "\n" ] [ " " " " ];
+  menuTsv = lib.concatMapStrings (c: lib.concatMapStrings (i:
+    lib.optionalString (!(lib.elem i.label (menuCfg.hide or [ ])))
+      "${oneLine c}\t${oneLine i.label}\t${i.mode}\t${if i.needs == null then "-" else i.needs}\t${oneLine i.run}\n"
+  ) allMenu.${c}) catOrder;
 
   # `drives` — mount / unlock / unmount from dmenu (Super+Alt+m, Super+F9/F10).
   # Nothing ever mounts on its own: you pick the drive. udisks2 does the work as
@@ -95,7 +92,7 @@ let
       Super + Alt + e            file manager (Thunar)
       Super + Alt + m            drives: mount / unlock / unmount
       Super + Alt + l            lock the screen
-      Super + Alt + d            dashboards
+      Super + Alt + d            self-hosted apps (menu section)
       Super + Alt + b            Bluetooth
       Super + Alt + v            audio: output/mic device, volume, mute
       Super + Alt + t            Tor Browser
@@ -111,93 +108,6 @@ let
       Everything else is stock LARBS — press Super + F1 for that manual.
 
     SHEET
-  '';
-
-  # `nixmenu` — Super+Alt+Space. This system's own actions, in two short levels:
-  # pick a category, then an action — so everything fits on screen without
-  # scrolling. Actions only appear when the command behind them exists (its
-  # module is on), and a category with nothing in it is hidden, so the menu
-  # stays honest as modules come and go. Terminal actions open in st and wait
-  # for Enter so you can read the result before the window closes.
-  nixmenu = pkgs.writeShellScriptBin "nixmenu" ''
-    export PATH=${lib.makeBinPath [ pkgs.larbs-dmenu pkgs.larbs-st pkgs.coreutils ]}:/run/current-system/sw/bin:$PATH
-    have() { command -v "$1" >/dev/null 2>&1; }
-    term() { exec st -e sh -c "$1; echo; printf '[enter] '; read -r _"; }
-    menu() { dmenu -i -l 20 -p "$1"; }
-
-    # ── build each category's actions (guarded by what's installed) ──────────
-    sys=("Setup / modules (TUI)" "Update system (pull + rebuild)" "Update my packages (neb, backoffice, intraweb)"
-         "My keybinds" "Lock screen" "Toggle live snow" "Suspend")
-
-    aps=("Apps" "Files" "Drives: mount / unmount" "Tidy Downloads (sort + find duplicates)")
-    have dash && aps+=("Dashboards")
-
-    ai=()
-    have neb-voice && ai=("Talk to Neb" "Neb's workspace")
-
-    dev=()
-    have devlink-window && dev+=("DeviceLink (send files)")
-    have devlink        && dev+=("Send my browser tabs to the other machine" "Share my screen (VNC)" "View other screen (VNC)")
-    have browser-sync   && dev+=("Sync bookmarks" "Browser passwords → Bitwarden")
-    have audio           && dev+=("Audio (output, mic, volume)")
-    have blueman-manager && dev+=("Bluetooth devices")
-
-    hood=()
-    have intraweb && hood=("Open the neighborhood (dashboard)" "Surf the neighborhood" "Neighborhood (terminal)" "My intraweb fingerprint" "Why can't I see anyone? (doctor)")
-
-    net=()
-    have tormode && net=("Tor: route everything ON" "Tor: stop routing")
-
-    # ── top level: only categories that have something in them ───────────────
-    cats=("System" "Apps & files")
-    [ ''${#ai[@]}   -gt 0 ] && cats+=("Neb (AI)")
-    [ ''${#dev[@]}  -gt 0 ] && cats+=("Sync & devices")
-    [ ''${#hood[@]} -gt 0 ] && cats+=("Neighborhood")
-    [ ''${#net[@]}  -gt 0 ] && cats+=("Network & privacy")
-
-    cat=$(printf '%s\n' "''${cats[@]}" | menu "nix:") || exit 0
-    case "$cat" in
-      "System")            items=("''${sys[@]}")  ;;
-      "Apps & files")      items=("''${aps[@]}")  ;;
-      "Neb (AI)")          items=("''${ai[@]}")   ;;
-      "Sync & devices")    items=("''${dev[@]}")  ;;
-      "Neighborhood")      items=("''${hood[@]}") ;;
-      "Network & privacy") items=("''${net[@]}")  ;;
-      *) exit 0 ;;
-    esac
-    sel=$(printf '%s\n' "''${items[@]}" | menu "$cat:") || exit 0
-
-    case "$sel" in
-      "Setup / modules (TUI)")         term modtui ;;
-      "Update my packages"*)           term "update-mine --switch" ;;
-      Update*)                         term nixup ;;
-      "My keybinds")                   term mykeys ;;
-      "Lock screen")                   exec lock ;;
-      "Toggle live snow")              exec snow toggle ;;
-      Suspend)                         exec zzz ;;
-      Apps)                            exec apps ;;
-      Files)                           exec thunar ;;
-      Drives*)                         exec drives ;;
-      Tidy*)                           exec tidy-downloads ;;
-      Dashboards)                      exec dash ;;
-      "Talk to Neb")                   exec neb-voice ;;
-      "Neb's workspace")               xdotool key super+9; exec neb-space ;;
-      DeviceLink*)                     exec devlink-window ;;
-      "Send my browser tabs"*)         exec devlink tabs ;;
-      "Share my screen (VNC)")         term "devlink screen" ;;
-      "View other screen (VNC)")       exec devlink view ;;
-      "Sync bookmarks")                term "browser-sync" ;;
-      "Browser passwords"*)            term "browser-sync passwords" ;;
-      Audio*)                          exec audio ;;
-      Bluetooth*)                      exec blueman-manager ;;
-      "Open the neighborhood"*)        exec chromium --app=http://localhost:8420 ;;
-      "Surf the neighborhood")         term "intraweb surf" ;;
-      "Neighborhood (terminal)")       exec st -e intraweb up --tui ;;
-      "My intraweb fingerprint")       term "intraweb id" ;;
-      "Why can't I see anyone?"*)      term "intraweb doctor" ;;
-      "Tor: route everything ON")      term "tormode on" ;;
-      "Tor: stop routing")             term "tormode off" ;;
-    esac
   '';
 
   # Compositor config. Terminals (class St) are translucent, but ANY fullscreen
@@ -285,7 +195,33 @@ in
     '';
   };
 
-  environment.systemPackages = [ dash drives nixmenu mykeys ] ++ dashItems ++ (with pkgs; [
+  environment.etc."nixmenu/menu.tsv".text = menuTsv;
+  my.selfhosted = s.selfhosted or { };
+  my.menu = lib.mkMerge [
+    {
+      "System" = [
+        { label = "My keybinds"; run = "mykeys"; mode = "term"; }
+        { label = "Lock screen"; run = "lock"; }
+        { label = "Toggle live snow"; run = "snow toggle"; }
+        { label = "Suspend"; run = "zzz"; }
+      ];
+      "Apps & files" = [
+        { label = "Apps"; run = "apps"; }
+        { label = "Files"; run = "thunar"; }
+        { label = "Drives: mount / unmount"; run = "drives"; }
+        { label = "Tidy Downloads (sort + find duplicates)"; run = "tidy-downloads"; }
+      ];
+      "Sync & devices" = [
+        { label = "Audio (output, mic, volume)"; run = "audio"; }
+        { label = "Bluetooth devices"; run = "blueman-manager"; needs = "blueman-manager"; }
+      ];
+      "Self-hosted" = lib.mapAttrsToList (name: url: { label = name; run = url; mode = "url"; })
+        config.my.selfhosted;
+    }
+    (menuCfg.extra or { })
+  ];
+
+  my.packages = [ dash drives pkgs.nixmenu mykeys ] ++ dashItems ++ (with pkgs; [
     apps-menu tidy-downloads snow lock-screen audio
     larbs-st larbs-dmenu larbs-dwmblocks larbs-scripts
     xinit xrdb xprop xwininfo xset setxkbmap xbacklight xrandr slop

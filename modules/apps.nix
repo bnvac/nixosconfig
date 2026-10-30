@@ -35,7 +35,14 @@ in
   programs.nix-ld.libraries = with pkgs; [ webkitgtk_4_1 libappindicator-gtk3 librsvg gtk3 openssl ];
   services.usbmuxd.enable = true;  # iPhone/iPad over USB
 
-  environment.systemPackages = with pkgs; [
+  # Office: LibreOffice (Writer, Calc, Impress, Draw, Base, Math) with English
+  # spellcheck. The fonts make Word/Excel/PowerPoint files lay out like they
+  # do on Windows: Microsoft's core fonts (Arial, Times New Roman…) plus
+  # Carlito/Caladea, drop-in matches for Calibri/Cambria.
+  fonts.packages = with pkgs; [ corefonts carlito caladea ];
+
+  my.packages = with pkgs; [
+    libreoffice-fresh hunspell hunspellDicts.en_US
     onshape
     chromium discord slack
     mpv ani-cli yt-dlp ffmpeg mpd mpc ncmpcpp pulsemixer pavucontrol playerctl mediainfo

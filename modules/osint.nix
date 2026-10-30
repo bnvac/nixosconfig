@@ -6,7 +6,7 @@ in {
   users.users.${s.username}.extraGroups = [ "wireshark" ];
   # (SpiderFoot's pypdf2 insecure allowance lives in core.nix)
 
-  environment.systemPackages = with pkgs; [
+  my.packages = with pkgs; [
     nmap tcpdump termshark
     metasploit recon-ng theharvester osint-tools-cli spiderfoot sherlock
     aircrack-ng iw macchanger

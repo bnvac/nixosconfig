@@ -10,5 +10,5 @@ in {
   programs.virt-manager.enable = true;
   boot.extraModprobeConfig = "options kvm_intel nested=1\noptions kvm_amd nested=1";
   users.users.${s.username}.extraGroups = [ "libvirtd" "kvm" ];
-  environment.systemPackages = with pkgs; [ qemu qemu_kvm OVMFFull virtiofsd spice-gtk virtio-win ];
+  my.packages = with pkgs; [ qemu qemu_kvm OVMFFull virtiofsd spice-gtk virtio-win ];
 }

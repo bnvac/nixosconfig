@@ -33,7 +33,7 @@ in
 {
   imports = [ "${sops-nix}/modules/sops" ];
 
-  environment.systemPackages = with pkgs; [ sops age ];
+  my.packages = with pkgs; [ sops age ];
 
   sops = lib.mkMerge [
     # Generate and use a machine-local age key (no SSH host key to derive from,

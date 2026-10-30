@@ -6,18 +6,24 @@ let
   sh = name: deps: file: final.writeShellApplication { inherit name; runtimeInputs = deps; text = builtins.readFile file; };
   py = name: file: final.writeScriptBin name ("#!${final.python3}/bin/python3 -I\n" + builtins.readFile file);
 
-  # The user's own repos (neb, backoffice, intraweb) follow GitHub. pins.json
-  # is the baseline kept in git; `update-mine` writes newer pins to
-  # pins.local.json (gitignored, so `nixup` pulls never conflict with it). A
-  # local pin only counts while it was made from the current baseline, so a
-  # newer baseline pulled from git always wins over a stale local one.
+  # Git-tracked sources (built-ins neb/backoffice/intraweb + settings.gitApps):
+  # tracked.nix decides which commit each builds; update-mine keeps them new.
+  tracked = import ./tracked.nix;
   basePins = builtins.fromJSON (builtins.readFile ./pins.json);
-  localPins = if builtins.pathExists ./pins.local.json
-    then builtins.fromJSON (builtins.readFile ./pins.local.json) else { };
+  fetchPinned = t: p:
+    if t.github != null
+    then gh { inherit (t.github) owner repo; inherit (p) rev hash; }
+    else prev.fetchgit { inherit (t) url; inherit (p) rev hash; };
+  # A built-in without a usable pin (you pointed it at a fork and update-mine
+  # hasn't run yet) builds the baseline meanwhile, with a note.
   pin = n:
-    let b = basePins.${n}; l = localPins.${n} or null;
-    in if l != null && (l.base or null) == b.rev then b // l else b;
-  mine = n: let p = pin n; in gh { inherit (p) owner repo rev hash; };
+    let t = tracked.${n}; in
+    if t.pin != null then t.pin
+    else builtins.trace "note: ${n} has no pinned commit from ${t.url} yet; run update-mine (building the built-in one meanwhile)" basePins.${n};
+  mine = n:
+    let t = tracked.${n}; in
+    if t.pin != null then fetchPinned t t.pin
+    else let b = basePins.${n}; in gh { inherit (b) owner repo rev hash; };
 in
 {
   # ── LARBS suckless desktop (Luke Smith's pinned forks) ─────────────────────
@@ -189,7 +195,7 @@ in
   };
 
   # ── small tools (sources in pkgs/scripts/, shellchecked at build) ─────────
-  rebuild         = sh "rebuild" [ final.nix-output-monitor ] ./scripts/rebuild.sh;
+  rebuild         = sh "rebuild" (with final; [ nix-output-monitor git jq util-linux gawk gnugrep coreutils ]) ./scripts/rebuild.sh;
   audio           = sh "audio" (with final; [ larbs-dmenu pulseaudio jq libnotify procps gawk gnugrep gnused coreutils util-linux pavucontrol ]) ./scripts/audio.sh;
   update-mine     = sh "update-mine" (with final; [ git jq coreutils util-linux gnugrep gawk ]) ./scripts/update-mine.sh;
   apps-menu       = sh "apps" (with final; [ larbs-dmenu gawk coreutils gnused libnotify util-linux ]) ./scripts/apps.sh;
@@ -224,6 +230,11 @@ in
   tidy-downloads  = py "tidy-downloads" ./scripts/tidy-downloads.py;
   browser-sync    = py "browser-sync" ./scripts/browser-sync.py;
   printer-notify  = py "printer-notify" ./scripts/printer-notify.py;
+  debloat         = sh "debloat" (with final; [ gawk gnugrep gnused coreutils findutils util-linux ]) ./scripts/debloat.sh;
+  nixmenu         = sh "nixmenu" (with final; [ larbs-dmenu larbs-st coreutils gnused gnugrep systemd ]) ./scripts/nixmenu.sh;
+
+  # Apps from any git repo, listed in settings.gitApps (see pkgs/gitapps.nix).
+  gitApps = import ./gitapps.nix { inherit final prev tracked fetchPinned; };
   snow-wallpaper  = final.runCommand "snow-wallpaper.png" { nativeBuildInputs = [ final.imagemagick ]; }
     "bash ${./scripts/snow-wallpaper.sh} $out";
 

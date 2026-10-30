@@ -26,7 +26,12 @@ in
     openFirewall = true;
   };
 
-  environment.systemPackages = with pkgs; [
+  my.selfhosted = builtins.listToAttrs (map (u: {
+    name = "Printer: " + builtins.head (builtins.match "https?://([^:/]+).*" u);
+    value = builtins.head (builtins.match "(https?://[^:/]+).*" u);
+  }) printers);
+
+  my.packages = with pkgs; [
     printrun          # pronterface GUI + pronsole: direct jog, temps, G-code
     printer-notify    # desktop ping when a print finishes/fails (watches Moonraker)
     # orca-slicer is in the ee module; it sends prints to Moonraker over LAN

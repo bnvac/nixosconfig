@@ -112,7 +112,14 @@ in
     };
   };
 
-  environment.systemPackages = with pkgs; [
+  my.menu."Neb (AI)" = [
+    { label = "Talk to Neb"; run = "neb-voice"; }
+    { label = "Neb's workspace"; run = "xdotool key super+9; exec neb-space"; }
+  ];
+  my.selfhosted = { "Neb" = "http://127.0.0.1:7000"; }
+    // lib.optionalAttrs isDesktop { "Open-WebUI" = "http://127.0.0.1:8088"; };
+
+  my.packages = with pkgs; [
     neb                                   # neb / neb tui / neb ask / neb chat
     neb-voice neb-space desk              # corner-notification voice, his workspace, desktop actions
     whisper-cpp piper-tts sox alsa-utils  # voice I/O

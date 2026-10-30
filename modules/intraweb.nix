@@ -18,7 +18,15 @@ let
   autostart = s.intrawebAutostart or true;
 in
 {
-  environment.systemPackages = [ pkgs.intraweb ];
+  my.packages = [ pkgs.intraweb ];
+  my.menu."Neighborhood" = [
+    { label = "Open the neighborhood (dashboard)"; run = "http://127.0.0.1:8420"; mode = "url"; }
+    { label = "Surf the neighborhood"; run = "intraweb surf"; mode = "term"; }
+    { label = "Neighborhood (terminal)"; run = "intraweb up --tui"; mode = "tty"; }
+    { label = "My intraweb fingerprint"; run = "intraweb id"; mode = "term"; }
+    { label = "Why can't I see anyone? (doctor)"; run = "intraweb doctor"; mode = "term"; }
+  ];
+  my.selfhosted."intraweb" = "http://127.0.0.1:8420";
 
   systemd.user.services.intraweb = lib.mkIf autostart {
     description = "intraweb — join the neighborhood web on this LAN";

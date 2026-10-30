@@ -64,5 +64,7 @@ in
     "d ${snapshots} 0700 ${s.username} users -"
   ];
 
-  environment.systemPackages = [ launcher pkgs.backoffice-sync ];
+  my.menu."Self-hosted" = [ { label = "Backoffice (parts inventory)"; run = "backoffice"; } ];
+
+  my.packages = [ launcher pkgs.backoffice-sync ];
 }

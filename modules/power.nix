@@ -38,5 +38,5 @@ in
     };
   };
 
-  environment.systemPackages = lib.mkIf isLaptop [ pkgs.powertop ];
+  my.packages = lib.mkIf isLaptop [ pkgs.powertop ];
 }

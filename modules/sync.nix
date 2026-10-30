@@ -90,7 +90,17 @@ in
     serviceConfig = { Type = "oneshot"; ExecStart = "${pkgs.browser-sync}/bin/browser-sync"; };
   };
 
-  environment.systemPackages = [
+  my.menu."Sync & devices" = [
+    { label = "DeviceLink (send files)"; run = "devlink-window"; }
+    { label = "Send my browser tabs to the other machine"; run = "devlink tabs"; }
+    { label = "Share my screen (VNC)"; run = "devlink screen"; mode = "term"; }
+    { label = "View other screen (VNC)"; run = "devlink view"; }
+    { label = "Sync bookmarks"; run = "browser-sync"; mode = "term"; }
+    { label = "Browser passwords → Bitwarden"; run = "browser-sync passwords"; mode = "term"; }
+  ];
+  my.selfhosted = { "DeviceLink" = "http://127.0.0.1:7010"; "Syncthing" = "http://127.0.0.1:8384"; };
+
+  my.packages = [
     pkgs.devlink pkgs.browser-sync
     pkgs.x11vnc pkgs.tigervnc          # `devlink screen` / `devlink view`
     # opens the window (the ui service serves it)

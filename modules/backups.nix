@@ -21,7 +21,7 @@ let
   repo = s.backupRepo or "";
 in
 {
-  environment.systemPackages = [ pkgs.restic pkgs.backup ];
+  my.packages = [ pkgs.restic pkgs.backup ];
   environment.sessionVariables.BACKUP_REPO = repo;   # so `backup …` works in your shell
 
   systemd.user.services.backup = {

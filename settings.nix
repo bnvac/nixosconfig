@@ -17,6 +17,53 @@
   # themselves when there's a new commit that builds. `rebuild` always does it.
   autoUpdateMine = true;
 
+  # ── Speed & space ─────────────────────────────────────────────────────────
+  # Kernel: "zen" (tuned for desktop snappiness), "latest", or "lts".
+  kernel = "zen";
+  # Apps to leave out of EVERY module, by name (`debloat list` shows them;
+  # `debloat remove <name>` edits this line for you). Keep it on one line.
+  removePackages = [ ];
+
+  # Folders made in your home on boot (never deleted). Nested is fine: "projects/work".
+  homeFolders = [ "projects" "notes" "junk" ];
+
+  # ── The menu (Super+Alt+Space) ─────────────────────────────────────────────
+  # Every module adds its own entries. Here you can reorder the categories,
+  # hide entries by label, and add your own. (Or edit ~/.config/nixmenu/menu —
+  # same idea, no rebuild; its header explains the format.)
+  menu = {
+    order = [ ];               # e.g. [ "Self-hosted" "System" ] — listed ones go first
+    hide = [ ];                # e.g. [ "Toggle live snow" ]
+    extra = {
+      # "My stuff" = [
+      #   { label = "Notes";        run = "nvim ~/notes"; mode = "tty"; }
+      #   { label = "Home server";  run = "http://192.168.1.10:9000"; mode = "url"; }
+      #   { label = "Disk usage";   run = "df -h"; mode = "term"; }
+      # ];
+    };
+  };
+  # Web apps you run elsewhere, added to the menu's Self-hosted section
+  # (this machine's own — backoffice, intraweb, Syncthing… — are added by
+  # their modules, and running Docker containers show up by themselves).
+  selfhosted = {
+    # "Jellyfin" = "http://192.168.1.10:8096";
+  };
+
+  # ── Apps from any git repo (`platform` module) ─────────────────────────────
+  # name = { repo = "owner/repo"; type = "…"; } — or url = "https://any.git/server/repo"
+  # for GitLab/Codeberg/self-hosted. update-mine keeps each on its newest
+  # commit (`rebuild` runs it first, plus a daily timer) and only switches to a
+  # commit that builds. Types: rust · go · node · python · make · script ·
+  # docker (runs the repo's compose file). Optional: branch, bin (command
+  # name), url (adds it to Self-hosted), service = true (keep it running),
+  # args, pythonDeps / buildInputs / nativeBuildInputs (nixpkgs names),
+  # subPackages (go), files (script), compose (docker), enable = false.
+  # Point a built-in at your fork the same way: neb = { repo = "you/neb"; };
+  gitApps = {
+    # tldr-pages = { repo = "tldr-pages/tlrc"; type = "rust"; bin = "tldr"; };
+    # uptime     = { repo = "louislam/uptime-kuma"; type = "docker"; url = "http://127.0.0.1:3001"; };
+  };
+
   # Boot. espMountPoint must match hardware-configuration.nix (checked at build).
   espMountPoint = "/boot/efi";
   useGrub = true;            # GRUB = themeable; false = systemd-boot

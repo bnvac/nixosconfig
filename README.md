@@ -18,6 +18,8 @@ pkgs/default.nix      everything built from source (dwm/st/dmenu, Neb,
                       backoffice, devlink, SpiderFoot, GRUB theme, …)
 pkgs/pins.json        which commit of YOUR repos (neb, backoffice, intraweb) to
                       build; `update-mine` keeps them current (pins.local.json)
+pkgs/tracked.nix      which commit every git-built app uses (built-ins + settings.gitApps)
+pkgs/gitapps.nix      how a gitApp of each type is built
 pkgs/devlink/         the DeviceLink app (stdlib-only Python)
 pkgs/scripts/         the small tools (apps, desk, lock, snow, rebuild, backoffice-sync…)
 mods/<name>           an empty marker file = that module is ON
@@ -44,17 +46,18 @@ ESP isn't mounted where `settings.nix` says.
 | module | what |
 |---|---|
 | desktop | dwm/st/dmenu/dwmblocks (LARBS), picom, snowy live wallpaper, lock screen, Thunar + drives, apps menu, Bluetooth GUI |
-| apps | browsers (+ Bitwarden), Discord/Slack, media, Calibre, torrents + Stremio, Onshape |
+| apps | LibreOffice, browsers (+ Bitwarden), Discord/Slack, media, Calibre, torrents + Stremio, Onshape |
 | assistant | Neb (voice assistant, desktop actions, own workspace) + Ollama (Vulkan) / Open-WebUI on the desktop |
 | ai | Claude Code |
 | sync | Syncthing between the machines, DeviceLink, bookmark export/import |
 | ee | KiCad, EDA tools, OrcaSlicer (has Elegoo profiles), FreeCAD |
 | printing | mDNS + printrun for Klipper printers on the LAN |
 | gaming | Steam + Proton-GE, Prism Launcher |
-| privacy | Tor (per-app + system-wide, off until you turn it on), I2P, Bitwarden, nheko, Proton VPN |
+| privacy | Tor (Tor Browser, per-app, system-wide — off until you turn it on), Proton VPN, I2P, Bitwarden, nheko |
 | virt | QEMU/KVM + virt-manager |
 | backoffice | the parts-inventory web app, synced between machines |
 | intraweb | your own local-first neighborhood web on the LAN (no server, no internet) |
+| platform | Docker, Flatpak/Flathub, AppImage, Distrobox, and apps built from any git repo (`gitApps`) |
 | backups | daily restic snapshots of home + config to an external drive |
 | power | laptop battery/thermal tuning (TLP); near no-op on the desktop |
 | secrets | keep passwords/keys out of git with sops-nix — **off by default** |
@@ -72,9 +75,10 @@ mod off gaming      # disable + rebuild (the module stays written, just unbuilt)
 |---|---|
 | `modtui` | TUI: onboarding, modules, settings, AI model (with download bar), update |
 | `rebuild` (`nrs`) | update the channel + your own packages, then `nixos-rebuild switch` with a live progress bar (`--no-update` to skip updating) |
-| `update-mine` | move neb / backoffice / intraweb to their latest GitHub commit (only if it builds); runs daily too. `--status` to just look |
+| `update-mine` | move your git-built apps (neb, backoffice, intraweb + `gitApps`) to their latest commit, only if it builds; runs daily too. `--status` to just look |
+| `debloat` | what's using space, and clean it; `debloat remove <app>` drops an app from every module |
 | `nixup` | `git pull` /etc/nixos + rebuild (`autoUpdate = true` does it weekly) |
-| `nixmenu` | this system's actions, grouped into categories — **Super+Alt+Space** |
+| `nixmenu` | this system's actions by category — **Super+Alt+Space**. Add/hide/reorder in `settings.nix` → `menu`, or `~/.config/nixmenu/menu` (no rebuild) |
 | `mykeys` | your keybind cheat sheet — **Super+Alt+F1** |
 | `apps` | every app, by category — **Super+Alt+a** |
 | `audio` | pick output/mic device (speakers, headset, Bluetooth, HDMI), volume, mute — **Super+Alt+v** |
@@ -83,19 +87,38 @@ mod off gaming      # disable + rebuild (the module stays written, just unbuilt)
 | `lock` | lock screen — **Super+Alt+l** (also on suspend / 10 idle min) |
 | `snow on\|off` | the live falling snow |
 | `thunar` | GUI file manager — **Super+Alt+e** (`lf` is still Super+r) |
-| `dash` | open a self-hosted dashboard — **Super+Alt+d** |
+| `dash` | the menu's Self-hosted section (your web apps + running Docker containers) — **Super+Alt+d** |
 | `neb-voice` | talk to Neb, answer in a corner notification — **Super+Alt+n** |
 | `neb-space` | Neb's workspace (tag 9) + his terminal — **Super+Alt+Shift+n** |
 | `devlink …` | `pin` to pair, `send`, `tabs` (your browser tabs → the other machine), `screen` / `view` |
 | `backoffice-sync` | inventory hand-off between machines (`--status`) |
 | `browser-sync` | export bookmarks to ~/Sync + merge the other machine's back (runs at login too) |
 | `browser-sync passwords` | push each browser's own password export into Bitwarden |
-| `torrun <app>` / `tormode on\|off` | one app / everything through Tor |
+| `torrun <app>` / `tormode on\|off\|status` | one app / everything through Tor (`status` proves it via check.torproject.org) |
+| `protonvpn-app` / `protonvpn` | Proton VPN (app / CLI) |
 | `backoffice` | parts-inventory web app on :8080 |
 | `intraweb` | neighborhood web on the LAN; dashboard on :8420 (runs at login) |
 | `backup` | restic snapshot to the external drive; `backup now`, `backup snapshots`, `backup restore …` |
 
 ## Notes
+
+- **Speed & space**: zen kernel (`settings.kernel`), compressed RAM swap, and
+  automatic de-prioritising of background work keep it snappy; no HTML docs
+  are built, the journal is capped, old generations go after 14 days. Every
+  module installs through one list, so `removePackages = [ "discord" ];` (or
+  `debloat remove discord`) drops an app everywhere.
+- **Your apps from git**: add `name = { repo = "owner/repo"; type = "rust"; };`
+  (or `url = "https://…"` for any git server) under `gitApps` in `settings.nix`.
+  Types: rust, go, node, python, make, script, docker. `update-mine` keeps them
+  on their newest commit and only switches to one that builds. The same works
+  to point neb/backoffice/intraweb at a fork. Forking this whole config? Clone
+  your fork to /etc/nixos and `nixup` pulls from it.
+- **Tor**: `tormode on` waits until Tor has connected and shows the exit IP.
+  While it's on, anything that can't go through Tor — IPv6, QUIC, your LAN,
+  Docker, a VPN — is refused instantly instead of leaking or hanging.
+- **Proton VPN**: open it from the menu (Network & privacy) and sign in once;
+  the login is kept in your keyring, which unlocks when you log in. Turn the
+  VPN off before `tormode on`.
 
 - **Keys**: Super+Enter is the terminal and Super+Space is stock again; everything
   of yours is under Super+Alt (`mykeys` lists it).

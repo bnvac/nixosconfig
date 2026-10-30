@@ -8,14 +8,14 @@
   "backoffice": {
     "owner": "bnvac",
     "repo": "backoffice",
-    "rev": "8ec9c6416cfe8bdbf122eb6525bc62d72dafe0a8",
-    "hash": "sha256-C/6MRfs8rboLsYODuTnKuXUACZnLPdbjTKeVnFD+1zI=",
+    "rev": "fe6e8c8459293b9d7e7ebe58f58b4dd78b2dc056",
+    "hash": "sha256-8YwyXZ5c+ts7G+4qKW+OpTxhqLBbxqSytJqejs8JUGs=",
     "vendorHash": "sha256-GzzJb8jVsck8Gji9/NvPq3b7TazjDq5o5zrZWH7gxjM="
   },
   "intraweb": {
     "owner": "bnvac",
     "repo": "intraweb",
-    "rev": "724cb4924747195c8b9994c45fab3abcc9f8a1de",
-    "hash": "sha256-cx7b1JwcBSFDgagMLb9VKQ6SyWxUyfYgzRtxS+OGcWk="
+    "rev": "296183550b5c22834a96b865f7c6ad9c6c1914eb",
+    "hash": "sha256-yRUxg4ioaVx9aPCxJF9vzBeh3RCWq4/dGRx9vtBoQAo="
   }
 }
