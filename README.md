@@ -76,7 +76,7 @@ mod off gaming      # disable + rebuild (the module stays written, just unbuilt)
 | `modtui` | TUI: onboarding, modules, settings, AI model (with download bar), update |
 | `rebuild` (`nrs`) | update the channel + your own packages, then `nixos-rebuild switch` with a live progress bar (`--no-update` to skip updating) |
 | `update-mine` | move your git-built apps (neb, backoffice, intraweb + `gitApps`) to their latest commit, only if it builds; runs daily too. `--status` to just look |
-| `debloat` | what's using space, and clean it; `debloat remove <app>` drops an app from every module |
+| `debloat` | what's using space, and clean it; `debloat remove <app>` drops an app from every module, or uninstalls a Flatpak by id (`org.gimp.GIMP`) and trims runtimes nothing else uses |
 | `nixup` | `git pull` /etc/nixos + rebuild (`autoUpdate = true` does it weekly) |
 | `nixmenu` | this system's actions by category — **Super+Alt+Space**. Add/hide/reorder in `settings.nix` → `menu`, or `~/.config/nixmenu/menu` (no rebuild) |
 | `mykeys` | your keybind cheat sheet — **Super+Alt+F1** |
