@@ -84,7 +84,7 @@ mod off gaming      # disable + rebuild (the module stays written, just unbuilt)
 | `audio` | pick output/mic device (speakers, headset, Bluetooth, HDMI), volume, mute — **Super+Alt+v** |
 | `drives` | mount / unlock / unmount drives, never automatic — **Super+Alt+m** |
 | `tidy-downloads` | sort ~/Downloads into folders, catch duplicates (`--undo`) |
-| `lock` | lock screen — **Super+Alt+l** (also on suspend / 10 idle min) |
+| `lock` | lock screen: just your username + password — **Super+Alt+l** (also on suspend / 10 idle min) |
 | `snow on\|off` | the live falling snow |
 | `thunar` | GUI file manager — **Super+Alt+e** (`lf` is still Super+r) |
 | `dash` | the menu's Self-hosted section (your web apps + running Docker containers) — **Super+Alt+d** |

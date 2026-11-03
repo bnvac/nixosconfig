@@ -157,10 +157,15 @@ in
   hardware.graphics.enable = true;
   services.blueman.enable = true;            # Bluetooth GUI (Super+Alt+b)
 
-  # Lock screen: `lock` (snowy i3lock-color). xss-lock runs it on every
-  # suspend and when X's idle timer (set above) fires.
-  programs.i3lock = { enable = true; package = pkgs.i3lock-color; };
-  programs.xss-lock = { enable = true; lockerCommand = "${pkgs.lock-screen}/bin/lock"; };
+  # Lock screen: `lock` — username + password on a plain screen (xsecurelock).
+  # xss-lock runs it on every suspend and when X's idle timer (set above)
+  # fires, dimming the screen for a few seconds first so you can cancel by
+  # moving the mouse; -l holds suspend until the screen is really locked.
+  programs.xss-lock = {
+    enable = true;
+    lockerCommand = "${pkgs.lock-screen}/bin/lock";
+    extraOptions = [ "-n" "${pkgs.xsecurelock}/libexec/xsecurelock/dimmer" "-l" ];
+  };
 
   # ── files & drives ─────────────────────────────────────────────────────────
   # Thunar is the GUI file manager; lf (Super+r) stays the terminal one. No

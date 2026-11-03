@@ -204,10 +204,7 @@ in
   backoffice-sync = sh "backoffice-sync" (with final; [ sqlite coreutils util-linux libnotify systemd ]) ./scripts/backoffice-sync.sh;
   desk = sh "desk" (with final; [ final.apps-menu final.lock-screen xdotool xprop jq gawk coreutils gnused
                                   procps wireplumber playerctl brightnessctl libnotify maim util-linux ]) ./scripts/desk.sh;
-  lock-screen = final.writeShellApplication {
-    name = "lock"; runtimeInputs = with final; [ i3lock-color file coreutils ];
-    text = "LOCK_IMAGE=${final.snow-wallpaper}\n" + builtins.readFile ./scripts/lock.sh;
-  };
+  lock-screen = sh "lock" [ final.xsecurelock ] ./scripts/lock.sh;
   backup          = sh "backup" (with final; [ restic coreutils util-linux libnotify ]) ./scripts/backup.sh;
   # fastfetch, but the logo swaps to match the git repo you're standing in.
   # Drop a <reponame>.txt in pkgs/fastfetch-logos/ to add one; default.txt
