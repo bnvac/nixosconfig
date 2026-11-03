@@ -1,8 +1,15 @@
-# samadams — modular NixOS
+# Hearth
 
-A LARBS-style dwm desktop plus an electronics / 3D-printing / gaming / AI
-workstation, split into toggleable modules. One config for two machines (a
-desktop with an RX 6750 XT, and a laptop) — `settings.nix` says which is which.
+**A private Linux for engineers**, built on NixOS: local AI on your own GPU,
+privacy by default, and the electronics, 3D-printing and dev tools built in.
+Every feature is a module you switch on with one command. One config runs two
+machines (a desktop with an RX 6750 XT and a laptop); `settings.nix` says which
+is which.
+
+```sh
+mod list          # what's on and off
+mod on gaming     # switch a module on and rebuild
+```
 
 ## Layout
 
@@ -159,7 +166,7 @@ mod off gaming      # disable + rebuild (the module stays written, just unbuilt)
   you get a desktop notification when a print finishes or fails.
 - **Drives**: nothing mounts by itself. `drives`, or click the drive in Thunar's
   sidebar — both use udisks2 as you (no sudo), mount under
-  `/run/media/samadams/<label>`, and handle LUKS. Phones show up in Thunar.
+  `/run/media/<your user>/<label>`, and handle LUKS. Phones show up in Thunar.
 - **Top bar**: clock + net/volume/battery — `pkgs/default.nix` → `larbs-dwmblocks`.
 - **Terminal transparency**: `termOpacity` in settings; fullscreen is always opaque.
 - **Minecraft**: Prism Launcher; Feather/Fabric install into it from Modrinth.
