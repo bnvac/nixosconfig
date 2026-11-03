@@ -1,7 +1,8 @@
 # snow [on|off|toggle] — the live falling snow over the wallpaper (xsnow).
 # It snows *behind* your windows (dwm keeps its window at the very bottom and
 # never tiles it), so it shows on empty space only. Just flakes: no Santa,
-# trees, moon, stars, aurora or birds. On at login unless settings.nix has
+# trees, moon, stars, aurora or birds, and it never piles up anywhere (not
+# on the bottom of the screen, not on windows). On at login unless settings.nix has
 # liveSnow = false.
 # (Match the command line, not the process name: Nix wraps the binary, so the
 # process is really called .xsnow-wrapped.)
@@ -10,7 +11,7 @@ running() { pgrep -f "$pattern" >/dev/null; }
 start() {
   running && return 0
   setsid -f xsnow -nomenu -noconfig -nosanta -notrees -nometeors -moon 0 -stars 0 -aurora 0 \
-    -showbirds 0 -nowind -snowflakes 70 -snowsize 7 -nokeepsnowonwindows >/dev/null 2>&1
+    -showbirds 0 -nowind -snowflakes 70 -snowsize 7 -nokeepsnow >/dev/null 2>&1
 }
 stop() {                      # xsnow can ignore SIGTERM; give it 2 s, then make sure
   pkill -f "$pattern" || return 0
