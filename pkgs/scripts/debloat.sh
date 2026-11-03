@@ -6,11 +6,17 @@
 #                         Docker images and Flatpak runtimes
 #   debloat list          the app names you can remove
 #   debloat remove NAME…  stop installing these, in EVERY module (settings.nix →
-#                         removePackages), then `rebuild --no-update`
+#                         removePackages), then `rebuild --no-update`. A Flatpak
+#                         app id (org.gimp.GIMP) is uninstalled instead, along
+#                         with any runtime nothing else needs; its data is kept
 #   debloat keep NAME…    undo a remove
 #
 # Removing an app also drops whatever it alone depended on at the next
 # `debloat clean`. Nothing here deletes your own files.
+#
+# Flatpak keeps runtimes (GNOME, KDE, freedesktop, GL drivers) that apps share,
+# and leaves them behind when the last app using them goes. Apps install
+# system-wide or per user, so both scopes are trimmed.
 
 dir=${NIXOS_DIR:-/etc/nixos}
 settings="$dir/settings.nix"
@@ -41,6 +47,18 @@ report() {
   if have docker && systemctl is-active --quiet docker.service 2>/dev/null; then
     echo "  docker:"; docker system df 2>/dev/null | sed 's/^/    /'
   fi
+  if have flatpak; then
+    echo
+    echo "── flatpak ──────────────────────────────────────────"
+    local apps runtimes
+    apps=$(flatpak list --app --columns=application 2>/dev/null | grep -c .)
+    runtimes=$(flatpak list --runtime --columns=application 2>/dev/null | grep -c .)
+    echo "  $apps apps, $runtimes runtimes and extensions"
+    for d in /var/lib/flatpak "$HOME/.local/share/flatpak"; do
+      [ -d "$d" ] && echo "  $(du -sh "$d" 2>/dev/null | cut -f1)  $d"
+    done
+    [ -d "$HOME/.var/app" ] && echo "  $(du -sh "$HOME/.var/app" 2>/dev/null | cut -f1)  ~/.var/app (app data and caches)"
+  fi
   echo
   echo "Apps you can drop everywhere: \`debloat list\`, then \`debloat remove <name>\`."
 }
@@ -66,13 +84,29 @@ clean() {
     docker builder prune -af >/dev/null 2>&1 || true
   fi
   if have flatpak; then
-    echo ":: unused Flatpak runtimes …"
-    flatpak uninstall --unused -y >/dev/null 2>&1 || true
+    trim_flatpak
+    echo ":: Flatpak app caches (each app re-creates its own) …"
+    for c in "$HOME"/.var/app/*/cache; do
+      [ -d "$c" ] && rm -rf "${c:?}"/*
+    done
   fi
   # The boot menu still lists the versions just deleted — refresh it.
   sudo /run/current-system/bin/switch-to-configuration boot >/dev/null 2>&1 || true
   after=$(df -B1 --output=avail / | tail -n 1)
   echo "Freed $(human "$(( after > before ? after - before : 0 ))")."
+}
+
+# Runtimes and extensions no installed app uses any more, in both scopes.
+# --unused never touches a runtime an app still needs.
+trim_flatpak() {
+  echo ":: unused Flatpak runtimes and extensions …"
+  flatpak uninstall --user --unused -y --noninteractive 2>/dev/null | grep -E '^ *[0-9]+\.' | sed 's/^ */   /' || true
+  sudo flatpak uninstall --system --unused -y --noninteractive 2>/dev/null | grep -E '^ *[0-9]+\.' | sed 's/^ */   /' || true
+}
+
+# Is NAME an installed Flatpak app id, in either scope?
+is_flatpak_app() {
+  have flatpak && flatpak list --app --columns=application 2>/dev/null | grep -qxF "$1"
 }
 
 # The removePackages = [ … ]; line in settings.nix, as one name per line.
@@ -101,14 +135,30 @@ case "${1:-}" in
   list)
     echo "Installed by your modules (\`debloat remove <name>\` drops one everywhere):"
     sort -u /etc/debloat/packages 2>/dev/null | column -c "${COLUMNS:-100}"
+    if have flatpak && flatpak list --app --columns=application 2>/dev/null | grep -q .; then
+      echo; echo "Flatpak apps (\`debloat remove <id>\` uninstalls one and trims its runtimes):"
+      flatpak list --app --columns=application,size 2>/dev/null | sed 's/^/  /'
+    fi
     r=$(current)
     if [ -n "$r" ]; then echo; echo "Already removed:"; while read -r x; do echo "  $x"; done <<<"$r"; fi ;;
   remove)
     shift; [ "$#" -gt 0 ] || { echo "usage: debloat remove NAME…"; exit 2; }
+    nix_names=()
     for n in "$@"; do
+      if is_flatpak_app "$n"; then
+        echo ":: uninstalling Flatpak app $n (its data in ~/.var/app/$n is kept) …"
+        flatpak uninstall -y --noninteractive "$n" >/dev/null 2>&1 \
+          || sudo flatpak uninstall --system -y --noninteractive "$n" >/dev/null 2>&1 \
+          || echo "   could not uninstall $n; try: flatpak uninstall $n"
+        flatpak_removed=1
+        continue
+      fi
       [ -r /etc/debloat/packages ] && ! grep -qx "$n" /etc/debloat/packages && echo "note: '$n' isn't something your modules install (see: debloat list)"
+      nix_names+=("$n")
     done
-    { current; printf '%s\n' "$@"; } | setlist ;;
+    [ -n "${flatpak_removed:-}" ] && trim_flatpak
+    [ "${#nix_names[@]}" -gt 0 ] && { current; printf '%s\n' "${nix_names[@]}"; } | setlist
+    true ;;
   keep)
     shift; [ "$#" -gt 0 ] || { echo "usage: debloat keep NAME…"; exit 2; }
     { current | grep -vxF -f <(printf '%s\n' "$@") || true; } | setlist ;;
