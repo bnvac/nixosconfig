@@ -19,7 +19,7 @@ let
   # my.menu + settings.nix → menu. pkgs/scripts/nixmenu.sh reads it (plus
   # ~/.config/nixmenu/menu) and shows it as category → action.
   menuCfg = s.menu or { };
-  defaultOrder = [ "System" "Apps & files" "Self-hosted" "Neb (AI)" "Sync & devices"
+  defaultOrder = [ "System" "Apps & files" "Games" "Self-hosted" "Neb (AI)" "Sync & devices"
                    "Containers & apps" "Neighborhood" "Network & privacy" ];
   allMenu = config.my.menu;
   catOrder = lib.unique (lib.filter (c: (allMenu.${c} or [ ]) != [ ])
@@ -95,6 +95,7 @@ let
       Super + Alt + d            self-hosted apps (menu section)
       Super + Alt + b            Bluetooth
       Super + Alt + v            audio: output/mic device, volume, mute
+      Super + Alt + w            wallpapers: pictures + Wallpaper Engine (live)
       Super + Alt + t            Tor Browser
       Super + Alt + Return       tmux session
       Super + Alt + i            system info (fastfetch)
@@ -161,6 +162,16 @@ in
   # xss-lock runs it on every suspend and when X's idle timer (set above)
   # fires, dimming the screen for a few seconds first so you can cancel by
   # moving the mouse; -l holds suspend until the screen is really locked.
+  # Live wallpaper: whatever you picked in the Wallpaper Engine tab of
+  # `wallpapers` (Super+Alt+w). Nothing picked → this does nothing.
+  systemd.user.services.wallpaper-live = {
+    description = "Live wallpaper (Wallpaper Engine, via linux-wallpaperengine)";
+    wantedBy = [ "graphical-session.target" ];
+    partOf = [ "graphical-session.target" ];
+    after = [ "graphical-session.target" ];
+    serviceConfig = { ExecStart = "${pkgs.wallpaper-live}/bin/wallpaper-live"; Restart = "on-failure"; RestartSec = 10; };
+  };
+
   programs.xss-lock = {
     enable = true;
     lockerCommand = "${pkgs.lock-screen}/bin/lock";
@@ -207,6 +218,7 @@ in
       "System" = [
         { label = "My keybinds"; run = "mykeys"; mode = "term"; }
         { label = "Lock screen"; run = "lock"; }
+        { label = "Wallpapers (pictures + Wallpaper Engine)"; run = "wallpapers"; }
         { label = "Toggle live snow"; run = "snow toggle"; }
         { label = "Suspend"; run = "zzz"; }
       ];
@@ -227,6 +239,11 @@ in
   ];
 
   my.packages = [ dash drives pkgs.nixmenu mykeys ] ++ dashItems ++ (with pkgs; [
+    wallpapers wallpaper-live
+    (makeDesktopItem {
+      name = "wallpapers"; desktopName = "Wallpapers"; exec = "wallpapers";
+      icon = "preferences-desktop-wallpaper"; categories = [ "Settings" "DesktopSettings" ];
+    })
     apps-menu tidy-downloads snow lock-screen audio
     larbs-st larbs-dmenu larbs-dwmblocks larbs-scripts
     xinit xrdb xprop xwininfo xset setxkbmap xbacklight xrandr slop

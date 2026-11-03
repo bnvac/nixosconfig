@@ -52,7 +52,7 @@ ESP isn't mounted where `settings.nix` says.
 | sync | Syncthing between the machines, DeviceLink, bookmark export/import |
 | ee | KiCad, EDA tools, OrcaSlicer (has Elegoo profiles), FreeCAD |
 | printing | mDNS + printrun for Klipper printers on the LAN |
-| gaming | Steam + Proton-GE, Prism Launcher |
+| gaming | native Steam with Steam Play on for every game, Proton-GE, gamescope/gamemode, Prism Launcher |
 | privacy | Tor (Tor Browser, per-app, system-wide — off until you turn it on), Proton VPN, I2P, Bitwarden, nheko |
 | virt | QEMU/KVM + virt-manager |
 | backoffice | the parts-inventory web app, synced between machines |
@@ -85,7 +85,9 @@ mod off gaming      # disable + rebuild (the module stays written, just unbuilt)
 | `drives` | mount / unlock / unmount drives, never automatic — **Super+Alt+m** |
 | `tidy-downloads` | sort ~/Downloads into folders, catch duplicates (`--undo`) |
 | `lock` | lock screen: just your username + password — **Super+Alt+l** (also on suspend / 10 idle min) |
-| `snow on\|off` | the live falling snow |
+| `wallpapers` | pick a wallpaper — your pictures, or live **Wallpaper Engine** ones from the Steam Workshop — **Super+Alt+w** |
+| `snow on\|off` | the live falling snow (never piles up) |
+| `steam-setup` | turns on Steam Play for all games (runs at login; Steam must be closed) |
 | `thunar` | GUI file manager — **Super+Alt+e** (`lf` is still Super+r) |
 | `dash` | the menu's Self-hosted section (your web apps + running Docker containers) — **Super+Alt+d** |
 | `neb-voice` | talk to Neb, answer in a corner notification — **Super+Alt+n** |
@@ -161,5 +163,10 @@ mod off gaming      # disable + rebuild (the module stays written, just unbuilt)
 - **Top bar**: clock + net/volume/battery — `pkgs/default.nix` → `larbs-dwmblocks`.
 - **Terminal transparency**: `termOpacity` in settings; fullscreen is always opaque.
 - **Minecraft**: Prism Launcher; Feather/Fabric install into it from Modrinth.
+- **Wallpaper Engine**: own it on Steam and install it (Steam Play is already
+  on, so Steam will install the Windows app — you never run it), subscribe to
+  wallpapers in the Workshop, then pick them in `wallpapers` → Wallpaper Engine.
+  They play on every screen, muted, at 30 fps, and pause while a game is
+  fullscreen. Picking a picture switches the live one off.
 - **Wallpaper**: a snowy night with live snow by default; `setbg /path/to/image.png`
   to change it, `snow off` (or `liveSnow = false`) to stop the snow.

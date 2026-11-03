@@ -75,6 +75,7 @@ in
       { MODKEY|Mod1Mask,           XK_d,      spawn, {.v = (const char*[]){ "dash", NULL } } },
       { MODKEY|Mod1Mask,           XK_b,      spawn, {.v = (const char*[]){ "blueman-manager", NULL } } },
       { MODKEY|Mod1Mask,           XK_v,      spawn, {.v = (const char*[]){ "audio", NULL } } },
+      { MODKEY|Mod1Mask,           XK_w,      spawn, {.v = (const char*[]){ "wallpapers", NULL } } },
       { MODKEY|Mod1Mask,           XK_t,      spawn, {.v = (const char*[]){ "tor-browser", NULL } } },
       { MODKEY|Mod1Mask,           XK_Return, spawn, {.v = (const char*[]){ TERMINAL, "-e", "tmux", "new-session", "-A", "-s", "main", NULL } } },
       { MODKEY|Mod1Mask,           XK_i,      spawn, SHCMD(TERMINAL " -e sh -c 'fastfetch; read -r _'") },
@@ -212,6 +213,27 @@ in
   desk = sh "desk" (with final; [ final.apps-menu final.lock-screen xdotool xprop jq gawk coreutils gnused
                                   procps wireplumber playerctl brightnessctl libnotify maim util-linux ]) ./scripts/desk.sh;
   lock-screen = sh "lock" [ final.xsecurelock ] ./scripts/lock.sh;
+  wallpaper-live  = sh "wallpaper-live" (with final; [ linux-wallpaperengine xrandr gawk coreutils ]) ./scripts/wallpaper-live.sh;
+  steam-setup     = py "steam-setup" ./scripts/steam-setup.py;
+  # The wallpaper picker (GTK): pictures + live Wallpaper Engine wallpapers.
+  wallpapers =
+    let pyGtk = final.python3.withPackages (ps: [ ps.pygobject3 ]); in
+    prev.stdenv.mkDerivation {
+      pname = "wallpapers"; version = "1.0";
+      dontUnpack = true;
+      nativeBuildInputs = [ final.wrapGAppsHook3 final.gobject-introspection ];
+      buildInputs = [ final.gtk3 pyGtk ];
+      installPhase = ''
+        mkdir -p $out/bin
+        { echo "#!${pyGtk}/bin/python3"; cat ${./scripts/wallpapers.py}; } > $out/bin/wallpapers
+        chmod +x $out/bin/wallpapers
+      '';
+      preFixup = ''
+        gappsWrapperArgs+=(--suffix PATH : ${prev.lib.makeBinPath (with final; [ procps xdg-utils systemd ])}
+                           --set-default WALLPAPER_BUILTIN ${final.snow-wallpaper})
+      '';
+      meta.mainProgram = "wallpapers";
+    };
   backup          = sh "backup" (with final; [ restic coreutils util-linux libnotify ]) ./scripts/backup.sh;
   # fastfetch, but the logo swaps to match the git repo you're standing in.
   # Drop a <reponame>.txt in pkgs/fastfetch-logos/ to add one; default.txt

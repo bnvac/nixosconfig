@@ -104,6 +104,12 @@ let
       and cleans (old generations, caches, logs, unused Docker images);
       `debloat remove|keep <name>` edits that list. Kernel is zen by default
       (settings.kernel); zram, systemd-oomd and ananicy keep it responsive.
+    - `wallpapers` (Super+Alt+w): pictures from ~/Pictures/wallpapers (setbg) or
+      live Wallpaper Engine wallpapers from the Steam Workshop, played by the
+      wallpaper-live user service (linux-wallpaperengine; choice saved in
+      ~/.config/wallpapers/live). `lock` is xsecurelock: username + password.
+      Steam is native; `steam-setup` (runs at login) turns on Steam Play for
+      all titles so Windows games and Wallpaper Engine install.
     - The `platform` module: Docker (socket-activated, weekly prune), Flatpak +
       Flathub, AppImage, Distrobox, and the gitApps builds/services.
     - This machine's own functions live under **Super+Alt** (a namespace LARBS
