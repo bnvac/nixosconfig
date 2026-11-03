@@ -112,6 +112,13 @@ in
     buildInputs = with prev; [ libx11 libxinerama libxft fontconfig freetype libxrender ];
     makeFlags = [ "PREFIX=$(out)" "CC=cc" "FREETYPEINC=${prev.freetype.dev}/include/freetype2"
       "X11INC=${prev.libx11.dev}/include" "X11LIB=${prev.libx11}/lib" ];
+    # Backspace with nothing typed exits with status 3 — but only when the
+    # caller sets DMENU_BACK=1 (nixmenu uses it as "go back"); everywhere
+    # else dmenu behaves exactly as before.
+    postPatch = ''
+      substituteInPlace dmenu.c --replace-fail $'\tcase XK_BackSpace:\n\t\tif (cursor == 0)\n\t\t\treturn;' \
+        $'\tcase XK_BackSpace:\n\t\tif (cursor == 0) {\n\t\t\tif (text[0] == \'\\0\' && getenv("DMENU_BACK")) {\n\t\t\t\tcleanup();\n\t\t\t\texit(3);\n\t\t\t}\n\t\t\treturn;\n\t\t}'
+    '';
     meta.mainProgram = "dmenu";
   };
 

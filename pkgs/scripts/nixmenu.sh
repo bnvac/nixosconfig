@@ -1,5 +1,6 @@
 # nixmenu — this system's own actions, in two short levels: pick a category,
-# then an action (Super+Alt+Space). `nixmenu "Self-hosted"` jumps straight
+# then an action (Super+Alt+Space). Backspace (with nothing typed) goes back
+# to the main list; Escape closes. `nixmenu "Self-hosted"` jumps straight
 # into one category.
 #
 # Entries come from:
@@ -106,30 +107,41 @@ for c in "${order[@]}" "${cats[@]}"; do
   done
 done
 
-menu() { dmenu -i -l 20 -p "$1"; }
+# DMENU_BACK=1: Backspace with nothing typed makes dmenu exit with status 3
+# (this config's dmenu patch) — used as "go back to the main list".
+menu() { DMENU_BACK=1 dmenu -i -l 20 -p "$1"; }
 
-if [ -n "${1:-}" ]; then
-  cat=$1
-else
-  cat=$(printf '%s\n' "${catlist[@]}" | menu "nix:") || exit 0
-fi
+cat=${1:-}
+while :; do
+  if [ -z "$cat" ]; then
+    rc=0
+    cat=$(printf '%s\n' "${catlist[@]}" | menu "nix:") || rc=$?
+    if [ "$rc" -eq 3 ]; then cat=""; continue; fi      # Backspace at the top: stay here
+    [ "$rc" -eq 0 ] || exit 0                           # Escape: close
+  fi
 
-idx=(); shown=()
-for i in "${!cats[@]}"; do
-  if [ "${cats[$i]}" = "$cat" ]; then idx+=("$i"); shown+=("${labels[$i]}"); fi
-done
-[ "${#idx[@]}" -gt 0 ] || exit 0
-sel=$(printf '%s\n' "${shown[@]}" | menu "$cat:") || exit 0
+  idx=(); shown=()
+  for i in "${!cats[@]}"; do
+    if [ "${cats[$i]}" = "$cat" ]; then idx+=("$i"); shown+=("${labels[$i]}"); fi
+  done
+  if [ "${#idx[@]}" -eq 0 ]; then cat=""; continue; fi  # typed something that isn't a category
 
-for i in "${idx[@]}"; do
-  [ "${labels[$i]}" = "$sel" ] || continue
-  run=${runs[$i]}
-  case "${modes[$i]}" in
-    term) exec st -e sh -c "$run; echo; printf '[enter] '; read -r _" ;;
-    tty)  exec st -e sh -c "$run" ;;
-    url)
-      if have chromium; then exec chromium --app="$run"; fi
-      exec xdg-open "$run" ;;
-    *)    exec sh -c "$run" ;;
-  esac
+  rc=0
+  sel=$(printf '%s\n' "${shown[@]}" | menu "$cat:") || rc=$?
+  if [ "$rc" -eq 3 ]; then cat=""; continue; fi         # Backspace: back to the main list
+  [ "$rc" -eq 0 ] || exit 0
+
+  for i in "${idx[@]}"; do
+    [ "${labels[$i]}" = "$sel" ] || continue
+    run=${runs[$i]}
+    case "${modes[$i]}" in
+      term) exec st -e sh -c "$run; echo; printf '[enter] '; read -r _" ;;
+      tty)  exec st -e sh -c "$run" ;;
+      url)
+        if have chromium; then exec chromium --app="$run"; fi
+        exec xdg-open "$run" ;;
+      *)    exec sh -c "$run" ;;
+    esac
+  done
+  # Typed something that isn't an entry: show the same section again.
 done

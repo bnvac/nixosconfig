@@ -78,7 +78,7 @@ mod off gaming      # disable + rebuild (the module stays written, just unbuilt)
 | `update-mine` | move your git-built apps (neb, backoffice, intraweb + `gitApps`) to their latest commit, only if it builds; runs daily too. `--status` to just look |
 | `debloat` | what's using space, and clean it; `debloat remove <app>` drops an app from every module |
 | `nixup` | `git pull` /etc/nixos + rebuild (`autoUpdate = true` does it weekly) |
-| `nixmenu` | this system's actions by category — **Super+Alt+Space**. Add/hide/reorder in `settings.nix` → `menu`, or `~/.config/nixmenu/menu` (no rebuild) |
+| `nixmenu` | this system's actions by category — **Super+Alt+Space** (Backspace = back, Esc = close). Add/hide/reorder in `settings.nix` → `menu`, or `~/.config/nixmenu/menu` (no rebuild) |
 | `mykeys` | your keybind cheat sheet — **Super+Alt+F1** |
 | `apps` | every app, by category — **Super+Alt+a** |
 | `audio` | pick output/mic device (speakers, headset, Bluetooth, HDMI), volume, mute — **Super+Alt+v** |
