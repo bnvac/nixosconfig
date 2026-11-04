@@ -16,6 +16,10 @@
   # Your own packages (neb, backoffice, intraweb) check GitHub daily and update
   # themselves when there's a new commit that builds. `rebuild` always does it.
   autoUpdateMine = true;
+  # New NixOS packages (the channel) are fetched and pre-built in the background
+  # at idle priority on this schedule, so `rebuild` stays quick: "weekly",
+  # "daily", or "never" (then only `rebuild --upgrade` moves you forward).
+  channelUpdates = "weekly";
 
   # ── Speed & space ─────────────────────────────────────────────────────────
   # Kernel: "zen" (tuned for desktop snappiness), "latest", or "lts".

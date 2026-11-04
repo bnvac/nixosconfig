@@ -81,7 +81,7 @@ mod off gaming      # disable + rebuild (the module stays written, just unbuilt)
 | command | what |
 |---|---|
 | `modtui` | TUI: onboarding, modules, settings, AI model (with download bar), update |
-| `rebuild` (`nrs`) | update the channel + your own packages, then `nixos-rebuild switch` with a live progress bar (`--no-update` to skip updating) |
+| `rebuild` (`nrs`) | apply your config + update your own git apps (seconds when nothing is new), live progress bar. `--upgrade` also moves to the newest NixOS packages — normally pre-built for you weekly in the background; `--no-update` just applies config |
 | `update-mine` | move your git-built apps (neb, backoffice, intraweb + `gitApps`) to their latest commit, only if it builds; runs daily too. `--status` to just look |
 | `debloat` | what's using space, and clean it; `debloat remove <app>` drops an app from every module, or uninstalls a Flatpak by id (`org.gimp.GIMP`) and trims runtimes nothing else uses |
 | `nixup` | `git pull` /etc/nixos + rebuild (`autoUpdate = true` does it weekly) |

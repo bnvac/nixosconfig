@@ -1,20 +1,24 @@
-# rebuild [switch|boot|test|build …] [--no-update] [extra nixos-rebuild flags]
-# nixos-rebuild with a live progress display (nix-output-monitor): what's
-# downloading/building, how many are left, and a bar. Not on a terminal
-# (scripts, timers) it prints plainly.
+# rebuild [switch|boot|test|build …] [--upgrade] [--no-update] [extra nixos-rebuild flags]
+# nixos-rebuild with a live progress display (nix-output-monitor). Not on a
+# terminal (scripts, timers) it prints plainly.
 #
-# Before building it updates everything, so a manual rebuild is also an update:
-#   - the NixOS channel, i.e. every regular package   (nix-channel --update)
-#   - your own packages / git apps                     (update-mine)
-# --no-update skips both, for a quick rebuild after a config change (`mod on|off`
-# and modtui's "apply" use it). After switching, services that a module just
-# added are started right away instead of at your next login.
+# Kept fast on purpose:
+#   rebuild              your config + your own git apps (update-mine — a few
+#                        seconds when nothing's new). Stays on the NixOS
+#                        package set you have, so nothing else rebuilds.
+#   rebuild --upgrade    also move to the newest NixOS packages (the channel).
+#                        Rarely needed by hand: a weekly background job
+#                        downloads and pre-builds the new set at idle priority,
+#                        so the next plain `rebuild` switches to it in seconds.
+#   rebuild --no-update  just apply config changes (mod on/off uses this)
+# After switching, services that a module just added are started right away.
 dir=${NIXOS_DIR:-/etc/nixos}
-update=true
+mine=true; channel=false
 args=()
 for a in "$@"; do
   case "$a" in
-    --no-update) update=false ;;
+    --no-update) mine=false ;;
+    --upgrade) channel=true ;;
     *) args+=("$a") ;;
   esac
 done
@@ -22,10 +26,12 @@ set -- "${args[@]}"
 action=${1:-switch}
 [ "$#" -gt 0 ] && shift
 
-if $update; then
+if $channel; then
   echo ":: updating the NixOS channel …"
   sudo nix-channel --update || echo "rebuild: channel update failed — building with the current one"
-  echo ":: updating your packages …"
+fi
+if $mine; then
+  echo ":: checking your git apps …"
   # Always the repo's copy, so a freshly pulled updater is the one that runs.
   if [ -r "$dir/pkgs/scripts/update-mine.sh" ]; then
     sudo env "PATH=$PATH" bash "$dir/pkgs/scripts/update-mine.sh" \

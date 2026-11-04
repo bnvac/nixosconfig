@@ -36,7 +36,17 @@ if [ "$mode" != --status ]; then
   flock -n 9 || { echo "update-mine: already running"; exit 0; }
 fi
 
-nixbuild() { nix-build '<nixpkgs/nixos>' -I nixos-config="$dir/configuration.nix" --no-out-link "$@"; }
+# Build one attribute of this config's package set. Evaluates nixpkgs + this
+# overlay only (not all of NixOS): the same derivations the real rebuild
+# uses — so its test builds are reused — in a fraction of the time.
+nixbuild() {
+  nix-build --no-out-link --argstr attr "$1" -E '{ attr }: let
+      p = import <nixpkgs> {
+        overlays = [ (import '"$dir"'/pkgs) ];
+        config = { allowUnfree = true; allowInsecurePredicate = _: true; };
+      };
+    in p.lib.getAttrFromPath (p.lib.splitString "." attr) p'
+}
 readtracked() { nix-instantiate --eval --strict --json "$dir/pkgs/tracked.nix"; }
 
 if ! tracked=$(readtracked 2>&1); then
@@ -67,7 +77,7 @@ fi
 # Build ATTR with a placeholder hash and print the real hash Nix reports.
 got() {
   local out h
-  if out=$(nixbuild -A "$1" 2>&1); then return 1; fi
+  if out=$(nixbuild "$1" 2>&1); then return 1; fi
   h=$(grep -oE 'got: +sha256-[A-Za-z0-9+/=]+' <<<"$out" | tail -n 1 | awk '{print $2}') || true
   if [ -z "$h" ]; then tail -n 8 <<<"$out" >&2; return 1; fi
   echo "$h"
@@ -89,12 +99,25 @@ hashattr() {
   esac
 }
 
+# Ask every repo for its latest commit at once (one slow network round each,
+# in parallel instead of one after another).
+heads=$(mktemp -d)
+trap 'rm -rf "$heads"' EXIT
+for n in $(jq -r 'keys[]' <<<"$tracked"); do
+  (
+    url=$(jq -r --arg n "$n" '.[$n].url' <<<"$tracked")
+    branch=$(jq -r --arg n "$n" '.[$n].branch // empty' <<<"$tracked")
+    ref=HEAD; [ -n "$branch" ] && ref="refs/heads/$branch"
+    git ls-remote "$url" "$ref" 2>/dev/null | head -n 1 | cut -f1 >"$heads/$n" || true
+  ) &
+done
+wait
+
 for n in $(jq -r 'keys[]' <<<"$tracked"); do
   t=$(jq -c --arg n "$n" '.[$n]' <<<"$tracked")
   url=$(jq -r .url <<<"$t"); branch=$(jq -r '.branch // empty' <<<"$t")
   attr=$(jq -r .attr <<<"$t"); rev=$(jq -r '.pin.rev // empty' <<<"$t")
-  ref=HEAD; [ -n "$branch" ] && ref="refs/heads/$branch"
-  latest=$(git ls-remote "$url" "$ref" 2>/dev/null | head -n 1 | cut -f1) || latest=""
+  latest=$(cat "$heads/$n" 2>/dev/null) || latest=""
   now=${rev:0:7}; now=${now:-none}
   if [ -z "$latest" ]; then echo "  $n: couldn't reach $url${branch:+ ($branch)} — keeping $now"; continue; fi
   if [ "$latest" = "$rev" ]; then echo "  $n: up to date ($now)"; continue; fi
@@ -108,7 +131,7 @@ for n in $(jq -r 'keys[]' <<<"$tracked"); do
 
   ok=true
   for h in hash $(jq -r '.hashes[]' <<<"$t"); do
-    if ! v=$(got "pkgs.$attr.$(hashattr "$h")"); then
+    if ! v=$(got "$attr.$(hashattr "$h")"); then
       restore "$n" "$prev" "couldn't fetch its $( [ "$h" = hash ] && echo source || echo dependencies )"
       ok=false; break
     fi
@@ -116,7 +139,7 @@ for n in $(jq -r 'keys[]' <<<"$tracked"); do
   done
   $ok || continue
 
-  if ! log=$(nixbuild -A "pkgs.$attr" 2>&1); then
+  if ! log=$(nixbuild "$attr" 2>&1); then
     tail -n 15 <<<"$log"
     restore "$n" "$prev" "the new commit doesn't build (log above)"
     continue

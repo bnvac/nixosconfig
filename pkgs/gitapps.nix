@@ -31,6 +31,8 @@ let
         rust = prev.rustPlatform.buildRustPackage (common // {
           cargoLock.lockFile = "${src}/Cargo.lock";
           doCheck = false;
+          env.CARGO_PROFILE_RELEASE_LTO = "false";            # faster updates
+          env.CARGO_PROFILE_RELEASE_CODEGEN_UNITS = "16";
         });
         go = prev.buildGoModule (common // {
           inherit (t.pin) vendorHash;

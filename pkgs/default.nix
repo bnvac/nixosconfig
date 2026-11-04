@@ -309,6 +309,11 @@ in
     inherit src;                     # pin in pins.json, kept current by update-mine
     cargoLock.lockFile = "${src}/Cargo.lock";
     doCheck = false;                 # its tests want live sockets / a LAN
+    # Its release profile asks for LTO + one codegen unit (smallest binary,
+    # slowest compile). Updates matter more here: ~40% faster to build, the
+    # binary is a little bigger.
+    env.CARGO_PROFILE_RELEASE_LTO = "false";
+    env.CARGO_PROFILE_RELEASE_CODEGEN_UNITS = "16";
     meta.mainProgram = "intraweb";
   };
 

@@ -86,9 +86,13 @@ let
     - `setbg <image>` — set the wallpaper.
     - `rebuild` (alias `nrs`) — `nixos-rebuild switch` with a live progress display.
     - `nixup` — pull the config repo at /etc/nixos and rebuild (no re-cloning).
-    - Every `rebuild` first updates the NixOS channel (all regular packages)
-      and the user's own packages (`update-mine`); `rebuild --no-update` skips
-      that (mod on/off use it). Git-built apps — the built-ins neb, backoffice,
+    - `rebuild` applies the config and updates the user's own git apps
+      (`update-mine`); it stays on the current NixOS package set so it's quick.
+      `rebuild --upgrade` moves to the newest NixOS packages; a weekly
+      idle-priority job (nixos-prebuild, settings.channelUpdates) fetches and
+      pre-builds them so the next rebuild switches in seconds, and rolls the
+      channel back if they don't build. `rebuild --no-update` only applies
+      config (mod on/off use it). Git-built apps — the built-ins neb, backoffice,
       intraweb (pkgs/pins.json) plus anything in settings.gitApps (any repo,
       any git server; types rust/go/node/python/make/script/docker) — also
       update daily by themselves (settings.autoUpdateMine). `update-mine
@@ -324,10 +328,53 @@ in
 
   nix.settings = {
     experimental-features = [ "nix-command" "flakes" ];
-    auto-optimise-store = true;
+    # Dedupe the store on a weekly timer (nix.optimise below) instead of while
+    # downloading — hashing every file mid-update made updates crawl.
+    auto-optimise-store = false;
+    # Faster downloads: more parallel fetches and a bigger buffer, so a
+    # quick connection isn't throttled by "download buffer is full".
+    max-substitution-jobs = 32;
+    http-connections = 64;
+    download-buffer-size = 268435456;
     trusted-users = [ "root" s.username ];
   };
   nix.gc = { automatic = true; dates = "weekly"; options = "--delete-older-than 14d"; };
+  nix.optimise = { automatic = true; dates = [ "weekly" ]; };
+  # Store maintenance and the weekly pre-build never compete with you.
+  systemd.services.nix-gc.serviceConfig = { Nice = 19; IOSchedulingClass = "idle"; CPUSchedulingPolicy = "idle"; };
+  systemd.services.nix-optimise.serviceConfig = { Nice = 19; IOSchedulingClass = "idle"; CPUSchedulingPolicy = "idle"; };
+
+  # Weekly, in the background: fetch the newest NixOS packages and pre-build
+  # this whole system with them (idle priority — you won't notice it). Nothing
+  # switches; the next `rebuild`/`nixup` just finds it all ready and takes
+  # seconds. If the new set doesn't build, the channel is rolled back so your
+  # next rebuild can't break. settings.channelUpdates = "never" turns it off.
+  systemd.services.nixos-prebuild = lib.mkIf ((s.channelUpdates or "weekly") != "never") {
+    description = "Pre-build the system on the newest NixOS packages";
+    wants = [ "network-online.target" ]; after = [ "network-online.target" ];
+    path = [ config.nix.package config.system.build.nixos-rebuild pkgs.git pkgs.coreutils ];
+    environment.HOME = "/root";
+    serviceConfig = {
+      Type = "oneshot";
+      Nice = 19; IOSchedulingClass = "idle"; CPUSchedulingPolicy = "idle";
+      StateDirectory = "nixos-prebuild";
+      WorkingDirectory = "/var/lib/nixos-prebuild";     # its `result` link keeps the pre-build from being GC'd
+    };
+    script = ''
+      nix-channel --update
+      if nixos-rebuild build; then
+        echo "nixos-prebuild: ready — the next rebuild switches to it in seconds."
+      else
+        echo "nixos-prebuild: the new packages don't build with this config; rolled the channel back."
+        nix-channel --rollback
+        exit 1
+      fi
+    '';
+  };
+  systemd.timers.nixos-prebuild = lib.mkIf ((s.channelUpdates or "weekly") != "never") {
+    wantedBy = [ "timers.target" ];
+    timerConfig = { OnCalendar = s.channelUpdates or "weekly"; Persistent = true; RandomizedDelaySec = "2h"; };
+  };
 
   # ── lean + responsive (settings: kernel, removePackages) ─────────────────
   # zen kernel: tuned for desktop latency (input, audio, frame pacing).
@@ -438,6 +485,7 @@ in
   my.menu."System" = lib.mkBefore [
     { label = "Setup / modules (TUI)"; run = "modtui"; mode = "term"; }
     { label = "Update system (pull + rebuild)"; run = "nixup"; mode = "term"; }
+    { label = "Full upgrade (newest NixOS packages)"; run = "rebuild --upgrade"; mode = "term"; }
     { label = "Update my git apps"; run = "update-mine --switch"; mode = "term"; }
     { label = "Free up space (debloat)"; run = "debloat"; mode = "term"; }
   ];
