@@ -227,6 +227,7 @@ in
         { label = "Files"; run = "thunar"; }
         { label = "Drives: mount / unmount"; run = "drives"; }
         { label = "Tidy Downloads (sort + find duplicates)"; run = "tidy-downloads"; }
+        { label = "Publish a folder to Neocities"; run = "SITE_PUSH_GUI=1 site-push"; mode = "term"; }
       ];
       "Sync & devices" = [
         { label = "Audio (output, mic, volume)"; run = "audio"; }
@@ -239,7 +240,7 @@ in
   ];
 
   my.packages = [ dash drives pkgs.nixmenu mykeys ] ++ dashItems ++ (with pkgs; [
-    wallpapers wallpaper-live
+    wallpapers wallpaper-live site-push
     (makeDesktopItem {
       name = "wallpapers"; desktopName = "Wallpapers"; exec = "wallpapers";
       icon = "preferences-desktop-wallpaper"; categories = [ "Settings" "DesktopSettings" ];

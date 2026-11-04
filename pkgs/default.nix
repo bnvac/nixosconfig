@@ -215,6 +215,11 @@ in
   lock-screen = sh "lock" [ final.xsecurelock ] ./scripts/lock.sh;
   wallpaper-live  = sh "wallpaper-live" (with final; [ linux-wallpaperengine xrandr gawk coreutils ]) ./scripts/wallpaper-live.sh;
   steam-setup     = py "steam-setup" ./scripts/steam-setup.py;
+  # Publish a folder to its Neocities site (keys in the keyring; see the script).
+  site-push = let raw = py "site-push" ./scripts/site-push.py; in final.writeShellScriptBin "site-push" ''
+    export PATH="$PATH:${prev.lib.makeBinPath (with final; [ git libsecret zenity libnotify larbs-dmenu ])}"
+    exec ${raw}/bin/site-push "$@"
+  '';
   # The wallpaper picker (GTK): pictures + live Wallpaper Engine wallpapers.
   wallpapers =
     let pyGtk = final.python3.withPackages (ps: [ ps.pygobject3 ]); in

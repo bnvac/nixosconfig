@@ -114,6 +114,11 @@ let
       ~/.config/wallpapers/live). `lock` is xsecurelock: username + password.
       Steam is native; `steam-setup` (runs at login) turns on Steam Play for
       all titles so Windows games and Wallpaper Engine install.
+    - `site-push [folder]` publishes a folder to Neocities: the site comes from a
+      `.neocities` file at the repo root (site, dir, optional build); API keys
+      live in the keyring (secret-tool, service=neocities site=NAME) and are
+      verified against the site before uploading; only changed files (SHA-1)
+      are sent. `site-push key SITE`, `site-push sites`, `--dry-run`, `--prune`.
     - The `platform` module: Docker (socket-activated, weekly prune), Flatpak +
       Flathub, AppImage, Distrobox, and the gitApps builds/services.
     - This machine's own functions live under **Super+Alt** (a namespace LARBS

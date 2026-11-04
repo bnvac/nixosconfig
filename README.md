@@ -92,6 +92,7 @@ mod off gaming      # disable + rebuild (the module stays written, just unbuilt)
 | `drives` | mount / unlock / unmount drives, never automatic — **Super+Alt+m** |
 | `tidy-downloads` | sort ~/Downloads into folders, catch duplicates (`--undo`) |
 | `lock` | lock screen: just your username + password — **Super+Alt+l** (also on suspend / 10 idle min) |
+| `site-push` | publish a folder to its Neocities site — menu: Apps & files → "Publish a folder to Neocities". The site comes from the repo's `.neocities` file; only changed files upload |
 | `wallpapers` | pick a wallpaper — your pictures, or live **Wallpaper Engine** ones from the Steam Workshop — **Super+Alt+w** |
 | `snow on\|off` | the live falling snow (never piles up) |
 | `steam-setup` | turns on Steam Play for all games (runs at login; Steam must be closed) |
@@ -170,6 +171,14 @@ mod off gaming      # disable + rebuild (the module stays written, just unbuilt)
 - **Top bar**: clock + net/volume/battery — `pkgs/default.nix` → `larbs-dwmblocks`.
 - **Terminal transparency**: `termOpacity` in settings; fullscreen is always opaque.
 - **Minecraft**: Prism Launcher; Feather/Fabric install into it from Modrinth.
+- **Neocities**: menu → Apps & files → "Publish a folder to Neocities" (or
+  `site-push [folder]`). Pick a folder; the first time, say which site and
+  which subfolder is the website — that's saved in a `.neocities` file at the
+  repo root (commit it; no secrets), so next time it just goes. Paste the
+  site's API key once (neocities.org → Settings → your site → API key); it's
+  kept in your keyring and checked against the site before every upload, so
+  a folder can't end up on the wrong site. Optional `build = "…"` runs first.
+  `--dry-run` previews, `--prune` also removes files you deleted locally.
 - **Wallpaper Engine**: own it on Steam and install it (Steam Play is already
   on, so Steam will install the Windows app — you never run it), subscribe to
   wallpapers in the Workshop, then pick them in `wallpapers` → Wallpaper Engine.
