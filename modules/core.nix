@@ -107,7 +107,8 @@ let
       modules install through `my.packages`). `debloat` reports what's big
       and cleans (old generations, caches, logs, unused Docker images);
       `debloat remove|keep <name>` edits that list. Kernel is zen by default
-      (settings.kernel); zram, systemd-oomd and ananicy keep it responsive.
+      (settings.kernel); zram, earlyoom (never kills Steam/games) and ananicy keep
+      it responsive.
     - `wallpapers` (Super+Alt+w): pictures from ~/Pictures/wallpapers (setbg) or
       live Wallpaper Engine wallpapers from the Steam Workshop, played by the
       wallpaper-live user service (linux-wallpaperengine; choice saved in
@@ -389,7 +390,20 @@ in
     lts = pkgs.linuxPackages;
   }.${s.kernel or "zen"} or (throw "settings.kernel should be \"zen\", \"latest\" or \"lts\"");
   zramSwap.enable = true;                         # compressed RAM swap: no stalls under memory pressure
-  systemd.oomd.enableUserSlices = true;           # a runaway app gets killed, the desktop stays usable
+  # Out of memory: earlyoom only steps in when RAM *and* swap are almost gone
+  # (systemd-oomd used to act on memory *pressure*, which games hit every time
+  # they load or compile shaders — it could kill a game or Steam mid-load). It
+  # never picks Steam, gamescope or the desktop, and prefers a browser tab.
+  services.earlyoom = {
+    enable = true;
+    freeMemThreshold = 4;
+    freeSwapThreshold = 5;
+    enableNotifications = true;
+    extraArgs = [
+      "--avoid" "^(steam|steamwebhelper|gamescope|gamescope-wl|Xorg|dwm|pipewire|wireplumber)$"
+      "--prefer" "^(chromium|Web Content|electron)$"
+    ];
+  };
   services.ananicy = {                            # keeps foreground apps snappy, background stuff niced
     enable = true;
     package = pkgs.ananicy-cpp;

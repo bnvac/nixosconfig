@@ -59,7 +59,7 @@ ESP isn't mounted where `settings.nix` says.
 | sync | Syncthing between the machines, DeviceLink, bookmark export/import |
 | ee | KiCad, EDA tools, OrcaSlicer (has Elegoo profiles), FreeCAD |
 | printing | mDNS + printrun for Klipper printers on the LAN |
-| gaming | native Steam with Steam Play on for every game, Proton-GE, gamescope/gamemode, Prism Launcher |
+| gaming | native Steam with Steam Play on for every game, Proton-GE, NTSYNC, gamescope/gamemode, Xbox controllers (Bluetooth + wireless dongle), Prism Launcher |
 | privacy | Tor (Tor Browser, per-app, system-wide — off until you turn it on), Proton VPN, I2P, Bitwarden, nheko |
 | virt | QEMU/KVM + virt-manager |
 | backoffice | the parts-inventory web app, synced between machines |

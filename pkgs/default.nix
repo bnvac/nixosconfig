@@ -57,8 +57,12 @@ in
         --replace-fail $'\tif (!wintoclient(ev->window))\n\t\tmanage(ev->window, &wa);' $'\tif (isbackground(ev->window)) {\n\t\tXMoveResizeWindow(dpy, ev->window, 0, 0, sw, sh);\n\t\tXMapWindow(dpy, ev->window);\n\t\tXLowerWindow(dpy, ev->window);\n\t\treturn;\n\t}\n\tif (!wintoclient(ev->window))\n\t\tmanage(ev->window, &wa);' \
         --replace-fail '|| wa.override_redirect || XGetTransientForHint(dpy, wins[i], &d1))' '|| wa.override_redirect || XGetTransientForHint(dpy, wins[i], &d1) || isbackground(wins[i]))'
       # Neb's own workspace: his terminal (st -n neb) always lives on tag 9.
+      # Steam's notification toasts and friends list float instead of being
+      # squeezed into the tiling layout (dwm matches titles by substring).
       substituteInPlace config.h --replace-fail 'static const Rule rules[] = {' 'static const Rule rules[] = {
-        { TERMCLASS, "neb", NULL, 1 << 8, 0, 1, 0, -1 },'
+        { TERMCLASS, "neb", NULL, 1 << 8, 0, 1, 0, -1 },
+        { "steam", NULL, "notificationtoasts", 0, 1, 0, 0, -1 },
+        { "steam", NULL, "Friends List", 0, 1, 0, 0, -1 },'
       # All MY OWN functions live under Super+Alt (Mod1). Stock LARBS binds
       # nothing with Mod1Mask, so these can't collide (checked at this rev).
       # Super+Alt+Shift+n is bound twice on purpose: dwm runs every matching

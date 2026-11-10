@@ -9,7 +9,11 @@
 #   - gamemode + gamescope (and a "Steam Big Picture" session at the login
 #     screen) for smoother frame pacing; Remote Play and LAN game transfers
 #     are let through the firewall.
-{ pkgs, ... }:
+#   - NTSYNC is loaded: newer Proton (10+, GE) uses it for faster, more
+#     Windows-accurate syncing — fewer stutters and hangs in some games.
+#   - Xbox controllers work over Bluetooth (xpadneo: proper buttons, rumble,
+#     battery) and with the Xbox Wireless Adapter dongle (xone).
+{ config, pkgs, lib, ... }:
 {
   programs.steam = {
     enable = true;
@@ -19,8 +23,16 @@
     localNetworkGameTransfers.openFirewall = true;
     gamescopeSession.enable = true;
   };
-  programs.gamescope = { enable = true; capSysNice = true; };
+  # No capSysNice: it swaps gamescope for a privileged wrapper, which Steam's
+  # sandbox can't start — "gamescope %command%" in a game's launch options
+  # then just fails. Plain gamescope works everywhere.
+  programs.gamescope.enable = true;
   programs.gamemode.enable = true;
+  # /dev/ntsync (built into the zen kernel; the kernel makes it usable by
+  # everyone). Only asked for on kernels that have it (6.14+).
+  boot.kernelModules = lib.mkIf (lib.versionAtLeast config.boot.kernelPackages.kernel.version "6.14") [ "ntsync" ];
+  hardware.xpadneo.enable = true;             # Xbox controllers over Bluetooth
+  hardware.xone.enable = true;                # Xbox Wireless Adapter + wired Xbox controllers
 
   # Steam Play for all titles (only while Steam is closed; keeps a backup,
   # never overrides a tool you already chose). `steam-setup` runs it by hand.
