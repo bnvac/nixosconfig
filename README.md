@@ -1,4 +1,4 @@
-<p align="center"><img src="site/yuki.svg" width="200" alt="Yuki, the nix² mascot"></p>
+<p align="center"><img src="site/yuki.png" width="220" alt="Yuki, the nix² mascot"></p>
 
 <h1 align="center">nix²</h1>
 
@@ -260,9 +260,9 @@ shellcheck.
 
 ## Yuki
 
-nix²'s mascot is Yuki (雪, "snow"): silver-blue hair, a snowflake hair clip
-and a nix² hoodie. The drawing is `site/yuki.svg` — use it freely under the
-same MIT license.
+nix²'s mascot is Yuki (雪, "snow"): silver-blue twin tails and blue hair
+ties. The line art is by rygle, public domain (CC0) via Openclipart; the
+colors are nix²'s. The image is `site/yuki.png`; use it freely.
 
 ## Website
 

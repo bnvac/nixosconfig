@@ -44,11 +44,11 @@ jobs:
           {
             printf '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
             printf '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
-            printf '<link rel="icon" href="yuki.svg">\n<style>body{margin:0}img{max-width:100%%}[hidden]{display:none!important}</style>\n</head>\n<body>\n'
+            printf '<link rel="icon" href="yuki.png">\n<style>body{margin:0}img{max-width:100%%}[hidden]{display:none!important}</style>\n</head>\n<body>\n'
             cat site/index.html
             printf '\n</body>\n</html>\n'
           } > _site/index.html
-          cp site/yuki.svg _site/
+          cp site/yuki.png _site/
       - uses: actions/configure-pages@v5
         if: steps.pages.outputs.enabled == 'true'
       - uses: actions/upload-pages-artifact@v3
