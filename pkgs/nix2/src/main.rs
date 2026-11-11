@@ -19,14 +19,15 @@ use std::process::ExitCode;
 const HELP: &str = "\
 nix2 — this system's own tools
 
-  nix2 menu [category]       the menu (Super+Alt+Space; also runs as `nixmenu`)
-  nix2 doctor [--notify]     check that everything works, with fixes for what doesn't
+  nix2 menu [category]       the menu (also Super+Alt+Space)
+  nix2 doctor [--notify]     check the system, with a fix for anything wrong
   nix2 rollback              go back to an earlier system version
-  nix2 new [kind] [name]     start a project with its tools ready (rust, python, c++,
-                             go, node, board, micropython)
-  nix2 serial [port] [baud]  talk to a board over USB serial (lists boards by name)
-  nix2 game start|end        game mode hooks (gamemode runs these for you)
-  nix2 printer-notify        watch 3D printers, notify when a print ends
+  nix2 new [kind] [name]     start a project with its tools ready
+  nix2 serial [port] [baud]  talk to a board over USB serial
+  nix2 game start|end        game mode hooks (gamemode runs these)
+  nix2 printer-notify        a notification when a 3D print ends
+
+Project kinds: rust, python, c++, go, node, board, micropython
 ";
 
 fn main() -> ExitCode {

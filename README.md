@@ -1,12 +1,12 @@
-<p align="center"><img src="site/yuki.png" width="220" alt="Yuki, the nix² mascot"></p>
-
-<h1 align="center">nix²</h1>
+# nix²
 
 **A Linux for people who build things.** Write code, design circuit boards,
 flash microcontrollers, 3D print, game — on a fast, private desktop that
 sets itself up. Built on [NixOS](https://nixos.org), so the whole system is
 a few readable files: nothing breaks for good (every update can be rolled
 back), and every feature is a module you switch on with one command.
+
+![The nix² desktop: tiled terminals over a snowy wallpaper](site/desktop.webp)
 
 ```sh
 mod list          # what's on and off
@@ -257,12 +257,6 @@ Ideas, bug reports and pull requests are welcome — see
 automatically: the config must evaluate for an AMD desktop, an Intel laptop
 and an NVIDIA desktop, nix2's tests must pass, and every script must pass
 shellcheck.
-
-## Yuki
-
-nix²'s mascot is Yuki (雪, "snow"): silver-blue twin tails and blue hair
-ties. The line art is by rygle, public domain (CC0) via Openclipart; the
-colors are nix²'s. The image is `site/yuki.png`; use it freely.
 
 ## Website
 
