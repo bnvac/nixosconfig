@@ -127,8 +127,15 @@ let
       **Super+Alt+F1** shows `mykeys` (the custom-keybind cheat sheet). Stock
       LARBS keys stay on Super+F1's manual; Super+Enter is the terminal.
     - `apps` (Super+Alt+a) — every installed app, by category.
-    - `tidy-downloads` — sorts ~/Downloads into folders by type; content
-      duplicates go to Downloads/Duplicates (never deleted); `--undo` reverts.
+    - `tidy` — cleans up: loose files at the top of ~ go to ~/Pictures
+      (screenshots → Pictures/screenshots), ~/Videos (recordings →
+      Videos/recordings), ~/Music, ~/Documents, everything else to Downloads;
+      then Downloads is sorted into type folders. Content duplicates go to
+      Downloads/Duplicates (never deleted); folders, dotfiles and SYSTEM.md are
+      never touched. `--home`, `--downloads`, `--dry-run`, `--undo`.
+    - Screenshots: Print = full screen, Shift+Print = menu (area, window,
+      clipboard-only, OCR text). `screenshot` saves to ~/Pictures/screenshots
+      and copies to the clipboard; failures show a notification.
     - `lock` (Super+Alt+l) — lock screen; also on suspend and after 10 idle min.
     - `snow on|off|toggle` — the live falling snow over the snowy wallpaper.
     - Browsers: Bitwarden holds the passwords in Firefox and Chromium (sign in

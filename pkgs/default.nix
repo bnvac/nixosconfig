@@ -63,6 +63,12 @@ in
         { TERMCLASS, "neb", NULL, 1 << 8, 0, 1, 0, -1 },
         { "steam", NULL, "notificationtoasts", 0, 1, 0, 0, -1 },
         { "steam", NULL, "Friends List", 0, 1, 0, 0, -1 },'
+      # Screenshots: Print / Shift+Print run `screenshot` (absolute save path,
+      # clipboard, a notification — and an error message if it fails) instead
+      # of maim with a path relative to wherever the session started.
+      substituteInPlace config.h \
+        --replace-fail "SHCMD(\"maim pic-full-\$(date '+%y%m%d-%H%M-%S').png\")" '{.v = (const char*[]){ "screenshot", "full", NULL } }' \
+        --replace-fail '{.v = (const char*[]){ "maimpick", NULL } }' '{.v = (const char*[]){ "screenshot", NULL } }'
       # All MY OWN functions live under Super+Alt (Mod1). Stock LARBS binds
       # nothing with Mod1Mask, so these can't collide (checked at this rev).
       # Super+Alt+Shift+n is bound twice on purpose: dwm runs every matching
@@ -217,6 +223,7 @@ in
   desk = sh "desk" (with final; [ final.apps-menu final.lock-screen xdotool xprop jq gawk coreutils gnused
                                   procps wireplumber playerctl brightnessctl libnotify maim util-linux ]) ./scripts/desk.sh;
   lock-screen = sh "lock" [ final.xsecurelock ] ./scripts/lock.sh;
+  screenshot      = sh "screenshot" (with final; [ maim xclip xdotool libnotify tesseract larbs-dmenu coreutils ]) ./scripts/screenshot.sh;
   wallpaper-live  = sh "wallpaper-live" (with final; [ linux-wallpaperengine xrandr gawk coreutils ]) ./scripts/wallpaper-live.sh;
   steam-setup     = py "steam-setup" ./scripts/steam-setup.py;
   # Publish a folder to its Neocities site (keys in the keyring; see the script).
@@ -262,7 +269,8 @@ in
     '';
   };
   neb-voice       = py "neb-voice" ./scripts/neb-voice.py;
-  tidy-downloads  = py "tidy-downloads" ./scripts/tidy-downloads.py;
+  tidy            = py "tidy" ./scripts/tidy.py;
+  tidy-downloads  = final.writeShellScriptBin "tidy-downloads" ''exec ${final.tidy}/bin/tidy --downloads "$@"'';
   browser-sync    = py "browser-sync" ./scripts/browser-sync.py;
   printer-notify  = py "printer-notify" ./scripts/printer-notify.py;
   debloat         = sh "debloat" (with final; [ gawk gnugrep gnused coreutils findutils util-linux ]) ./scripts/debloat.sh;

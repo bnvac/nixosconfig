@@ -90,7 +90,8 @@ mod off gaming      # disable + rebuild (the module stays written, just unbuilt)
 | `apps` | every app, by category — **Super+Alt+a** |
 | `audio` | pick output/mic device (speakers, headset, Bluetooth, HDMI), volume, mute — **Super+Alt+v** |
 | `drives` | mount / unlock / unmount drives, never automatic — **Super+Alt+m** |
-| `tidy-downloads` | sort ~/Downloads into folders, catch duplicates (`--undo`) |
+| `tidy` | clean up: loose files in your home folder go to Pictures / Videos / Music / Documents (screenshots and recordings get their own folders), the rest to Downloads, which is sorted into type folders; catches duplicates, never deletes, `--undo` (`--home`, `--downloads`, `--dry-run`) |
+| `screenshot` | **Print** = whole screen, **Shift+Print** = area / window / clipboard / text (OCR); saved to `~/Pictures/screenshots` and copied to the clipboard |
 | `lock` | lock screen: just your username + password — **Super+Alt+l** (also on suspend / 10 idle min) |
 | `site-push` | publish a folder to its Neocities site — menu: Apps & files → "Publish a folder to Neocities". The site comes from the repo's `.neocities` file; only changed files upload |
 | `wallpapers` | pick a wallpaper — your pictures, or live **Wallpaper Engine** ones from the Steam Workshop — **Super+Alt+w** |

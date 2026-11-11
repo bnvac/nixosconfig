@@ -226,7 +226,8 @@ in
         { label = "Apps"; run = "apps"; }
         { label = "Files"; run = "thunar"; }
         { label = "Drives: mount / unmount"; run = "drives"; }
-        { label = "Tidy Downloads (sort + find duplicates)"; run = "tidy-downloads"; }
+        { label = "Tidy up home + Downloads (sort + find duplicates)"; run = "tidy"; mode = "term"; }
+        { label = "Undo the last tidy"; run = "tidy --undo"; mode = "term"; }
         { label = "Publish a folder to Neocities"; run = "SITE_PUSH_GUI=1 site-push"; mode = "term"; }
       ];
       "Sync & devices" = [
@@ -245,7 +246,7 @@ in
       name = "wallpapers"; desktopName = "Wallpapers"; exec = "wallpapers";
       icon = "preferences-desktop-wallpaper"; categories = [ "Settings" "DesktopSettings" ];
     })
-    apps-menu tidy-downloads snow lock-screen audio
+    apps-menu tidy tidy-downloads screenshot snow lock-screen audio
     larbs-st larbs-dmenu larbs-dwmblocks larbs-scripts
     xinit xrdb xprop xwininfo xset setxkbmap xbacklight xrandr slop
     xclip xdotool xcape xwallpaper picom unclutter-xfixes maim slock
