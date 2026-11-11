@@ -48,7 +48,12 @@ struct Menu {
 impl Menu {
     fn add(&mut self, cat: &str, label: &str, mode: &str, run: &str) {
         if !self.hidden.contains(label) {
-            self.entries.push(Entry { cat: cat.into(), label: label.into(), mode: mode.into(), run: run.into() });
+            self.entries.push(Entry {
+                cat: cat.into(),
+                label: label.into(),
+                mode: mode.into(),
+                run: run.into(),
+            });
         }
     }
 }
@@ -76,7 +81,10 @@ pub fn run(args: &[String]) -> i32 {
     }
 
     // Your file, pass 1: hides and order apply to the built-ins too.
-    let mut menu = Menu { entries: Vec::new(), hidden: HashSet::new() };
+    let mut menu = Menu {
+        entries: Vec::new(),
+        hidden: HashSet::new(),
+    };
     let mut order: Vec<String> = Vec::new();
     let mut userlines: Vec<String> = Vec::new();
     if let Ok(text) = fs::read_to_string(&usermenu) {
@@ -85,12 +93,18 @@ pub fn run(args: &[String]) -> i32 {
             if line.is_empty() || line.starts_with('#') {
                 continue;
             }
-            let Some((c, rest)) = line.split_once(" | ") else { continue };
+            let Some((c, rest)) = line.split_once(" | ") else {
+                continue;
+            };
             match c.trim() {
                 "hide" => {
                     menu.hidden.insert(rest.trim().to_string());
                 }
-                "order" => order.extend(rest.split(',').map(|x| x.trim().to_string()).filter(|x| !x.is_empty())),
+                "order" => order.extend(
+                    rest.split(',')
+                        .map(|x| x.trim().to_string())
+                        .filter(|x| !x.is_empty()),
+                ),
                 _ => userlines.push(line.to_string()),
             }
         }
@@ -112,8 +126,12 @@ pub fn run(args: &[String]) -> i32 {
 
     // Your entries (commands may themselves contain " | ").
     for line in &userlines {
-        let Some((c, rest)) = line.split_once(" | ") else { continue };
-        let Some((l, r)) = rest.split_once(" | ") else { continue };
+        let Some((c, rest)) = line.split_once(" | ") else {
+            continue;
+        };
+        let Some((l, r)) = rest.split_once(" | ") else {
+            continue;
+        };
         let (c, l, r) = (c.trim(), l.trim(), r.trim());
         let (mode, cmd) = ["term", "tty", "url"]
             .iter()
@@ -129,7 +147,12 @@ pub fn run(args: &[String]) -> i32 {
             for line in ps.lines() {
                 let (name, ports) = line.split_once('\t').unwrap_or((line, ""));
                 if let Some(port) = first_port(ports) {
-                    menu.add("Self-hosted", &format!("{name} (docker :{port})"), "url", &format!("http://127.0.0.1:{port}"));
+                    menu.add(
+                        "Self-hosted",
+                        &format!("{name} (docker :{port})"),
+                        "url",
+                        &format!("http://127.0.0.1:{port}"),
+                    );
                 }
             }
         }
@@ -153,13 +176,18 @@ pub fn run(args: &[String]) -> i32 {
         if cat.is_empty() {
             match dmenu("nix:", &cats, true) {
                 Pick::Chose(c) => cat = c,
-                Pick::Back => continue,          // Backspace at the top: stay
+                Pick::Back => continue, // Backspace at the top: stay
                 Pick::Cancel => return 0,
             }
         }
-        let shown: Vec<String> = menu.entries.iter().filter(|e| e.cat == cat).map(|e| e.label.clone()).collect();
+        let shown: Vec<String> = menu
+            .entries
+            .iter()
+            .filter(|e| e.cat == cat)
+            .map(|e| e.label.clone())
+            .collect();
         if shown.is_empty() {
-            cat.clear();                         // typed something that isn't a category
+            cat.clear(); // typed something that isn't a category
             continue;
         }
         let sel = match dmenu(&format!("{cat}:"), &shown, true) {
@@ -180,7 +208,12 @@ pub fn run(args: &[String]) -> i32 {
 fn launch(mode: &str, run: &str) -> i32 {
     let err = match mode {
         "term" => Command::new("st")
-            .args(["-e", "sh", "-c", &format!("{run}; echo; printf '[enter] '; read -r _")])
+            .args([
+                "-e",
+                "sh",
+                "-c",
+                &format!("{run}; echo; printf '[enter] '; read -r _"),
+            ])
             .exec(),
         "tty" => Command::new("st").args(["-e", "sh", "-c", run]).exec(),
         "url" => {
@@ -202,7 +235,10 @@ mod tests {
 
     #[test]
     fn ports() {
-        assert_eq!(first_port("0.0.0.0:8096->8096/tcp, :::8096->8096/tcp"), Some("8096"));
+        assert_eq!(
+            first_port("0.0.0.0:8096->8096/tcp, :::8096->8096/tcp"),
+            Some("8096")
+        );
         assert_eq!(first_port("6379/tcp"), None);
         assert_eq!(first_port(""), None);
         assert_eq!(first_port("127.0.0.1:3001->3001/tcp"), Some("3001"));

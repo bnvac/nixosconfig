@@ -9,6 +9,7 @@ mod menu;
 mod new;
 mod printer;
 mod rollback;
+mod serial;
 mod util;
 
 use std::env;
@@ -23,6 +24,7 @@ hearth — this system's own tools
   hearth rollback            go back to an earlier system version
   hearth game start|end      game mode hooks (gamemode runs these for you)
   hearth new [kind] [name]   start a coding project with its tools ready (rust, python, c++, go, node)
+  hearth serial [port] [baud] talk to a board over USB serial (lists boards by name)
   hearth printer-notify      watch 3D printers, notify when a print ends
 ";
 
@@ -49,6 +51,7 @@ fn main() -> ExitCode {
         "rollback" => rollback::run(rest),
         "game" => game::run(rest),
         "new" => new::run(rest),
+        "serial" => serial::run(rest),
         "printer-notify" => printer::run(rest),
         "help" | "-h" | "--help" => {
             print!("{HELP}");

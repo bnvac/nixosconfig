@@ -20,7 +20,10 @@ pub struct Gen {
 
 /// "system-42-link" → 42
 pub fn gen_number(name: &str) -> Option<u32> {
-    name.strip_prefix("system-")?.strip_suffix("-link")?.parse().ok()
+    name.strip_prefix("system-")?
+        .strip_suffix("-link")?
+        .parse()
+        .ok()
 }
 
 fn generations() -> Vec<Gen> {
@@ -29,7 +32,9 @@ fn generations() -> Vec<Gen> {
             d.filter_map(Result::ok)
                 .filter_map(|e| {
                     let num = gen_number(&e.file_name().to_string_lossy())?;
-                    let when = fs::symlink_metadata(e.path()).map(|m| m.mtime()).unwrap_or(0);
+                    let when = fs::symlink_metadata(e.path())
+                        .map(|m| m.mtime())
+                        .unwrap_or(0);
                     let version = fs::read_to_string(e.path().join("nixos-version"))
                         .map(|s| s.trim().to_string())
                         .unwrap_or_default();
@@ -48,7 +53,10 @@ fn current() -> Option<u32> {
 }
 
 fn now() -> i64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0)
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0)
 }
 
 pub fn run(args: &[String]) -> i32 {
@@ -69,14 +77,27 @@ pub fn run(args: &[String]) -> i32 {
     } else {
         println!("System versions (newest last):\n");
         for g in &gens {
-            let mark = if g.num == cur { "  ← running now" } else { "" };
+            let mark = if g.num == cur {
+                "  ← running now"
+            } else {
+                ""
+            };
             let age = ago((now() - g.when).max(0) as u64);
             println!("  {:>4}  {:<18}  {}{}", g.num, age, g.version, mark);
         }
-        let default = gens.iter().rev().find(|g| g.num < cur).or_else(|| gens.iter().rev().find(|g| g.num != cur));
+        let default = gens
+            .iter()
+            .rev()
+            .find(|g| g.num < cur)
+            .or_else(|| gens.iter().rev().find(|g| g.num != cur));
         let Some(default) = default else { return 0 };
         println!();
-        let Some(answer) = ask(&format!("Go back to which version? [{}]  (q to cancel) ", default.num)) else { return 0 };
+        let Some(answer) = ask(&format!(
+            "Go back to which version? [{}]  (q to cancel) ",
+            default.num
+        )) else {
+            return 0;
+        };
         match answer.as_str() {
             "" => Some(default.num),
             "q" | "Q" | "n" | "no" => {
@@ -98,19 +119,33 @@ pub fn run(args: &[String]) -> i32 {
 
     println!("\nSwitching to version {target} (asks for your password)…");
     let set = Command::new("sudo")
-        .args(["nix-env", "--profile", &format!("{PROFILES}/system"), "--switch-generation", &target.to_string()])
+        .args([
+            "nix-env",
+            "--profile",
+            &format!("{PROFILES}/system"),
+            "--switch-generation",
+            &target.to_string(),
+        ])
         .status();
     if !set.is_ok_and(|s| s.success()) {
         eprintln!("rollback: couldn't select version {target}");
         return 1;
     }
-    let switched = Command::new("sudo").arg(format!("{PROFILES}/system/bin/switch-to-configuration")).arg("switch").status();
+    let switched = Command::new("sudo")
+        .arg(format!("{PROFILES}/system/bin/switch-to-configuration"))
+        .arg("switch")
+        .status();
     if switched.is_ok_and(|s| s.success()) {
         println!("\nDone — now on version {target}. It's also the default at the next boot.");
-        println!("To return to the newest: hearth rollback {}", gens.last().map(|g| g.num).unwrap_or(cur));
+        println!(
+            "To return to the newest: hearth rollback {}",
+            gens.last().map(|g| g.num).unwrap_or(cur)
+        );
         0
     } else {
-        eprintln!("\nVersion {target} is selected but didn't fully start. Rebooting will finish it.");
+        eprintln!(
+            "\nVersion {target} is selected but didn't fully start. Rebooting will finish it."
+        );
         1
     }
 }

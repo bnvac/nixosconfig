@@ -55,12 +55,12 @@ in
   # ── B) self-hosted Klipper stack (uncomment to drive a local printer) ──────
   # services.klipper = {
   #   enable = true;
-  #   user = "samadams"; group = "users";
+  #   user = "<your username>"; group = "users";
   #   settings = { };                 # or point at your printer.cfg
   # };
   # services.moonraker = {
   #   enable = true;
-  #   user = "samadams";
+  #   user = "<your username>";
   #   address = "0.0.0.0";            # reachable from other machines on the LAN
   #   settings.authorization = {
   #     cors_domains = [ "*.local" ];

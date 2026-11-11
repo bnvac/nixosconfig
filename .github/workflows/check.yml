@@ -1,0 +1,68 @@
+# Every push and pull request: the config evaluates for several kinds of
+# machine, the installer image evaluates, hearth's tests pass and every
+# script passes shellcheck. (Evaluating checks the whole config fits
+# together without building it — fast, and catches most mistakes.)
+name: check
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  eval:
+    name: config (${{ matrix.machine }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - machine: desktop, AMD
+            local: '{ device = "desktop"; gpu = "amd"; }'
+          - machine: laptop, Intel
+            local: '{ device = "laptop"; gpu = "intel"; }'
+          - machine: desktop, NVIDIA
+            local: '{ device = "desktop"; gpu = "nvidia"; }'
+          - machine: every module on
+            local: '{ gpu = "amd"; modules = { ai = true; assistant = true; backoffice = true; intraweb = true; sync = true; virt = true; osint = true; }; shareBuilds.serve = true; }'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          nix_path: nixpkgs=channel:nixos-26.05
+      - name: Stand-in machine files
+        run: |
+          cp ci/hardware-configuration.nix hardware-configuration.nix
+          echo '${{ matrix.local }}' > settings.local.nix
+      - name: Evaluate the system
+        run: nix-instantiate '<nixpkgs/nixos>' -A system -I nixos-config=./configuration.nix
+
+  installer:
+    name: installer image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          nix_path: nixpkgs=channel:nixos-26.05
+      - run: nix-instantiate '<nixpkgs/nixos>' -A config.system.build.isoImage -I nixos-config=./installer/iso.nix
+
+  hearth:
+    name: hearth (Rust)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pkgs/hearth
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - run: cargo fmt --check
+      - run: cargo clippy --locked -- -D warnings
+      - run: cargo test --locked
+
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: shellcheck -s bash pkgs/scripts/*.sh installer/install.sh

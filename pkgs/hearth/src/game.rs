@@ -30,7 +30,12 @@ pub fn run(args: &[String]) -> i32 {
             let snow = snow_running();
             let walls = wallpaper_pids();
 
-            notify("Game mode", "Game mode on", "Notifications wait until you're done.", false);
+            notify(
+                "Game mode",
+                "Game mode on",
+                "Notifications wait until you're done.",
+                false,
+            );
             if !was_paused {
                 ok("dunstctl", ["set-paused", "true"]);
             }

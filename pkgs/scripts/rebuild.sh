@@ -26,6 +26,15 @@ set -- "${args[@]}"
 action=${1:-switch}
 [ "$#" -gt 0 ] && shift
 
+# This machine's settings live in settings.local.nix (not in git). A machine
+# set up before that existed gets one made from what it had — once.
+if [ ! -e "$dir/settings.local.nix" ] && [ -r "$dir/pkgs/scripts/setup.sh" ]; then
+  echo ":: this machine has no settings.local.nix yet — making it from your current setup …"
+  sudo env "PATH=$PATH" bash "$dir/pkgs/scripts/setup.sh" --migrate \
+    || { echo "rebuild: couldn't make settings.local.nix — run: sudo bash $dir/pkgs/scripts/setup.sh"; exit 1; }
+  echo ":: check it looks right (edit $dir/settings.local.nix if not); building …"
+fi
+
 if $channel; then
   echo ":: updating the NixOS channel …"
   sudo nix-channel --update || echo "rebuild: channel update failed — building with the current one"

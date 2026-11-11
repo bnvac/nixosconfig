@@ -214,7 +214,7 @@ in
   };
 
   # ── small tools (sources in pkgs/scripts/, shellchecked at build) ─────────
-  rebuild         = sh "rebuild" (with final; [ nix-output-monitor git jq util-linux gawk gnugrep coreutils ]) ./scripts/rebuild.sh;
+  rebuild         = sh "rebuild" (with final; [ nix-output-monitor git jq util-linux gawk gnugrep gnused coreutils ]) ./scripts/rebuild.sh;
   audio           = sh "audio" (with final; [ larbs-dmenu pulseaudio jq libnotify procps gawk gnugrep gnused coreutils util-linux pavucontrol ]) ./scripts/audio.sh;
   update-mine     = sh "update-mine" (with final; [ git jq coreutils util-linux gnugrep gawk ]) ./scripts/update-mine.sh;
   apps-menu       = sh "apps" (with final; [ larbs-dmenu gawk coreutils gnused libnotify util-linux ]) ./scripts/apps.sh;
@@ -273,6 +273,7 @@ in
   tidy            = py "tidy" ./scripts/tidy.py;
   tidy-downloads  = final.writeShellScriptBin "tidy-downloads" ''exec ${final.tidy}/bin/tidy --downloads "$@"'';
   browser-sync    = py "browser-sync" ./scripts/browser-sync.py;
+  hearth-setup    = sh "hearth-setup" (with final; [ coreutils gnused gnugrep gawk util-linux git ]) ./scripts/setup.sh;
   debloat         = sh "debloat" (with final; [ gawk gnugrep gnused coreutils findutils util-linux ]) ./scripts/debloat.sh;
 
   # ── hearth: this system's own tools in one small, fast Rust binary ────────

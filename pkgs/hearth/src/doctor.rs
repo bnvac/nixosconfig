@@ -5,7 +5,9 @@
 //!   hearth doctor --notify   quiet: one notification, only if something's wrong
 //!                            (a weekly timer runs this)
 
-use crate::util::{ago, extend_path, home, load_x_env, notify, ok, output, runtime_dir, state_dir, which};
+use crate::util::{
+    ago, extend_path, home, load_x_env, notify, ok, output, runtime_dir, state_dir, which,
+};
 use std::env;
 use std::fs;
 use std::io::IsTerminal;
@@ -29,17 +31,29 @@ struct Check {
 }
 
 fn check(level: Level, area: &'static str, said: impl Into<String>, fix: Option<&str>) -> Check {
-    Check { level, area, said: said.into(), fix: fix.map(String::from) }
+    Check {
+        level,
+        area,
+        said: said.into(),
+        fix: fix.map(String::from),
+    }
 }
 
 fn secs_since(t: SystemTime) -> u64 {
-    SystemTime::now().duration_since(t).map(|d| d.as_secs()).unwrap_or(0)
+    SystemTime::now()
+        .duration_since(t)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
 }
 
 // ── the checks ──────────────────────────────────────────────────────────────
 
 fn services(user: bool) -> Check {
-    let area = if user { "Your services" } else { "System services" };
+    let area = if user {
+        "Your services"
+    } else {
+        "System services"
+    };
     let mut args = vec!["--failed", "--no-legend", "--plain"];
     if user {
         args.insert(0, "--user");
@@ -48,17 +62,31 @@ fn services(user: bool) -> Check {
         None => check(Level::Note, area, "couldn't ask systemd", None),
         Some(s) if s.is_empty() => check(Level::Good, area, "all running", None),
         Some(s) => {
-            let names: Vec<&str> = s.lines().filter_map(|l| l.split_whitespace().next()).collect();
-            let how = if user { "systemctl --user status" } else { "systemctl status" };
+            let names: Vec<&str> = s
+                .lines()
+                .filter_map(|l| l.split_whitespace().next())
+                .collect();
+            let how = if user {
+                "systemctl --user status"
+            } else {
+                "systemctl status"
+            };
             let first = names.first().copied().unwrap_or("NAME");
-            check(Level::Bad, area, format!("failed: {}", names.join(", ")), Some(&format!("see why: {how} {first}")))
+            check(
+                Level::Bad,
+                area,
+                format!("failed: {}", names.join(", ")),
+                Some(&format!("see why: {how} {first}")),
+            )
         }
     }
 }
 
 fn disk() -> Vec<Check> {
     let mut out = Vec::new();
-    let Some(df) = output("df", ["-P", "-k", "/", home().to_str().unwrap_or("/")]) else { return out };
+    let Some(df) = output("df", ["-P", "-k", "/", home().to_str().unwrap_or("/")]) else {
+        return out;
+    };
     let mut seen = Vec::new();
     for line in df.lines().skip(1) {
         let f: Vec<&str> = line.split_whitespace().collect();
@@ -91,9 +119,19 @@ fn generations() -> Check {
         })
         .unwrap_or(0);
     if n > 15 {
-        check(Level::Warn, "Old versions", format!("{n} system versions kept"), Some("debloat clean keeps the last 5"))
+        check(
+            Level::Warn,
+            "Old versions",
+            format!("{n} system versions kept"),
+            Some("debloat clean keeps the last 5"),
+        )
     } else {
-        check(Level::Good, "Old versions", format!("{n} system versions kept for rollback"), None)
+        check(
+            Level::Good,
+            "Old versions",
+            format!("{n} system versions kept for rollback"),
+            None,
+        )
     }
 }
 
@@ -111,9 +149,18 @@ fn memory() -> Check {
         return check(Level::Note, "Memory", "couldn't read", None);
     }
     let pct = avail * 100 / total;
-    let said = format!("{:.1} of {:.1} GB free", avail as f64 / 1_048_576.0, total as f64 / 1_048_576.0);
+    let said = format!(
+        "{:.1} of {:.1} GB free",
+        avail as f64 / 1_048_576.0,
+        total as f64 / 1_048_576.0
+    );
     if pct < 10 {
-        check(Level::Warn, "Memory", said, Some("close something big, or see what: htop"))
+        check(
+            Level::Warn,
+            "Memory",
+            said,
+            Some("close something big, or see what: htop"),
+        )
     } else {
         check(Level::Good, "Memory", said, None)
     }
@@ -122,7 +169,12 @@ fn memory() -> Check {
 fn clock() -> Check {
     match output("timedatectl", ["show", "-p", "NTPSynchronized", "--value"]).as_deref() {
         Some("yes") => check(Level::Good, "Clock", "in sync", None),
-        Some(_) => check(Level::Warn, "Clock", "not synced with the internet", Some("sudo systemctl restart systemd-timesyncd")),
+        Some(_) => check(
+            Level::Warn,
+            "Clock",
+            "not synced with the internet",
+            Some("sudo systemctl restart systemd-timesyncd"),
+        ),
         None => check(Level::Note, "Clock", "couldn't ask timedatectl", None),
     }
 }
@@ -130,21 +182,44 @@ fn clock() -> Check {
 fn network() -> Vec<Check> {
     let mut out = Vec::new();
     if ok("systemctl", ["is-active", "--quiet", "tor-transparent"]) {
-        out.push(check(Level::Note, "Network", "everything is going through Tor (tormode)", Some("normal internet: tormode off")));
+        out.push(check(
+            Level::Note,
+            "Network",
+            "everything is going through Tor (tormode)",
+            Some("normal internet: tormode off"),
+        ));
     }
-    let dns = ("cache.nixos.org", 443).to_socket_addrs().map(|mut a| a.next());
+    let dns = ("cache.nixos.org", 443)
+        .to_socket_addrs()
+        .map(|mut a| a.next());
     let reach = |addr: &str| {
-        addr.parse().ok().map(|a| TcpStream::connect_timeout(&a, Duration::from_secs(3)).is_ok()).unwrap_or(false)
+        addr.parse()
+            .ok()
+            .map(|a| TcpStream::connect_timeout(&a, Duration::from_secs(3)).is_ok())
+            .unwrap_or(false)
     };
     out.push(match dns {
         Ok(Some(addr)) if TcpStream::connect_timeout(&addr, Duration::from_secs(4)).is_ok() => {
             check(Level::Good, "Network", "online", None)
         }
-        Ok(_) if reach("1.1.1.1:443") => check(Level::Bad, "Network", "online, but couldn't reach the NixOS servers", None),
-        Err(_) if reach("1.1.1.1:443") => {
-            check(Level::Bad, "Network", "online, but names don't resolve (DNS)", Some("nmcli connection up <your connection>"))
-        }
-        _ => check(Level::Bad, "Network", "offline", Some("nmtui, or the network icon")),
+        Ok(_) if reach("1.1.1.1:443") => check(
+            Level::Bad,
+            "Network",
+            "online, but couldn't reach the NixOS servers",
+            None,
+        ),
+        Err(_) if reach("1.1.1.1:443") => check(
+            Level::Bad,
+            "Network",
+            "online, but names don't resolve (DNS)",
+            Some("nmcli connection up <your connection>"),
+        ),
+        _ => check(
+            Level::Bad,
+            "Network",
+            "offline",
+            Some("nmtui, or the network icon"),
+        ),
     });
     out
 }
@@ -152,21 +227,47 @@ fn network() -> Vec<Check> {
 fn screenshots() -> Check {
     load_x_env();
     if env::var_os("DISPLAY").is_none() {
-        return check(Level::Note, "Screenshots", "no desktop session here to test", None);
+        return check(
+            Level::Note,
+            "Screenshots",
+            "no desktop session here to test",
+            None,
+        );
     }
     for tool in ["maim", "xclip"] {
         if which(tool).is_none() {
-            return check(Level::Bad, "Screenshots", format!("{tool} is missing"), Some("rebuild"));
+            return check(
+                Level::Bad,
+                "Screenshots",
+                format!("{tool} is missing"),
+                Some("rebuild"),
+            );
         }
     }
     let shot = runtime_dir().join("hearth-doctor-shot.png");
-    let worked = ok("maim", ["-u", "-q", shot.to_str().unwrap_or("/tmp/hearth-doctor-shot.png")])
-        && fs::metadata(&shot).map(|m| m.len() > 0).unwrap_or(false);
+    let worked = ok(
+        "maim",
+        [
+            "-u",
+            "-q",
+            shot.to_str().unwrap_or("/tmp/hearth-doctor-shot.png"),
+        ],
+    ) && fs::metadata(&shot).map(|m| m.len() > 0).unwrap_or(false);
     let _ = fs::remove_file(&shot);
     if worked {
-        check(Level::Good, "Screenshots", "can grab the screen (Print / Shift+Print)", None)
+        check(
+            Level::Good,
+            "Screenshots",
+            "can grab the screen (Print / Shift+Print)",
+            None,
+        )
     } else {
-        check(Level::Bad, "Screenshots", "maim couldn't grab the screen", Some("run: screenshot full — it shows the exact error"))
+        check(
+            Level::Bad,
+            "Screenshots",
+            "maim couldn't grab the screen",
+            Some("run: screenshot full — it shows the exact error"),
+        )
     }
 }
 
@@ -175,17 +276,36 @@ fn audio() -> Check {
         return check(Level::Note, "Audio", "pactl not installed", None);
     }
     match output("pactl", ["get-default-sink"]) {
-        None => check(Level::Bad, "Audio", "the sound server isn't answering", Some("systemctl --user restart pipewire wireplumber")),
-        Some(s) if s.is_empty() || s == "auto_null" => {
-            check(Level::Bad, "Audio", "no output device", Some("pick one: audio (Super+Alt+v)"))
-        }
+        None => check(
+            Level::Bad,
+            "Audio",
+            "the sound server isn't answering",
+            Some("systemctl --user restart pipewire wireplumber"),
+        ),
+        Some(s) if s.is_empty() || s == "auto_null" => check(
+            Level::Bad,
+            "Audio",
+            "no output device",
+            Some("pick one: audio (Super+Alt+v)"),
+        ),
         Some(sink) => {
-            let muted = output("pactl", ["get-sink-mute", "@DEFAULT_SINK@"]).is_some_and(|m| m.ends_with("yes"));
+            let muted = output("pactl", ["get-sink-mute", "@DEFAULT_SINK@"])
+                .is_some_and(|m| m.ends_with("yes"));
             let name = sink.rsplit('.').next().unwrap_or(&sink).to_string();
             if muted {
-                check(Level::Warn, "Audio", format!("output {name} is muted"), Some("audio mute"))
+                check(
+                    Level::Warn,
+                    "Audio",
+                    format!("output {name} is muted"),
+                    Some("audio mute"),
+                )
             } else {
-                check(Level::Good, "Audio", format!("playing through {name}"), None)
+                check(
+                    Level::Good,
+                    "Audio",
+                    format!("playing through {name}"),
+                    None,
+                )
             }
         }
     }
@@ -195,7 +315,10 @@ fn graphics() -> Vec<Check> {
     let mut out = Vec::new();
     let has_vulkan = |dir: &str| {
         fs::read_dir(dir)
-            .map(|d| d.filter_map(Result::ok).any(|e| e.file_name().to_string_lossy().starts_with("libvulkan_")))
+            .map(|d| {
+                d.filter_map(Result::ok)
+                    .any(|e| e.file_name().to_string_lossy().starts_with("libvulkan_"))
+            })
             .unwrap_or(false)
     };
     if !Path::new("/dev/dri").exists() {
@@ -205,21 +328,44 @@ fn graphics() -> Vec<Check> {
     out.push(if has_vulkan("/run/opengl-driver/lib") {
         check(Level::Good, "Graphics", "Vulkan driver present", None)
     } else {
-        check(Level::Bad, "Graphics", "no Vulkan driver — games and Proton won't start", Some("rebuild (hardware.graphics)"))
+        check(
+            Level::Bad,
+            "Graphics",
+            "no Vulkan driver — games and Proton won't start",
+            Some("rebuild (hardware.graphics)"),
+        )
     });
     if which("steam").is_some() {
         out.push(if has_vulkan("/run/opengl-driver-32/lib") {
             check(Level::Good, "Steam", "32-bit graphics present", None)
         } else {
-            check(Level::Bad, "Steam", "32-bit graphics missing — Steam games won't start", Some("rebuild"))
+            check(
+                Level::Bad,
+                "Steam",
+                "32-bit graphics missing — Steam games won't start",
+                Some("rebuild"),
+            )
         });
         let vdf = home().join(".local/share/Steam/config/config.vdf");
         match fs::read_to_string(&vdf) {
-            Ok(s) if s.contains("CompatToolMapping") => {
-                out.push(check(Level::Good, "Steam", "Steam Play on for all games", None))
-            }
-            Ok(_) => out.push(check(Level::Warn, "Steam", "Steam Play isn't on for all games", Some("close Steam, then: steam-setup"))),
-            Err(_) => out.push(check(Level::Note, "Steam", "not set up yet — start Steam once", None)),
+            Ok(s) if s.contains("CompatToolMapping") => out.push(check(
+                Level::Good,
+                "Steam",
+                "Steam Play on for all games",
+                None,
+            )),
+            Ok(_) => out.push(check(
+                Level::Warn,
+                "Steam",
+                "Steam Play isn't on for all games",
+                Some("close Steam, then: steam-setup"),
+            )),
+            Err(_) => out.push(check(
+                Level::Note,
+                "Steam",
+                "not set up yet — start Steam once",
+                None,
+            )),
         }
     }
     out
@@ -230,16 +376,31 @@ fn updates() -> Vec<Check> {
     let current = fs::read_link("/run/current-system").ok();
     if let (Ok(ready), Some(cur)) = (fs::read_link("/var/lib/nixos-prebuild/result"), &current) {
         if &ready != cur {
-            out.push(check(Level::Note, "Updates", "new NixOS packages are pre-built and waiting", Some("rebuild (takes seconds)")));
+            out.push(check(
+                Level::Note,
+                "Updates",
+                "new NixOS packages are pre-built and waiting",
+                Some("rebuild (takes seconds)"),
+            ));
         }
     }
     if let Ok(meta) = fs::symlink_metadata("/nix/var/nix/profiles/per-user/root/channels") {
         if let Ok(t) = meta.modified() {
             let days = secs_since(t) / 86_400;
             out.push(if days > 45 {
-                check(Level::Warn, "Updates", format!("NixOS packages are {days} days old"), Some("rebuild --upgrade"))
+                check(
+                    Level::Warn,
+                    "Updates",
+                    format!("NixOS packages are {days} days old"),
+                    Some("rebuild --upgrade"),
+                )
             } else {
-                check(Level::Good, "Updates", format!("NixOS packages from {}", ago(secs_since(t))), None)
+                check(
+                    Level::Good,
+                    "Updates",
+                    format!("NixOS packages from {}", ago(secs_since(t))),
+                    None,
+                )
             });
         }
     }
@@ -251,7 +412,12 @@ fn updates() -> Vec<Check> {
                 .filter_map(|l| l.trim().split(':').next())
                 .collect();
             if !newer.is_empty() {
-                out.push(check(Level::Note, "Your apps", format!("newer commits: {}", newer.join(", ")), Some("rebuild")));
+                out.push(check(
+                    Level::Note,
+                    "Your apps",
+                    format!("newer commits: {}", newer.join(", ")),
+                    Some("rebuild"),
+                ));
             }
         }
     }
@@ -262,13 +428,28 @@ fn backups() -> Option<Check> {
     which("backup")?;
     let stamp = state_dir().join("backup/last-success");
     Some(match fs::metadata(&stamp).and_then(|m| m.modified()) {
-        Err(_) => check(Level::Warn, "Backups", "no backup has finished yet", Some("plug in the drive, then: backup now")),
+        Err(_) => check(
+            Level::Warn,
+            "Backups",
+            "no backup has finished yet",
+            Some("plug in the drive, then: backup now"),
+        ),
         Ok(t) => {
             let s = secs_since(t);
             if s > 14 * 86_400 {
-                check(Level::Warn, "Backups", format!("last backup {}", ago(s)), Some("plug in the drive, then: backup now"))
+                check(
+                    Level::Warn,
+                    "Backups",
+                    format!("last backup {}", ago(s)),
+                    Some("plug in the drive, then: backup now"),
+                )
             } else {
-                check(Level::Good, "Backups", format!("last backup {}", ago(s)), None)
+                check(
+                    Level::Good,
+                    "Backups",
+                    format!("last backup {}", ago(s)),
+                    None,
+                )
             }
         }
     })
@@ -279,14 +460,35 @@ fn battery() -> Option<Check> {
         .ok()?
         .filter_map(Result::ok)
         .map(|e| e.path())
-        .find(|p| p.file_name().is_some_and(|n| n.to_string_lossy().starts_with("BAT")))?;
-    let num = |name: &str| fs::read_to_string(bat.join(name)).ok()?.trim().parse::<f64>().ok();
-    let (full, design) = num("energy_full").zip(num("energy_full_design")).or_else(|| num("charge_full").zip(num("charge_full_design")))?;
+        .find(|p| {
+            p.file_name()
+                .is_some_and(|n| n.to_string_lossy().starts_with("BAT"))
+        })?;
+    let num = |name: &str| {
+        fs::read_to_string(bat.join(name))
+            .ok()?
+            .trim()
+            .parse::<f64>()
+            .ok()
+    };
+    let (full, design) = num("energy_full")
+        .zip(num("energy_full_design"))
+        .or_else(|| num("charge_full").zip(num("charge_full_design")))?;
     let health = (full / design * 100.0).round();
     Some(if health < 70.0 {
-        check(Level::Warn, "Battery", format!("holds {health}% of its original charge"), Some("it's wearing out; consider a replacement"))
+        check(
+            Level::Warn,
+            "Battery",
+            format!("holds {health}% of its original charge"),
+            Some("it's wearing out; consider a replacement"),
+        )
     } else {
-        check(Level::Good, "Battery", format!("holds {health}% of its original charge"), None)
+        check(
+            Level::Good,
+            "Battery",
+            format!("holds {health}% of its original charge"),
+            None,
+        )
     })
 }
 
@@ -294,13 +496,118 @@ fn temperature() -> Option<Check> {
     let hottest = fs::read_dir("/sys/class/thermal")
         .ok()?
         .filter_map(Result::ok)
-        .filter_map(|e| fs::read_to_string(e.path().join("temp")).ok()?.trim().parse::<i64>().ok())
+        .filter_map(|e| {
+            fs::read_to_string(e.path().join("temp"))
+                .ok()?
+                .trim()
+                .parse::<i64>()
+                .ok()
+        })
         .max()?;
     let c = hottest / 1000;
     Some(match c {
-        95.. => check(Level::Bad, "Temperature", format!("{c}°C — too hot"), Some("check fans and dust; see what's busy: htop")),
-        85.. => check(Level::Warn, "Temperature", format!("{c}°C — running hot"), Some("see what's busy: htop")),
+        95.. => check(
+            Level::Bad,
+            "Temperature",
+            format!("{c}°C — too hot"),
+            Some("check fans and dust; see what's busy: htop"),
+        ),
+        85.. => check(
+            Level::Warn,
+            "Temperature",
+            format!("{c}°C — running hot"),
+            Some("see what's busy: htop"),
+        ),
         _ => check(Level::Good, "Temperature", format!("{c}°C"), None),
+    })
+}
+
+fn boards() -> Option<Check> {
+    let ports: Vec<String> = fs::read_dir("/dev")
+        .ok()?
+        .filter_map(Result::ok)
+        .map(|e| e.file_name().to_string_lossy().to_string())
+        .filter(|n| n.starts_with("ttyUSB") || n.starts_with("ttyACM"))
+        .collect();
+    let in_group =
+        output("id", ["-nG"]).is_some_and(|g| g.split_whitespace().any(|x| x == "dialout"));
+    if ports.is_empty() {
+        return (!in_group).then(|| {
+            check(
+                Level::Note,
+                "Boards",
+                "you can't use USB serial boards yet",
+                Some("log out and back in once (joins the dialout group)"),
+            )
+        });
+    }
+    let blocked: Vec<&String> = ports
+        .iter()
+        .filter(|p| {
+            fs::OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(format!("/dev/{p}"))
+                .is_err()
+        })
+        .collect();
+    Some(if blocked.is_empty() {
+        check(
+            Level::Good,
+            "Boards",
+            format!("can talk to {} (hearth serial)", ports.join(", ")),
+            None,
+        )
+    } else if !in_group {
+        check(
+            Level::Warn,
+            "Boards",
+            "no permission for USB serial boards",
+            Some("log out and back in once (joins the dialout group)"),
+        )
+    } else {
+        check(
+            Level::Note,
+            "Boards",
+            format!("{} is in use by another program", blocked[0]),
+            None,
+        )
+    })
+}
+
+/// The machine this one downloads shared builds from (settings shareBuilds).
+fn shared_builds() -> Option<Check> {
+    let conf = fs::read_to_string("/etc/nix/nix.conf").ok()?;
+    let url = conf
+        .lines()
+        .filter(|l| l.trim_start().starts_with("extra-substituters"))
+        .flat_map(|l| l.split_whitespace())
+        .find(|w| w.starts_with("http://"))?
+        .to_string();
+    let hostport = url
+        .trim_start_matches("http://")
+        .split('/')
+        .next()?
+        .to_string();
+    let reachable = hostport
+        .to_socket_addrs()
+        .ok()
+        .and_then(|mut a| a.next())
+        .is_some_and(|a| TcpStream::connect_timeout(&a, Duration::from_secs(2)).is_ok());
+    Some(if reachable {
+        check(
+            Level::Good,
+            "Shared builds",
+            format!("{hostport} is reachable"),
+            None,
+        )
+    } else {
+        check(
+            Level::Note,
+            "Shared builds",
+            format!("{hostport} isn't reachable — building/downloading on your own"),
+            Some("normal away from home; at home, is it on?"),
+        )
     })
 }
 
@@ -323,16 +630,28 @@ pub fn run(args: &[String]) -> i32 {
     all.extend(backups());
     all.extend(battery());
     all.extend(temperature());
+    all.extend(boards());
+    all.extend(shared_builds());
 
-    let worst = all.iter().map(|c| c.level).fold(Level::Good, |a, b| if b > a { b } else { a });
+    let worst = all
+        .iter()
+        .map(|c| c.level)
+        .fold(Level::Good, |a, b| if b > a { b } else { a });
     let problems: Vec<&Check> = all.iter().filter(|c| c.level >= Level::Warn).collect();
 
     if quiet {
         if !problems.is_empty() {
-            let body: Vec<String> = problems.iter().map(|c| format!("{}: {}", c.area, c.said)).collect();
+            let body: Vec<String> = problems
+                .iter()
+                .map(|c| format!("{}: {}", c.area, c.said))
+                .collect();
             notify(
                 "System check",
-                &format!("{} thing{} to look at", problems.len(), if problems.len() == 1 { "" } else { "s" }),
+                &format!(
+                    "{} thing{} to look at",
+                    problems.len(),
+                    if problems.len() == 1 { "" } else { "s" }
+                ),
                 &format!("{}\nDetails: menu → System → System check", body.join("\n")),
                 worst == Level::Bad,
             );
@@ -341,7 +660,13 @@ pub fn run(args: &[String]) -> i32 {
     }
 
     let color = std::io::stdout().is_terminal();
-    let paint = |code: &str, s: &str| if color { format!("\x1b[{code}m{s}\x1b[0m") } else { s.to_string() };
+    let paint = |code: &str, s: &str| {
+        if color {
+            format!("\x1b[{code}m{s}\x1b[0m")
+        } else {
+            s.to_string()
+        }
+    };
     println!("{}\n", paint("1", "Hearth system check"));
     for c in &all {
         let (mark, code) = match c.level {

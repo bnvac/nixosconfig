@@ -10,6 +10,47 @@ let
   s = import ../settings.nix;
 in
 {
+  # ── Faster builds, in every project, with no setup ────────────────────────
+  # sccache / ccache remember each compiled file, so building the same code
+  # again (a clean build, another branch, a second project with the same
+  # dependencies) takes seconds. mold links 5–10× faster than the default
+  # linker, which is most of the wait after a small edit. Caches live in
+  # ~/.cache/{sccache,ccache} (`debloat` can clear them).
+  # (Only your own builds; Nix's sandboxed system builds are unaffected.)
+  environment.sessionVariables = {
+    RUSTC_WRAPPER = "sccache";
+    CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS = "-C link-arg=-fuse-ld=mold";
+    CMAKE_C_COMPILER_LAUNCHER = "ccache";
+    CMAKE_CXX_COMPILER_LAUNCHER = "ccache";
+    SCCACHE_CACHE_SIZE = "20G";
+  };
+
+  # A notification when a terminal command that took 30 s or more finishes —
+  # start a build, go do something else, hear when it's done (and whether it
+  # worked). Not for programs you sit in (editors, ssh, lazygit…).
+  # HEARTH_NOTIFY_AFTER=60 changes the threshold.
+  programs.zsh.interactiveShellInit = lib.mkBefore ''
+    zmodload zsh/datetime
+    typeset -g __hearth_cmd="" __hearth_t0=0
+    __hearth_preexec() { __hearth_cmd=$1; __hearth_t0=$EPOCHSECONDS; }
+    __hearth_precmd() {
+      local st=$? cmd=$__hearth_cmd secs t
+      __hearth_cmd=""
+      [[ -n $cmd && -n $DISPLAY ]] || return 0
+      secs=$(( EPOCHSECONDS - __hearth_t0 ))
+      (( secs >= ''${HEARTH_NOTIFY_AFTER:-30} )) || return 0
+      case ''${''${cmd## }%% *} in
+        nvim|vim|vi|v|less|more|man|ssh|htop|btop|top|lazygit|tmux|lf|watch|mpv|nix-shell|python|python3|node|zsh|bash) return 0 ;;
+      esac
+      if (( secs >= 60 )); then t="$(( secs / 60 ))m $(( secs % 60 ))s"; else t="''${secs}s"; fi
+      if (( st == 0 )); then notify-send -a Terminal "✅ Done in $t" "$cmd"
+      else notify-send -a Terminal -u critical "❌ Failed (exit $st) after $t" "$cmd"; fi
+    }
+    autoload -Uz add-zsh-hook
+    add-zsh-hook preexec __hearth_preexec
+    add-zsh-hook precmd __hearth_precmd
+  '';
+
   # direnv: cd into a project and its tools (shell.nix) load by themselves,
   # cached so it's instant after the first time (nix-direnv).
   programs.direnv = { enable = true; silent = true; };
@@ -51,6 +92,8 @@ in
     shellcheck nil     # shell-script checker; Nix language server
     # C / C++ (works with the gcc in core; projects can pin their own)
     cmake ninja meson clang-tools gdb valgrind
+    # build speed: compile caches + a fast linker (see the top of this file)
+    sccache ccache mold
     # desktop apps
     meld               # compare / merge files and folders side by side
     zeal               # offline docs for 200+ languages and libraries

@@ -5,11 +5,15 @@
 #                         unused store paths, safe caches, old logs, unused
 #                         Docker images and Flatpak runtimes
 #   debloat list          the app names you can remove
-#   debloat remove NAME…  stop installing these, in EVERY module (settings.nix →
+#   debloat remove NAME…  stop installing these, in EVERY module (settings →
 #                         removePackages), then `rebuild --no-update`. A Flatpak
 #                         app id (org.gimp.GIMP) is uninstalled instead, along
 #                         with any runtime nothing else needs; its data is kept
 #   debloat keep NAME…    undo a remove
+#   debloat junk [DAYS]   build leftovers (target/, node_modules/, build/,
+#                         .venv/…) in projects you haven't built for 30 days:
+#                         lists them with sizes, asks before deleting. The
+#                         next build re-creates them.
 #
 # Removing an app also drops whatever it alone depended on at the next
 # `debloat clean`. Nothing here deletes your own files.
@@ -18,12 +22,53 @@
 # and leaves them behind when the last app using them goes. Apps install
 # system-wide or per user, so both scopes are trimmed.
 
-dir=${NIXOS_DIR:-/etc/nixos}
-settings="$dir/settings.nix"
 export PATH="$PATH:/run/current-system/sw/bin:/run/wrappers/bin"
 
 human() { numfmt --to=iec --suffix=B "$1" 2>/dev/null || echo "$1"; }
 have() { command -v "$1" >/dev/null 2>&1; }
+
+# Build-output folders in your projects not touched for DAYS — only next to
+# the file that proves what they are (target/ beside Cargo.toml, …).
+junk_dirs() {
+  local days=${1:-30} d parent
+  find "$HOME" -xdev -path "$HOME/.*" -prune -o -type d \( -name target -o -name node_modules \
+       -o -name build -o -name .direnv -o -name .venv -o -name __pycache__ -o -name .zig-cache \
+       -o -name zig-out \) -prune -print 2>/dev/null |
+  while IFS= read -r d; do
+    parent=${d%/*}
+    case "${d##*/}" in
+      target)       [ -e "$parent/Cargo.toml" ] || continue ;;
+      node_modules) [ -e "$parent/package.json" ] || continue ;;
+      build)        [ -e "$parent/CMakeLists.txt" ] || [ -e "$parent/meson.build" ] || continue ;;
+      .direnv)      [ -e "$parent/.envrc" ] || continue ;;
+      .venv)        [ -e "$d/pyvenv.cfg" ] || continue ;;
+      .zig-cache | zig-out) [ -e "$parent/build.zig" ] || continue ;;
+    esac
+    # anything inside written in the last DAYS → still in use
+    [ -n "$(find "$d" -maxdepth 1 -newermt "$days days ago" -print -quit 2>/dev/null)" ] && continue
+    printf '%s\n' "$d"
+  done
+}
+
+junk() {
+  local days=${1:-30} total=0 size a d
+  local -a list
+  mapfile -t list < <(junk_dirs "$days")
+  if [ "${#list[@]}" -eq 0 ]; then echo "No build leftovers older than $days days."; return 0; fi
+  echo "Build leftovers in projects you haven't built for $days+ days"
+  echo "(safe to delete — the next build makes them again):"
+  for d in "${list[@]}"; do
+    size=$(du -sb "$d" 2>/dev/null | cut -f1); total=$(( total + ${size:-0} ))
+    printf '  %8s  %s\n' "$(human "${size:-0}")" "${d#"$HOME"/}"
+  done
+  echo "  total: $(human "$total")"
+  if [ -t 0 ] && [ -t 1 ]; then
+    printf 'Delete them? [y/N] '; read -r a
+    case "$a" in
+      y | Y | yes) for d in "${list[@]}"; do rm -rf -- "$d"; done; echo "Freed $(human "$total")." ;;
+    esac
+  fi
+}
 
 report() {
   echo "── disk ─────────────────────────────────────────────"
@@ -44,6 +89,12 @@ report() {
   echo "── caches & logs ────────────────────────────────────"
   [ -d "$HOME/.cache" ] && echo "  ~/.cache           $(du -sh "$HOME/.cache" 2>/dev/null | cut -f1)"
   echo "  system journal     $(journalctl --disk-usage 2>/dev/null | grep -oE '[0-9.]+[KMGT]' | head -n 1)"
+  for c in sccache ccache; do
+    [ -d "$HOME/.cache/$c" ] && printf '  ~/.cache/%-9s %s   (compile cache: makes rebuilds fast; capped)\n' "$c" "$(du -sh "$HOME/.cache/$c" 2>/dev/null | cut -f1)"
+  done
+  local junk_n
+  junk_n=$(junk_dirs 30 | wc -l)
+  [ "$junk_n" -gt 0 ] && echo "  build leftovers    $junk_n old project build folders — see: debloat junk"
   if have docker && systemctl is-active --quiet docker.service 2>/dev/null; then
     echo "  docker:"; docker system df 2>/dev/null | sed 's/^/    /'
   fi
@@ -109,18 +160,13 @@ is_flatpak_app() {
   have flatpak && flatpak list --app --columns=application 2>/dev/null | grep -qxF "$1"
 }
 
-# The removePackages = [ … ]; line in settings.nix, as one name per line.
-current() { grep -E '^\s*removePackages\s*=' "$settings" | grep -oE '"[^"]+"' | tr -d '"' || true; }
+# removePackages = [ … ] (this machine's, settings.local.nix), one name per line.
+current() { hearth-setup get removePackages | grep -oE '"[^"]+"' | tr -d '"' || true; }
 setlist() {
-  local items line
+  local items
   items=$(sort -u | awk 'NF {printf " \"%s\"", $0}')
-  line="  removePackages = [${items} ];"
-  if grep -qE '^\s*removePackages\s*=' "$settings"; then
-    sudo sed -i -E "s|^\s*removePackages\s*=.*|${line}|" "$settings"
-  else
-    sudo sed -i -E "s|^\}\s*$|${line}\n}|" "$settings"
-  fi
-  echo "settings.nix: removePackages = [${items} ];"
+  sudo hearth-setup set removePackages "[${items} ]"
+  echo "settings.local.nix: removePackages = [${items} ];"
   echo "Apply with: rebuild --no-update"
 }
 
@@ -132,6 +178,7 @@ case "${1:-}" in
       case "$a" in y | Y | yes) echo; clean ;; esac
     fi ;;
   clean) clean ;;
+  junk) junk "${2:-30}" ;;
   list)
     echo "Installed by your modules (\`debloat remove <name>\` drops one everywhere):"
     sort -u /etc/debloat/packages 2>/dev/null | column -c "${COLUMNS:-100}"

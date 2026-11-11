@@ -185,6 +185,15 @@ in
   };
   services.displayManager.ly.enable = true;
   hardware.graphics.enable = true;
+  # Graphics drivers for settings.gpu. AMD and Intel need nothing extra (Mesa);
+  # NVIDIA gets its own driver (built for your kernel on the first rebuild).
+  services.xserver.videoDrivers = lib.mkIf (s.gpu == "nvidia") [ "nvidia" ];
+  hardware.nvidia = lib.mkIf (s.gpu == "nvidia") {
+    open = s.nvidiaOpen or true;
+    modesetting.enable = true;
+    nvidiaSettings = true;
+  };
+  hardware.graphics.extraPackages = lib.optionals (s.gpu == "intel") [ pkgs.intel-media-driver ];  # video decoding
   services.blueman.enable = true;            # Bluetooth GUI (Super+Alt+b)
 
   # Lock screen: `lock` — username + password on a plain screen (xsecurelock).

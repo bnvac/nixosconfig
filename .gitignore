@@ -2,3 +2,6 @@ __pycache__/
 *.pyc
 pkgs/pins.local.json
 pkgs/.pins.*
+/settings.local.nix
+/hardware-configuration.nix
+/result

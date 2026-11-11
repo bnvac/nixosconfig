@@ -18,7 +18,7 @@
 { pkgs, ... }:
 let
   s = import ../settings.nix;
-  repo = s.backupRepo or "";
+  repo = s.backupRepo or "/run/media/${s.username}/BACKUP/restic";
 in
 {
   my.packages = [ pkgs.restic pkgs.backup ];

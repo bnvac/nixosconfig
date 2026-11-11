@@ -17,12 +17,21 @@ use std::time::Duration;
 /// "http://ender.local:7125/" → ("ender.local", 7125, "")
 fn parse(url: &str) -> Option<(String, u16, String)> {
     let rest = url.strip_prefix("http://")?;
-    let (hostport, path) = rest.split_once('/').map(|(h, p)| (h, format!("/{p}"))).unwrap_or((rest, String::new()));
+    let (hostport, path) = rest
+        .split_once('/')
+        .map(|(h, p)| (h, format!("/{p}")))
+        .unwrap_or((rest, String::new()));
     let (host, port) = match hostport.rsplit_once(':') {
         Some((h, p)) => (h, p.parse().ok()?),
         None => (hostport, 80),
     };
-    (!host.is_empty()).then(|| (host.to_string(), port, path.trim_end_matches('/').to_string()))
+    (!host.is_empty()).then(|| {
+        (
+            host.to_string(),
+            port,
+            path.trim_end_matches('/').to_string(),
+        )
+    })
 }
 
 /// The bare host name, for messages.
@@ -81,7 +90,11 @@ pub fn message(prev: &str, state: &str) -> Option<(&'static str, &'static str)> 
 }
 
 pub fn run(args: &[String]) -> i32 {
-    let mut hosts: Vec<String> = env::var("PRINTER_HOSTS").unwrap_or_default().split_whitespace().map(String::from).collect();
+    let mut hosts: Vec<String> = env::var("PRINTER_HOSTS")
+        .unwrap_or_default()
+        .split_whitespace()
+        .map(String::from)
+        .collect();
     if hosts.is_empty() {
         hosts = args.to_vec();
     }
@@ -94,8 +107,19 @@ pub fn run(args: &[String]) -> i32 {
             eprintln!("printer-notify: {h}: only plain http://host:port addresses are supported");
         }
     }
-    let poll = env::var("PRINTER_POLL").ok().and_then(|s| s.parse().ok()).unwrap_or(15u64).max(1);
-    println!("printer-notify: watching {}", hosts.iter().map(|h| short(h)).collect::<Vec<_>>().join(", "));
+    let poll = env::var("PRINTER_POLL")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(15u64)
+        .max(1);
+    println!(
+        "printer-notify: watching {}",
+        hosts
+            .iter()
+            .map(|h| short(h))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
 
     let mut last: HashMap<&str, String> = HashMap::new();
     loop {
@@ -104,10 +128,18 @@ pub fn run(args: &[String]) -> i32 {
                 continue; // printer off or unreachable: try next round
             };
             let prev = last.insert(h, state.clone());
-            let Some(prev) = prev.filter(|p| *p != state) else { continue };
+            let Some(prev) = prev.filter(|p| *p != state) else {
+                continue;
+            };
             if let Some((title, urgency)) = message(&prev, &state) {
                 let name = if file.is_empty() { "print" } else { &file };
-                notify_with("Printer", "printer", urgency, title, &format!("{name}\non {}", short(h)));
+                notify_with(
+                    "Printer",
+                    "printer",
+                    urgency,
+                    title,
+                    &format!("{name}\non {}", short(h)),
+                );
             }
         }
         sleep(Duration::from_secs(poll));
@@ -120,9 +152,18 @@ mod tests {
 
     #[test]
     fn urls() {
-        assert_eq!(parse("http://ender.local:7125"), Some(("ender.local".into(), 7125, "".into())));
-        assert_eq!(parse("http://10.0.0.5/"), Some(("10.0.0.5".into(), 80, "".into())));
-        assert_eq!(parse("http://h:80/moon/"), Some(("h".into(), 80, "/moon".into())));
+        assert_eq!(
+            parse("http://ender.local:7125"),
+            Some(("ender.local".into(), 7125, "".into()))
+        );
+        assert_eq!(
+            parse("http://10.0.0.5/"),
+            Some(("10.0.0.5".into(), 80, "".into()))
+        );
+        assert_eq!(
+            parse("http://h:80/moon/"),
+            Some(("h".into(), 80, "/moon".into()))
+        );
         assert_eq!(parse("https://x"), None);
         assert_eq!(short("http://ender.local:7125/"), "ender.local");
     }
@@ -130,16 +171,25 @@ mod tests {
     #[test]
     fn status() {
         let body = r#"{"result":{"eventtime":1,"status":{"print_stats":{"state":"printing","filename":"benchy.gcode"}}}}"#;
-        assert_eq!(read_status(body), Some(("printing".into(), "benchy.gcode".into())));
+        assert_eq!(
+            read_status(body),
+            Some(("printing".into(), "benchy.gcode".into()))
+        );
         assert_eq!(read_status("{}"), None);
         assert_eq!(read_status("not json"), None);
     }
 
     #[test]
     fn transitions() {
-        assert_eq!(message("printing", "complete").map(|m| m.0), Some("✅ Print finished"));
+        assert_eq!(
+            message("printing", "complete").map(|m| m.0),
+            Some("✅ Print finished")
+        );
         assert_eq!(message("printing", "error").map(|m| m.1), Some("critical"));
-        assert_eq!(message("standby", "printing").map(|m| m.0), Some("🖨 Print started"));
+        assert_eq!(
+            message("standby", "printing").map(|m| m.0),
+            Some("🖨 Print started")
+        );
         assert_eq!(message("paused", "printing"), None);
         assert_eq!(message("printing", "paused"), None);
     }

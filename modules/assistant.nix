@@ -6,16 +6,17 @@
 #   neb tui / chat / ask / tools             terminal faces of the same agent
 #   desk …       the desktop actions he's allowed (see `commands` below)
 #
-# BRAIN depends on settings.nix `device`:
-#   desktop → local Ollama on the RX 6750 XT (free, offline), Vulkan backend
-#   laptop  → an API brain (set a key in the dashboard, or ANTHROPIC_API_KEY)
+# BRAIN depends on settings `localAI` (default: a desktop with a GPU):
+#   local → Ollama on this machine's GPU (free, offline) — Vulkan on AMD/Intel,
+#           CUDA on NVIDIA
+#   API   → set a key in the dashboard, or ANTHROPIC_API_KEY (laptops)
 #
 # Dashboard: http://127.0.0.1:7000 — switch brains, set API keys (write-only),
 # edit the command allowlist, see tools/memory. Open it with: chromium http://127.0.0.1:7000
 { pkgs, lib, ... }:
 let
   s = import ../settings.nix;
-  isDesktop = s.device == "desktop";
+  isDesktop = s.localAI or (s.device == "desktop" && s.gpu != "none");
   home = "/home/${s.username}";
 
   # tools Neb's server shells out to (mod, nixos-rebuild, sudo, systemctl, df…)
@@ -42,7 +43,7 @@ let
   # Picks the brain by device and teaches the voice loop about st + X11 focus.
   nebSeed = pkgs.writeText "neb-settings.json" (builtins.toJSON {
     provider = if isDesktop then "ollama" else "anthropic";
-    # qwen3.5:9b: strong tool use, fits the 12 GB card. Thinking off so voice
+    # qwen3.5:9b: strong tool use, fits a 12 GB GPU. Thinking off so voice
     # replies come straight back; 8k context holds his tools + notes.
     providers.ollama = { model = "qwen3.5:9b"; num_ctx = 8192; think = false; };
     commands = nebCommands;
@@ -63,13 +64,13 @@ let
 in
 {
   # ── local model stack — desktop only (the laptop uses an API brain) ────────
-  # Vulkan, not ROCm: the RX 6750 XT (gfx1031) isn't a supported ROCm target —
-  # the override hack is fragile and Ollama silently falls back to the CPU,
-  # which is what made replies crawl. Vulkan runs on the stock Mesa driver.
+  # AMD/Intel: Vulkan, not ROCm — many Radeon cards (the RX 6700 series, for
+  # one) aren't supported ROCm targets, and Ollama then silently falls back to
+  # the CPU, which makes replies crawl. Vulkan runs on the stock Mesa driver.
   services.ollama = lib.mkIf isDesktop {
     enable = true;
-    package = pkgs.ollama-vulkan;
-    environmentVariables.OLLAMA_VULKAN = "1";
+    package = if s.gpu == "nvidia" then pkgs.ollama-cuda else pkgs.ollama-vulkan;
+    environmentVariables = lib.mkIf (s.gpu != "nvidia") { OLLAMA_VULKAN = "1"; };
   };
   services.open-webui = lib.mkIf isDesktop {
     enable = true; port = 8088; openFirewall = false;

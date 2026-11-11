@@ -9,15 +9,21 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 pub fn home() -> PathBuf {
-    env::var_os("HOME").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("/"))
+    env::var_os("HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("/"))
 }
 
 pub fn config_dir() -> PathBuf {
-    env::var_os("XDG_CONFIG_HOME").map(PathBuf::from).unwrap_or_else(|| home().join(".config"))
+    env::var_os("XDG_CONFIG_HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| home().join(".config"))
 }
 
 pub fn state_dir() -> PathBuf {
-    env::var_os("XDG_STATE_HOME").map(PathBuf::from).unwrap_or_else(|| home().join(".local/state"))
+    env::var_os("XDG_STATE_HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| home().join(".local/state"))
 }
 
 pub fn runtime_dir() -> PathBuf {
@@ -37,7 +43,11 @@ pub fn uid() -> u32 {
 pub fn extend_path() {
     let mut path = env::var("PATH").unwrap_or_default();
     if let Some(baked) = option_env!("HEARTH_PATH").filter(|p| !p.is_empty()) {
-        path = if path.is_empty() { baked.to_string() } else { format!("{baked}:{path}") };
+        path = if path.is_empty() {
+            baked.to_string()
+        } else {
+            format!("{baked}:{path}")
+        };
     }
     for extra in ["/run/wrappers/bin", "/run/current-system/sw/bin"] {
         if !path.split(':').any(|p| p == extra) {
@@ -57,11 +67,15 @@ pub fn which(cmd: &str) -> Option<PathBuf> {
         return is_exec(&p).then_some(p);
     }
     let paths = env::var_os("PATH")?;
-    env::split_paths(&paths).map(|d| d.join(cmd)).find(|p| is_exec(p))
+    env::split_paths(&paths)
+        .map(|d| d.join(cmd))
+        .find(|p| is_exec(p))
 }
 
 fn is_exec(p: &Path) -> bool {
-    fs::metadata(p).map(|m| m.is_file() && m.permissions().mode() & 0o111 != 0).unwrap_or(false)
+    fs::metadata(p)
+        .map(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
+        .unwrap_or(false)
 }
 
 /// Run a command; its trimmed stdout if it succeeded.
@@ -70,8 +84,15 @@ where
     I: IntoIterator<Item = S>,
     S: AsRef<OsStr>,
 {
-    let out = Command::new(cmd).args(args).stdin(Stdio::null()).stderr(Stdio::null()).output().ok()?;
-    out.status.success().then(|| String::from_utf8_lossy(&out.stdout).trim().to_string())
+    let out = Command::new(cmd)
+        .args(args)
+        .stdin(Stdio::null())
+        .stderr(Stdio::null())
+        .output()
+        .ok()?;
+    out.status
+        .success()
+        .then(|| String::from_utf8_lossy(&out.stdout).trim().to_string())
 }
 
 /// Run a command quietly; did it succeed?
@@ -91,7 +112,13 @@ where
 }
 
 pub fn notify(app: &str, summary: &str, body: &str, critical: bool) {
-    notify_with(app, "", if critical { "critical" } else { "normal" }, summary, body);
+    notify_with(
+        app,
+        "",
+        if critical { "critical" } else { "normal" },
+        summary,
+        body,
+    );
 }
 
 pub fn notify_with(app: &str, icon: &str, urgency: &str, summary: &str, body: &str) {
@@ -100,7 +127,11 @@ pub fn notify_with(app: &str, icon: &str, urgency: &str, summary: &str, body: &s
     if !icon.is_empty() {
         c.args(["-i", icon]);
     }
-    c.arg(summary).arg(body).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
+    c.arg(summary)
+        .arg(body)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
     let _ = c.status();
 }
 
@@ -121,14 +152,20 @@ pub fn dmenu(prompt: &str, items: &[String], back: bool) -> Pick {
     if back {
         c.env("DMENU_BACK", "1");
     }
-    let Ok(mut child) = c.spawn() else { return Pick::Cancel };
+    let Ok(mut child) = c.spawn() else {
+        return Pick::Cancel;
+    };
     if let Some(mut stdin) = child.stdin.take() {
         let _ = stdin.write_all(items.join("\n").as_bytes());
     }
-    let Ok(out) = child.wait_with_output() else { return Pick::Cancel };
+    let Ok(out) = child.wait_with_output() else {
+        return Pick::Cancel;
+    };
     match out.status.code() {
         Some(0) => {
-            let s = String::from_utf8_lossy(&out.stdout).trim_end_matches('\n').to_string();
+            let s = String::from_utf8_lossy(&out.stdout)
+                .trim_end_matches('\n')
+                .to_string();
             if s.is_empty() {
                 Pick::Cancel
             } else {

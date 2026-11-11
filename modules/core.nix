@@ -3,6 +3,7 @@
 let
   s = import ../settings.nix;
   removed = s.removePackages or [ ];
+  share = { serve = false; from = ""; key = ""; } // (s.shareBuilds or { });
   picked = import ../picker.nix lib;     # same module list configuration.nix imports
 
   # ── Jarvis's note-to-self: regenerated from the live config every rebuild ──
@@ -16,8 +17,12 @@ let
     (`${s.username}`), timezone ${s.timeZone}.
 
     ## Shape of the config
-    - `/etc/nixos/configuration.nix` — picks modules by reading `/etc/nixos/mods/`.
-    - `/etc/nixos/settings.nix` — user/host/ESP/theme knobs.
+    - `/etc/nixos/configuration.nix` — picks modules: Hearth's defaults are the
+      marker files in `/etc/nixos/mods/`, overridden by `modules.<name>` in
+      settings.local.nix (`mod on|off` writes those).
+    - `/etc/nixos/settings.nix` — every setting with its default (in git).
+    - `/etc/nixos/settings.local.nix` — THIS machine's values (not in git):
+      username, hostname, gpu, modules… Edit it, or `hearth-setup set KEY VALUE`.
     - `/etc/nixos/modules/<name>.nix` — one feature each. Off modules stay on
       disk, just unbuilt.
     - `/etc/nixos/pkgs/default.nix` — packages built from source (one overlay).
@@ -147,6 +152,16 @@ let
       exit; state in $XDG_RUNTIME_DIR/hearth-game), `hearth new` (project
       starter: shell.nix + .envrc + git in ~/projects) and `printer-notify`.
       `backup` writes ~/.local/state/backup/last-success for the doctor.
+    - `hearth serial` (pick a USB board by name → tio) and `hearth new board|
+      micropython` (PlatformIO / MicroPython projects with `just flash`). The
+      `ee` module grants device access (udev: picotool, probe-rs, ST-Link,
+      OpenOCD, sigrok, QMK, Vial/hidraw for the seat user, RTL-SDR, Flipper).
+    - Builds (`devtools`): RUSTC_WRAPPER=sccache, CMake → ccache, Rust links
+      with mold (env vars, so Nix's own builds are unaffected); zsh notifies
+      when a command ran ≥30 s; `debloat junk` lists stale build folders.
+    - Shared builds: settings.shareBuilds.serve runs harmonia (:5000, key in
+      /var/lib/hearth/cache-key); other machines set shareBuilds.from + key
+      (`hearth-setup share` prints them) and substitute from it first.
     - Clipboard history: clipmenud + `clipmenu` (Super+Alt+c). Night light:
       gammastep via services.redshift, location from settings.location;
       `nightlight` toggles it for the session.
@@ -169,7 +184,7 @@ let
       /run/media/${s.username}/<label>.
 
     ## To change the system (do this, not `nix profile install`)
-    1. Edit the relevant file under /etc/nixos (a module, or settings.nix).
+    1. Edit the relevant file under /etc/nixos (a module, or settings.local.nix).
     2. `rebuild` (= `sudo nixos-rebuild switch` with progress). Rollback: pick
        an older generation at boot, or `sudo nixos-rebuild switch --rollback`.
     - Add a package: put it in the fitting module's `my.packages` (settings.removePackages strips any of them out).
@@ -195,12 +210,12 @@ let
   # installing/choosing an AI model. Run: modtui
   modtui = pkgs.writeShellScriptBin "modtui" ''
     export PATH=${lib.makeBinPath (with pkgs; [ gum coreutils gnused gnugrep curl jq ])}:/run/wrappers/bin:/run/current-system/sw/bin:$PATH
-    dir=/etc/nixos; set=$dir/settings.nix
+    dir=/etc/nixos
 
-    # read a `key = value;` out of settings.nix (quotes optional)
-    getset() { sed -n "s/.*\\b$1 = \"\\?\\([^\";]*\\)\"\\?;.*/\\1/p" "$set" | head -1; }
-    # replace the value up to the FIRST ; (so inline comments survive)
-    setset() { sudo sed -i "s|\\($1 = \\)[^;]*;|\\1$2;|" "$set"; }
+    # This machine's values live in settings.local.nix (hearth-setup reads and
+    # writes it; settings.nix only holds the defaults).
+    getset() { hearth-setup get "$1"; }
+    setset() { sudo hearth-setup set "$1" "$2"; }
     modules() { for f in "$dir"/modules/*.nix; do n=$(basename "$f" .nix); [ "$n" = core ] || echo "$n"; done; }
     neb_dash() {
       if command -v xdg-open >/dev/null 2>&1; then xdg-open http://127.0.0.1:7000 >/dev/null 2>&1 &
@@ -209,25 +224,26 @@ let
 
     toggle_modules() {
       mapfile -t mods < <(modules)
-      pre=(); for m in "''${mods[@]}"; do [ -e "$dir/mods/$m" ] && pre+=("$m"); done
+      mapfile -t pre < <(hearth-setup modules)
       sel=$(printf '%s\n' "''${mods[@]}" | gum choose --no-limit --height 20 \
             --header "Space = toggle a module on/off, Enter = apply" \
             $(printf -- '--selected=%s ' "''${pre[@]}")) || return
       for m in "''${mods[@]}"; do
-        if printf '%s\n' "$sel" | grep -qx "$m"; then sudo mkdir -p "$dir/mods" && sudo touch "$dir/mods/$m"
-        else sudo rm -f "$dir/mods/$m"; fi
+        if printf '%s\n' "$sel" | grep -qx "$m"; then sudo hearth-setup module "$m" on
+        else sudo hearth-setup module "$m" off; fi
       done
       gum confirm "Rebuild now to apply?" && rebuild --no-update
     }
 
     edit_settings() {
       while true; do
-        f=$(gum choose --header "settings.nix — pick a value to change" \
-          "device: $(getset device)" "hostName: $(getset hostName)" \
+        f=$(gum choose --header "This machine's settings — pick one to change" \
+          "device: $(getset device)" "gpu: $(getset gpu)" "hostName: $(getset hostName)" \
           "termOpacity: $(getset termOpacity)" "autoUpdate: $(getset autoUpdate)" \
           "useGrub: $(getset useGrub)" "Back") || return
         case "$f" in
           device:*)      v=$(gum choose desktop laptop) && setset device "\"$v\"" ;;
+          gpu:*)         v=$(gum choose amd intel nvidia none) && setset gpu "\"$v\"" ;;
           hostName:*)    v=$(gum input --value "$(getset hostName)") && [ -n "$v" ] && setset hostName "\"$v\"" ;;
           termOpacity:*) v=$(gum input --prompt "0.0–1.0 > " --value "$(getset termOpacity)") && setset termOpacity "\"$v\"" ;;
           autoUpdate:*)  v=$(gum choose true false) && setset autoUpdate "$v" ;;
@@ -240,8 +256,8 @@ let
     ai_model() {
       if ! command -v ollama >/dev/null 2>&1; then
         gum style --border normal --padding "0 1" \
-          "Local models run on the desktop (settings device=desktop + the 'assistant' module)." \
-          "On the laptop, Neb uses an API brain — set the key in Neb's dashboard."
+          "Local models need a GPU: the 'assistant' module on a desktop (or settings localAI = true)." \
+          "Without one, Neb uses an API brain — set the key in Neb's dashboard."
         gum confirm "Open Neb's dashboard now?" && neb_dash
         return
       fi
@@ -252,7 +268,7 @@ let
             "gemma4:12b   strong all-rounder, can see images · 7.7 GB" \
             "gemma4:e4b   small, quick Gemma · 6.6 GB" \
             "other…" \
-          | gum choose --header "Install / update which model? (all of these fit the 12 GB card)") || return
+          | gum choose --header "Install / update which model? (pick one smaller than your GPU's memory)") || return
       m=''${m%% *}
       [ "$m" = "other…" ] && m=$(gum input --placeholder "model[:tag], e.g. llama3.2")
       [ -n "$m" ] || return
@@ -272,11 +288,10 @@ let
     onboard() {
       gum style --border double --padding "1 2" --margin "1 0" \
         "Welcome. A few questions to set this machine up."
-      v=$(gum choose desktop laptop --header "Which machine is this?") && setset device "\"$v\""
-      h=$(gum input --header "Hostname" --value "$(getset hostName)") && [ -n "$h" ] && setset hostName "\"$h\""
+      sudo hearth-setup             # you, hostname, timezone, laptop/desktop, graphics
       gum confirm "Choose which modules are on?" && toggle_modules
       gum confirm "Set up an AI model / brain now?" && ai_model
-      if gum confirm "Link this machine to your other one now?" && command -v devlink >/dev/null 2>&1; then
+      if command -v devlink >/dev/null 2>&1 && gum confirm "Link this machine to your other one now?"; then
         c=$(gum input --header "Make up a code; type the SAME one on the other machine" --placeholder "e.g. 4921")
         [ -n "$c" ] && devlink pin "$c"
       fi
@@ -301,16 +316,18 @@ let
     done
   '';
 
+  # `mod` — modules on/off. Your choice goes in settings.local.nix
+  # (modules.<name>), so updates never undo it; mods/ holds Hearth's defaults.
   mod = pkgs.writeShellScriptBin "mod" ''
-    dir=/etc/nixos; m="$dir/mods"
+    dir=/etc/nixos
     all() { for f in "$dir"/modules/*.nix; do n=$(basename "$f" .nix); [ "$n" = core ] || echo "$n"; done; }
     case "''${1:-list}" in
-      list) for n in $(all); do [ -e "$m/$n" ] && echo "  on   $n" || echo "  off  $n"; done ;;
-      on|off) [ -n "''${2:-}" ] && [ -f "$dir/modules/$2.nix" ] && [ "$2" != core ] \
-                || { echo "no module '$2' (try: mod list)"; exit 1; } ;;&
-      on)   sudo mkdir -p "$m" && sudo touch "$m/$2" && rebuild --no-update ;;
-      off)  sudo rm -f "$m/$2" && rebuild --no-update ;;
-      *)    echo "usage: mod list | mod on <name> | mod off <name>" ;;
+      list) on=$(hearth-setup modules)
+            for n in $(all); do printf '%s\n' "$on" | grep -qx "$n" && echo "  on   $n" || echo "  off  $n"; done ;;
+      on|off|default)
+            [ -n "''${2:-}" ] || { echo "usage: mod $1 <name>"; exit 2; }
+            sudo hearth-setup module "$2" "$1" && rebuild --no-update ;;
+      *)    echo "usage: mod list | mod on <name> | mod off <name> | mod default <name>" ;;
     esac
   '';
 
@@ -366,6 +383,40 @@ in
     http-connections = 64;
     download-buffer-size = 268435456;
     trusted-users = [ "root" s.username ];
+  };
+
+  # ── Shared builds (settings.shareBuilds) ───────────────────────────────────
+  # One machine (serve = true) offers everything it has built to your home
+  # network; the others (from + key) download from it before the internet, so
+  # your own apps and anything else it already built never compile twice.
+  # Signed with this machine's own key, so the others accept only its builds.
+  # (It shares /nix/store: software only — Hearth keeps no secrets there.)
+  services.harmonia.cache = lib.mkIf share.serve {
+    enable = true;
+    signKeyPaths = [ "/var/lib/hearth/cache-key" ];
+  };
+  systemd.services.hearth-cache-key = lib.mkIf share.serve {
+    description = "Make the signing key for shared builds";
+    wantedBy = [ "harmonia.service" ];
+    before = [ "harmonia.service" ];
+    serviceConfig = { Type = "oneshot"; RemainAfterExit = true; StateDirectory = "hearth"; };
+    script = ''
+      k=/var/lib/hearth/cache-key
+      [ -s "$k" ] || ${config.nix.package}/bin/nix-store --generate-binary-cache-key \
+        "${s.hostName}-hearth-1" "$k" "$k.pub"
+      chmod 600 "$k"; chmod 644 "$k.pub"
+    '';
+  };
+  networking.firewall.allowedTCPPorts = lib.mkIf share.serve [ 5000 ];
+  nix.settings.extra-substituters = lib.mkIf (share.from != "") [ share.from ];
+  nix.settings.extra-trusted-public-keys = lib.mkIf (share.key != "") [ share.key ];
+  # Off your home network the other machine isn't there: give up on it fast.
+  nix.settings.connect-timeout = 5;
+  nix.settings.fallback = true;
+  # Machines find each other by name (<hostname>.local).
+  services.avahi = lib.mkIf (share.serve || share.from != "") {
+    enable = true; nssmdns4 = true;
+    publish = { enable = true; addresses = true; };
   };
   nix.gc = { automatic = true; dates = "weekly"; options = "--delete-older-than 14d"; };
   nix.optimise = { automatic = true; dates = [ "weekly" ]; };
@@ -452,11 +503,18 @@ in
   ];
   boot.kernelParams = [ "quiet" "udev.log_level=3" ];
   assertions = [{
+    assertion = s.hasLocal;
+    message = ''
+      This machine has no settings.local.nix yet (your username, hostname,
+      graphics…). Make it with:  sudo hearth-setup
+      (or: sudo bash /etc/nixos/pkgs/scripts/setup.sh), then rebuild.'';
+  } {
     assertion = builtins.hasAttr s.espMountPoint config.fileSystems;
     message = ''
-      settings.nix says the ESP is at ${s.espMountPoint}, but hardware-configuration.nix
-      mounts nothing there. Mount the FAT32 ESP (nvme0n1p1) at ${s.espMountPoint}, then
-      run `sudo nixos-generate-config` and rebuild.'';
+      Your settings say the EFI partition is at ${s.espMountPoint}, but
+      hardware-configuration.nix mounts nothing there. Set espMountPoint in
+      settings.local.nix to where it's mounted (`findmnt -t vfat` shows it),
+      then rebuild.'';
   }];
 
   # ── network / bluetooth / locale ───────────────────────────────────────────
@@ -513,7 +571,7 @@ in
   # there strips an app out of every module — `debloat` shows what's big and
   # `debloat remove <name>` adds to that list.
   environment.systemPackages = with pkgs; [
-    mod modtui nixup rebuild update-mine debloat hearth git curl wget htop jq zoxide starship
+    mod modtui nixup rebuild update-mine debloat hearth hearth-setup git curl wget htop jq zoxide starship
   ] ++ lib.filter (p: !(lib.elem (lib.getName p) removed)) config.my.packages;
   my.packages = with pkgs; [
     fastfetch-id fzf ripgrep fd bat eza tree unzip zip psmisc usbutils pciutils
