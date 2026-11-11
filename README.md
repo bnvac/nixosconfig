@@ -133,7 +133,8 @@ On by default unless it says otherwise. `mod on <name>` / `mod off <name>`.
 | `screenshot` | **Print** = whole screen, **Shift+Print** = area / window / clipboard / text (OCR); saved to `~/Pictures/screenshots` and copied to the clipboard |
 | `lock` | lock screen: just your username + password — **Super+Alt+l** (also on suspend / 10 idle min) |
 | `site-push` | publish a folder to its Neocities site — menu: Apps & files → "Publish a folder to Neocities". The site comes from the repo's `.neocities` file; only changed files upload |
-| `wallpapers` | pick a wallpaper — your pictures, or live **Wallpaper Engine** ones from the Steam Workshop — **Super+Alt+w** |
+| `wallpapers` | the wallpaper picker — six built-in wallpapers (snowy night, aurora, dusk ridge, blueprint, topography, circuit board), your pictures, or live **Wallpaper Engine** ones from the Steam Workshop; fit, shuffle, snow on/off — **Super+Alt+w** |
+| `neofetch` / `fastfetch` | system summary with nix²'s layout (version you can roll back from, modules on); your own `~/.config/fastfetch/config.jsonc` takes over — **Super+Alt+i** |
 | `snow on\|off` | the live falling snow (never piles up) |
 | `clipmenu` | clipboard history — **Super+Alt+c** |
 | `nightlight` | night light on/off for now (warmer screen after sunset; `nix2-setup` sets where you are from your timezone) |

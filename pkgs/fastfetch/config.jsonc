@@ -1,0 +1,38 @@
+// nix²'s fastfetch (and `neofetch`). Your own ~/.config/fastfetch/config.jsonc
+// wins if you make one.
+{
+  "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+  "logo": {
+    "color": { "1": "blue", "2": "white" },
+    "padding": { "top": 1, "left": 1, "right": 4 }
+  },
+  "display": {
+    "separator": "  ",
+    "color": { "keys": "blue", "title": "white" },
+    "key": { "width": 11 },
+    "bar": { "char": { "elapsed": "■", "total": "·" }, "width": 12 },
+    "percent": { "type": ["num", "bar"] }
+  },
+  "modules": [
+    { "type": "title", "format": "{user-name}{at-symbol-colored}{host-name}" },
+    { "type": "custom", "format": "\u001b[90m─────────────────────────────────────" },
+    { "type": "os", "key": "system", "format": "nix² · NixOS {version-id} ({codename})" },
+    { "type": "command", "key": "version", "shell": "/bin/sh",
+      "text": "l=$(readlink /nix/var/nix/profiles/system) && n=${l#system-} && echo \"#${n%-link}  (nix2 rollback goes back)\"" },
+    { "type": "command", "key": "modules", "shell": "/bin/sh",
+      "text": "[ -r /etc/nix2/modules ] && tr '\\n' ' ' < /etc/nix2/modules" },
+    { "type": "kernel", "key": "kernel", "format": "{release}" },
+    { "type": "uptime", "key": "uptime" },
+    { "type": "packages", "key": "packages" },
+    { "type": "wm", "key": "desktop", "format": "{pretty-name}" },
+    { "type": "terminal", "key": "terminal" },
+    { "type": "custom", "format": "" },
+    { "type": "cpu", "key": "cpu", "format": "{name} ({cores-logical})" },
+    { "type": "gpu", "key": "gpu", "format": "{name}" },
+    { "type": "memory", "key": "memory" },
+    { "type": "disk", "key": "disk", "folders": "/" },
+    { "type": "battery", "key": "battery" },
+    { "type": "custom", "format": "" },
+    { "type": "colors", "symbol": "circle", "paddingLeft": 0 }
+  ]
+}

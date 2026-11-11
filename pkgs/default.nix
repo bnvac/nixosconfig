@@ -47,14 +47,17 @@ in
         --replace-fail 'SHCMD(TERMINAL " -e neomutt ; pkill -RTMIN+12 dwmblocks")' '{.v = (const char*[]){ "thunar", NULL } }' \
         --replace-fail '{ "mounter", NULL }'   '{ "drives", "mount", NULL }' \
         --replace-fail '{ "unmounter", NULL }' '{ "drives", "unmount", NULL }'
-      # Live wallpaper: xsnow makes an ordinary window, which dwm would tile like
-      # an app (half the screen, black). Windows of class Xsnow are instead
-      # sized to the whole screen, mapped, pushed to the very bottom and never
-      # managed — a true background
-      # layer. Checked in maprequest (new windows) and scan (dwm restarts).
+      # Background layers: the falling snow (class Xsnow) and the live wallpaper
+      # (class linux-wallpaperengine) make ordinary windows, which dwm would
+      # tile like apps. They are instead mapped, pushed to the very bottom and
+      # never managed. Snow is stretched over the whole screen; the live
+      # wallpaper keeps its own size (one window per monitor). It runs as a
+      # window, not on the root window, because on X11 a compositor (picom,
+      # for the see-through terminals) hides anything drawn on the root.
+      # Checked in maprequest (new windows) and scan (dwm restarts).
       substituteInPlace dwm.c \
-        --replace-fail $'void\nmaprequest(XEvent *e)\n{' $'static int\nisbackground(Window w)\n{\n\tXClassHint ch = { NULL, NULL };\n\tint bg = 0;\n\n\tif (XGetClassHint(dpy, w, &ch)) {\n\t\tbg = ch.res_class && !strcmp(ch.res_class, "Xsnow");\n\t\tif (ch.res_class)\n\t\t\tXFree(ch.res_class);\n\t\tif (ch.res_name)\n\t\t\tXFree(ch.res_name);\n\t}\n\treturn bg;\n}\n\nvoid\nmaprequest(XEvent *e)\n{' \
-        --replace-fail $'\tif (!wintoclient(ev->window))\n\t\tmanage(ev->window, &wa);' $'\tif (isbackground(ev->window)) {\n\t\tXMoveResizeWindow(dpy, ev->window, 0, 0, sw, sh);\n\t\tXMapWindow(dpy, ev->window);\n\t\tXLowerWindow(dpy, ev->window);\n\t\treturn;\n\t}\n\tif (!wintoclient(ev->window))\n\t\tmanage(ev->window, &wa);' \
+        --replace-fail $'void\nmaprequest(XEvent *e)\n{' $'static int\nisbackground(Window w)\n{\n\tXClassHint ch = { NULL, NULL };\n\tint bg = 0;\n\n\tif (XGetClassHint(dpy, w, &ch)) {\n\t\tbg = !ch.res_class ? 0 : !strcmp(ch.res_class, "Xsnow") ? 1 : !strcmp(ch.res_class, "linux-wallpaperengine") ? 2 : 0;\n\t\tif (ch.res_class)\n\t\t\tXFree(ch.res_class);\n\t\tif (ch.res_name)\n\t\t\tXFree(ch.res_name);\n\t}\n\treturn bg;\n}\n\nvoid\nmaprequest(XEvent *e)\n{\n\tint bg;' \
+        --replace-fail $'\tif (!wintoclient(ev->window))\n\t\tmanage(ev->window, &wa);' $'\tif ((bg = isbackground(ev->window))) {\n\t\tif (bg == 1)\n\t\t\tXMoveResizeWindow(dpy, ev->window, 0, 0, sw, sh);\n\t\tXMapWindow(dpy, ev->window);\n\t\tXLowerWindow(dpy, ev->window);\n\t\treturn;\n\t}\n\tif (!wintoclient(ev->window))\n\t\tmanage(ev->window, &wa);' \
         --replace-fail '|| wa.override_redirect || XGetTransientForHint(dpy, wins[i], &d1))' '|| wa.override_redirect || XGetTransientForHint(dpy, wins[i], &d1) || isbackground(wins[i]))'
       # Neb's own workspace: his terminal (st -n neb) always lives on tag 9.
       # Steam's notification toasts and friends list float instead of being
@@ -232,11 +235,22 @@ in
     export PATH="$PATH:${prev.lib.makeBinPath (with final; [ git libsecret zenity libnotify larbs-dmenu ])}"
     exec ${raw}/bin/site-push "$@"
   '';
-  # The wallpaper picker (GTK): pictures + live Wallpaper Engine wallpapers.
+  # nix²'s built-in wallpapers, drawn at build time (pkgs/scripts/wallpapers-gen.py):
+  # the snowy night plus aurora, dusk ridge, blueprint, topography, circuit board.
+  nix2-wallpapers = final.runCommand "nix2-wallpapers" {
+    nativeBuildInputs = [ (final.python3.withPackages (ps: [ ps.pillow ps.numpy ])) ];
+  } ''
+    mkdir -p $out
+    python3 ${./scripts/wallpapers-gen.py} $out
+    cp ${final.snow-wallpaper} $out/snowy-night.png
+  '';
+
+  # The wallpaper picker (GTK): built-in wallpapers, your pictures, and live
+  # Wallpaper Engine wallpapers.
   wallpapers =
     let pyGtk = final.python3.withPackages (ps: [ ps.pygobject3 ]); in
     prev.stdenv.mkDerivation {
-      pname = "wallpapers"; version = "1.0";
+      pname = "wallpapers"; version = "2.0";
       dontUnpack = true;
       nativeBuildInputs = [ final.wrapGAppsHook3 final.gobject-introspection ];
       buildInputs = [ final.gtk3 pyGtk ];
@@ -246,16 +260,17 @@ in
         chmod +x $out/bin/wallpapers
       '';
       preFixup = ''
-        gappsWrapperArgs+=(--suffix PATH : ${prev.lib.makeBinPath (with final; [ procps xdg-utils systemd ])}
-                           --set-default WALLPAPER_BUILTIN ${final.snow-wallpaper})
+        gappsWrapperArgs+=(--suffix PATH : ${prev.lib.makeBinPath (with final; [ procps xdg-utils systemd xwallpaper ])}
+                           --set-default WALLPAPER_BUILTIN_DIR ${final.nix2-wallpapers})
       '';
       meta.mainProgram = "wallpapers";
     };
   backup          = sh "backup" (with final; [ restic coreutils util-linux libnotify ]) ./scripts/backup.sh;
-  # fastfetch, but the logo swaps to match the git repo you're standing in.
-  # Drop a <reponame>.txt in pkgs/fastfetch-logos/ to add one; default.txt
-  # shows everywhere else. Replaces the plain `fastfetch` on PATH, so the
-  # Super+Alt+i keybind and the shell both get it.
+  # fastfetch (also as `neofetch`) with nix²'s own layout (pkgs/fastfetch/
+  # config.jsonc), unless you have ~/.config/fastfetch/config.jsonc. The logo
+  # swaps to match the git repo you're standing in: drop a <reponame>.txt in
+  # pkgs/fastfetch-logos/ to add one; default.txt shows everywhere else.
+  # Replaces the plain `fastfetch` on PATH, so Super+Alt+i and the shell get it.
   fastfetch-id = final.writeShellApplication {
     name = "fastfetch";
     runtimeInputs = with final; [ git coreutils ];
@@ -266,9 +281,12 @@ in
         n=$(basename "$top")
         [ -f "$logos/$n.txt" ] && name="$n"
       fi
-      exec ${final.fastfetch}/bin/fastfetch --logo-type file --logo "$logos/$name.txt" "$@"
+      config=()
+      [ -f "''${XDG_CONFIG_HOME:-$HOME/.config}/fastfetch/config.jsonc" ] || config=(--config ${./fastfetch/config.jsonc})
+      exec ${final.fastfetch}/bin/fastfetch "''${config[@]}" --logo-type file --logo "$logos/$name.txt" "$@"
     '';
   };
+  neofetch = final.writeShellScriptBin "neofetch" ''exec ${final.fastfetch-id}/bin/fastfetch "$@"'';
   neb-voice       = py "neb-voice" ./scripts/neb-voice.py;
   tidy            = py "tidy" ./scripts/tidy.py;
   tidy-downloads  = final.writeShellScriptBin "tidy-downloads" ''exec ${final.tidy}/bin/tidy --downloads "$@"'';

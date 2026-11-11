@@ -114,10 +114,18 @@ let
       `debloat remove|keep <name>` edits that list. Kernel is zen by default
       (settings.kernel); zram, earlyoom (never kills Steam/games) and ananicy keep
       it responsive.
-    - `wallpapers` (Super+Alt+w): pictures from ~/Pictures/wallpapers (setbg) or
-      live Wallpaper Engine wallpapers from the Steam Workshop, played by the
+    - `wallpapers` (Super+Alt+w): built-in wallpapers (pkgs.nix2-wallpapers,
+      drawn at build time by pkgs/scripts/wallpapers-gen.py), pictures from
+      ~/Pictures/wallpapers (setbg; fit in ~/.config/wallpapers/fit), or live
+      Wallpaper Engine wallpapers from the Steam Workshop, played by the
       wallpaper-live user service (linux-wallpaperengine; choice saved in
-      ~/.config/wallpapers/live). `lock` is xsecurelock: username + password.
+      ~/.config/wallpapers/live). It runs one window per monitor (class
+      linux-wallpaperengine, kept at the bottom by dwm) because picom hides
+      anything drawn on the X root window, and sets XDG_SESSION_TYPE=x11,
+      which linux-wallpaperengine needs and user services don't get.
+    - `neofetch` = fastfetch with pkgs/fastfetch/config.jsonc (unless
+      ~/.config/fastfetch/config.jsonc exists); /etc/nix2/modules lists the
+      modules that are on. `lock` is xsecurelock: username + password.
       Steam is native; `steam-setup` (runs at login) turns on Steam Play for
       all titles so Windows games and Wallpaper Engine install.
     - `site-push [folder]` publishes a folder to Neocities: the site comes from a
@@ -574,13 +582,16 @@ in
     mod modtui nixup rebuild update-mine debloat nix2 nix2-setup git curl wget htop jq zoxide starship
   ] ++ lib.filter (p: !(lib.elem (lib.getName p) removed)) config.my.packages;
   my.packages = with pkgs; [
-    fastfetch-id fzf ripgrep fd bat eza tree unzip zip psmisc usbutils pciutils
+    fastfetch-id neofetch fzf ripgrep fd bat eza tree unzip zip psmisc usbutils pciutils
     gcc gnumake python3          # build tools — `debloat remove gcc-wrapper gnumake` if you never compile
   ];
   warnings = map (n: "settings.removePackages: \"${n}\" isn't installed by any module — `debloat list` shows the names")
     (lib.filter (n: !(lib.elem n (map lib.getName config.my.packages))) removed);
   environment.etc."debloat/packages".text =
     lib.concatMapStrings (p: lib.getName p + "\n") (lib.unique config.my.packages);
+
+  # Which modules are on, for fastfetch's "modules" line.
+  environment.etc."nix2/modules".text = lib.concatStringsSep "\n" picked.on + "\n";
 
   my.menu."System" = lib.mkBefore [
     { label = "Setup / modules (TUI)"; run = "modtui"; mode = "term"; }

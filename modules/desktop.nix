@@ -154,7 +154,8 @@ in
         ${pkgs.mpd}/bin/mpd &
         bg="$HOME/.local/share/bg"
         [ -e "$bg" ] || { mkdir -p "$HOME/.local/share"; ln -sfn ${wallpaper} "$bg"; }
-        ${pkgs.xwallpaper}/bin/xwallpaper --zoom "$bg" &
+        fit=$(cat "$HOME/.config/wallpapers/fit" 2>/dev/null) || fit=zoom   # set in `wallpapers`
+        ${pkgs.xwallpaper}/bin/xwallpaper "--''${fit:-zoom}" "$bg" &
         ${lib.optionalString (s.liveSnow or true) "${pkgs.snow}/bin/snow on"}
         ${pkgs.larbs-scripts}/bin/remaps &
         ${pkgs.xset}/bin/xset s 600 600          # 10 idle minutes → xss-lock locks the screen
