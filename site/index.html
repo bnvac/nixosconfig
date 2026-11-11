@@ -1,0 +1,436 @@
+<title>nix²</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="nix² is a Linux for people who build things: code, circuit boards, microcontrollers and games, on a fast, private desktop built on NixOS.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one calm column, 1040px max. Hero = words left, Yuki right; then
+   quiet two-line features, a terminal, three install steps, footer. */
+:root {
+  --bg: #f6f8fc;
+  --fg: #141a2e;
+  --muted: #5a6379;
+  --line: #e1e6f0;
+  --accent: #3f62b8;
+  --accent-fg: #ffffff;
+  --accent-soft: #e7eefb;
+  --term-bg: #121830;
+  --term-fg: #dbe3f6;
+  --term-dim: #8592b3;
+  --term-ok: #9cc8f0;
+  --font-display: "Sora", "Inter", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1222; --fg: #e7ecf7; --muted: #99a3bc; --line: #222a42;
+    --accent: #8fb0ee; --accent-fg: #0e1222; --accent-soft: #19223d;
+    --term-bg: #080b17; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1222; --fg: #e7ecf7; --muted: #99a3bc; --line: #222a42;
+  --accent: #8fb0ee; --accent-fg: #0e1222; --accent-soft: #19223d;
+  --term-bg: #080b17; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font: 400 16px/1.6 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+.wrap {
+  max-width: 1040px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+a { color: inherit; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; }
+p { margin: 0; }
+code, kbd { font-family: var(--font-mono); font-size: .88em; }
+
+/* nav */
+nav .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 22px; }
+.mark { font: 700 22px/1 var(--font-display); text-decoration: none; letter-spacing: -.01em; }
+.mark sup { color: var(--accent); font-size: .62em; margin-left: 1px; }
+.links { display: flex; gap: 24px; flex-wrap: wrap; font-size: 14px; }
+.links a { text-decoration: none; color: var(--muted); }
+.links a:hover { color: var(--fg); }
+
+/* hero */
+.hero .wrap { display: grid; grid-template-columns: 1.15fr .85fr; align-items: center; gap: 32px; padding-block: 40px 56px; }
+.hero h1 { font-size: clamp(56px, 11vw, 112px); line-height: .95; letter-spacing: -.04em; font-weight: 700; }
+.hero h1 sup { color: var(--accent); font-size: .5em; vertical-align: .9em; margin-left: .02em; }
+.tagline { font: 600 clamp(22px, 3vw, 28px)/1.25 var(--font-display); margin-top: 22px; letter-spacing: -.01em; }
+.lede { color: var(--muted); max-width: 46ch; margin-top: 14px; font-size: 17px; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 10px;
+  font-weight: 600; font-size: 15px; text-decoration: none; border: 1px solid var(--line);
+}
+.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.btn:hover { filter: brightness(1.06); }
+.meta { margin-top: 18px; font-size: 13px; color: var(--muted); }
+.meta span + span::before { content: "·"; margin: 0 8px; }
+
+.portrait { position: relative; justify-self: center; width: min(360px, 100%); }
+.portrait::before {
+  content: ""; position: absolute; inset: 8% 4% 0; border-radius: 50% 50% 40% 40%;
+  background: var(--accent-soft);
+}
+.yuki { position: relative; display: block; width: 100%; height: auto; max-width: 100%; }
+.yuki .yuki-eyes { transform-box: fill-box; transform-origin: center; animation: blink 5.5s infinite; }
+@keyframes blink { 0%, 95%, 100% { transform: scaleY(1); } 97% { transform: scaleY(.08); } }
+@media (prefers-reduced-motion: reduce) { .yuki .yuki-eyes { animation: none; } }
+
+/* sections */
+section { border-top: 1px solid var(--line); }
+section > .wrap { padding-block: 64px; }
+.eyebrow { font: 500 12px/1 var(--font-mono); text-transform: uppercase; letter-spacing: .12em; color: var(--accent); }
+h2 { font-size: clamp(28px, 4vw, 38px); letter-spacing: -.02em; margin-top: 10px; line-height: 1.15; }
+.intro { color: var(--muted); max-width: 60ch; margin-top: 12px; }
+
+.features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px 36px; margin-top: 40px; }
+.feature { min-width: 0; }
+.feature h3 { font-size: 18px; font-weight: 600; letter-spacing: -.01em; }
+.feature p { color: var(--muted); margin-top: 8px; font-size: 15px; }
+.feature code { display: inline-block; margin-top: 12px; color: var(--accent); background: var(--accent-soft); padding: 3px 8px; border-radius: 6px; }
+
+/* terminal */
+.split { display: grid; grid-template-columns: .9fr 1.1fr; gap: 40px; align-items: center; }
+.split > * { min-width: 0; }
+.term {
+  background: var(--term-bg); color: var(--term-fg); border-radius: 14px; overflow: hidden;
+  font: 400 14px/1.75 var(--font-mono);
+}
+.term-bar { display: flex; gap: 7px; padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.07); }
+.term-bar i { width: 11px; height: 11px; border-radius: 50%; background: #2c3556; }
+.term pre { margin: 0; padding: 18px 20px 22px; overflow-x: auto; }
+.term .p { color: var(--term-ok); }
+.term .c { color: var(--term-dim); }
+.boards { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 8px; }
+.boards span { font-size: 13px; border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; color: var(--muted); }
+
+/* install */
+.steps { list-style: none; padding: 0; margin: 40px 0 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 36px; counter-reset: step; }
+.steps li { min-width: 0; counter-increment: step; }
+.steps li::before {
+  content: counter(step); display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%;
+  background: var(--accent-soft); color: var(--accent); font: 600 15px/1 var(--font-display); margin-bottom: 14px;
+}
+.steps h3 { font-size: 17px; font-weight: 600; }
+.steps p { color: var(--muted); font-size: 15px; margin-top: 6px; }
+.req { margin-top: 36px; font-size: 14px; color: var(--muted); max-width: 70ch; }
+
+/* mascot */
+.meet { display: grid; grid-template-columns: 140px 1fr; gap: 28px; align-items: center; }
+.meet .mini { width: 140px; border-radius: 50%; background: var(--accent-soft); overflow: hidden; aspect-ratio: 1; }
+.meet .mini svg { width: 100%; height: 100%; display: block; }
+.meet p { color: var(--muted); max-width: 58ch; margin-top: 8px; }
+
+footer { border-top: 1px solid var(--line); }
+footer .wrap { padding-block: 28px 40px; display: flex; flex-wrap: wrap; gap: 12px 28px; justify-content: space-between; font-size: 13px; color: var(--muted); }
+footer p { max-width: 62ch; }
+
+@media (max-width: 820px) {
+  .hero .wrap { grid-template-columns: 1fr; padding-block: 16px 40px; }
+  .portrait { order: -1; width: min(260px, 70%); }
+  .features, .steps { grid-template-columns: 1fr 1fr; }
+  .split { grid-template-columns: 1fr; }
+}
+@media (max-width: 540px) {
+  .features, .steps { grid-template-columns: 1fr; gap: 28px; }
+  .links a.hide-sm { display: none; }
+  .meet { grid-template-columns: 1fr; }
+}
+</style>
+
+<nav>
+  <div class="wrap">
+    <a class="mark" href="#top">nix<sup>2</sup></a>
+    <div class="links">
+      <a class="hide-sm" href="#features">Features</a>
+      <a class="hide-sm" href="#hardware">Hardware</a>
+      <a href="#download">Download</a>
+      <a href="https://github.com/bnvac/nixosconfig">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <div>
+      <h1>nix<sup>2</sup></h1>
+      <p class="tagline">The Linux for people who build things.</p>
+      <p class="lede">Write code, design circuit boards, flash microcontrollers and play games on a fast, private desktop that sets itself up. Every update can be undone.</p>
+      <div class="actions">
+        <a class="btn primary" href="https://github.com/bnvac/nixosconfig/releases/latest">Download the installer</a>
+        <a class="btn" href="https://github.com/bnvac/nixosconfig">Source code</a>
+      </div>
+      <p class="meta"><span>Built on NixOS 26.05</span><span>x86-64 PCs</span><span>Free, MIT license</span></p>
+    </div>
+    <div class="portrait">
+      <svg class="yuki" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 480" role="img" aria-labelledby="yuki-title">
+  <title id="yuki-title">Yuki, the nix² mascot: a girl with silver-blue hair, a snowflake hair clip and a blue nix² hoodie</title>
+  <defs>
+    <linearGradient id="yk-iris" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#25407f"/>
+      <stop offset=".55" stop-color="#4a72c4"/>
+      <stop offset="1" stop-color="#9cc8f0"/>
+    </linearGradient>
+    <linearGradient id="yk-hair" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e4ecfa"/>
+      <stop offset="1" stop-color="#b9cbed"/>
+    </linearGradient>
+    <linearGradient id="yk-hair-back" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b3c6ea"/>
+      <stop offset="1" stop-color="#8ea8da"/>
+    </linearGradient>
+  </defs>
+  <g stroke="#2f3b5c" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+    <!-- back hair -->
+    <path fill="url(#yk-hair-back)" d="M200 58C116 58 76 126 80 206C83 262 74 318 58 372L84 356L80 404L112 372L120 410L146 372L150 336L250 336L254 372L280 410L288 372L320 404L316 356L342 372C326 318 317 262 320 206C324 126 284 58 200 58Z"/>
+    <!-- hoodie -->
+    <path fill="#3f5ea8" d="M138 318C150 304 174 300 200 300C226 300 250 304 262 318C300 334 330 368 338 480L62 480C70 368 100 334 138 318Z"/>
+    <path fill="#34508f" d="M146 320C160 352 182 366 200 366C218 366 240 352 254 320C240 312 222 308 200 308C178 308 160 312 146 320Z"/>
+    <!-- neck -->
+    <path fill="#f9dccd" d="M182 270L218 270L220 318C212 330 188 330 180 318Z"/>
+    <path fill="none" stroke-width="2.5" d="M170 340L166 410M230 340L234 410"/>
+    <circle cx="166" cy="414" r="5" fill="#e9eef8"/>
+    <circle cx="234" cy="414" r="5" fill="#e9eef8"/>
+    <!-- face -->
+    <path fill="#fde8dc" d="M126 176C124 236 146 268 170 284C184 293 192 297 200 297C208 297 216 293 230 284C254 268 276 236 274 176Z"/>
+    <!-- shade under the bangs -->
+    <path fill="#f6d3c4" stroke="none" d="M128 178L272 178L270 200C246 190 220 186 200 190C178 186 152 190 130 200Z"/>
+    <!-- eyebrows -->
+    <path fill="none" stroke-width="2.5" d="M148 186Q164 180 180 186M220 186Q236 180 252 186"/>
+    <!-- eyes (blink together) -->
+    <g class="yuki-eyes">
+      <ellipse cx="164" cy="222" rx="18" ry="23" fill="url(#yk-iris)" stroke-width="2.5"/>
+      <ellipse cx="236" cy="222" rx="18" ry="23" fill="url(#yk-iris)" stroke-width="2.5"/>
+      <ellipse cx="164" cy="226" rx="8" ry="11" fill="#17234a" stroke="none"/>
+      <ellipse cx="236" cy="226" rx="8" ry="11" fill="#17234a" stroke="none"/>
+      <circle cx="171" cy="212" r="6" fill="#fff" stroke="none"/>
+      <circle cx="243" cy="212" r="6" fill="#fff" stroke="none"/>
+      <circle cx="157" cy="234" r="2.6" fill="#fff" stroke="none"/>
+      <circle cx="229" cy="234" r="2.6" fill="#fff" stroke="none"/>
+      <!-- upper lashes -->
+      <path fill="#2f3b5c" stroke-width="2" d="M142 208C150 194 176 192 188 204L190 199C178 186 148 188 138 204Z"/>
+      <path fill="#2f3b5c" stroke-width="2" d="M258 208C250 194 224 192 212 204L210 199C222 186 252 188 262 204Z"/>
+      <path fill="none" stroke-width="2" d="M154 247Q164 250 174 247M226 247Q236 250 246 247"/>
+    </g>
+    <!-- blush -->
+    <ellipse cx="146" cy="252" rx="13" ry="6" fill="#f4a2a8" fill-opacity=".55" stroke="none"/>
+    <ellipse cx="254" cy="252" rx="13" ry="6" fill="#f4a2a8" fill-opacity=".55" stroke="none"/>
+    <path fill="none" stroke="#e7838c" stroke-width="1.8" d="M140 254L144 249M146 255L150 250M152 255L156 250M244 254L248 249M250 255L254 250M256 255L260 250"/>
+    <!-- nose and mouth -->
+    <path fill="none" stroke-width="2" d="M199 244L201 248"/>
+    <path fill="#c75a6c" stroke-width="2.5" d="M189 260Q200 275 211 260Q200 264 189 260Z"/>
+    <!-- side locks -->
+    <path fill="url(#yk-hair)" d="M128 150C112 200 114 262 128 316C134 296 138 262 140 236C142 214 140 186 146 160Z"/>
+    <path fill="url(#yk-hair)" d="M272 150C288 200 286 262 272 316C266 296 262 262 260 236C258 214 260 186 254 160Z"/>
+    <!-- top of the head and bangs -->
+    <path fill="url(#yk-hair)" d="M118 206C110 118 152 64 200 64C248 64 290 118 282 206Q278 182 268 166Q266 188 258 200Q252 168 240 150Q240 176 232 190Q226 160 214 144Q214 168 208 184Q202 158 192 142Q190 168 184 186Q178 162 166 150Q164 178 158 196Q152 170 146 160Q144 184 136 198Q130 186 118 206Z"/>
+    <!-- a few strands of shine -->
+    <path fill="none" stroke="#ffffff" stroke-opacity=".8" stroke-width="3" d="M160 92Q182 82 204 84M226 88Q240 92 250 100"/>
+    <!-- ahoge -->
+    <path fill="url(#yk-hair)" d="M198 66C196 40 214 22 236 26C222 32 212 44 210 66Z"/>
+    <!-- snowflake hair clip -->
+    <g transform="translate(266 132)" stroke="#2f3b5c" stroke-width="2.4">
+      <circle r="17" fill="#ffffff"/>
+      <g stroke="#4a72c4" stroke-width="2.6" fill="none">
+        <path d="M0-11V11M-9.5-5.5L9.5 5.5M-9.5 5.5L9.5-5.5"/>
+        <path d="M-3-8L0-5L3-8M-3 8L0 5L3 8M-8.5-1.5L-5-2.5L-5.5-6M8.5 1.5L5 2.5L5.5 6M-8.5 1.5L-5 2.5L-5.5 6M8.5-1.5L5-2.5L5.5-6"/>
+      </g>
+    </g>
+    <!-- hoodie print -->
+    <text x="268" y="426" fill="#e9eef8" stroke="none" font-family="Sora, Inter, system-ui, sans-serif" font-size="26" font-weight="700" text-anchor="middle">nix²</text>
+  </g>
+</svg>
+    </div>
+  </div>
+</header>
+
+<section id="features">
+  <div class="wrap">
+    <p class="eyebrow">What you get</p>
+    <h2>A desktop that stays out of your way</h2>
+    <div class="features">
+      <div class="feature">
+        <h3>One menu for everything</h3>
+        <p>Every setting, tool and app is one keypress away, sorted by what you want to do.</p>
+        <code>Super + Alt + Space</code>
+      </div>
+      <div class="feature">
+        <h3>Code without setup</h3>
+        <p>New projects come with their compiler, language server and formatter. A compile cache and a fast linker are on for every build.</p>
+        <code>nix2 new rust</code>
+      </div>
+      <div class="feature">
+        <h3>Undo any update</h3>
+        <p>Updates are pre-built in the background. If one breaks something, go back to the version that worked.</p>
+        <code>nix2 rollback</code>
+      </div>
+      <div class="feature">
+        <h3>Fixes, not error codes</h3>
+        <p>A weekly check looks at audio, graphics, disk, backups and battery, and tells you the exact fix when something's off.</p>
+        <code>nix2 doctor</code>
+      </div>
+      <div class="feature">
+        <h3>Private by default</h3>
+        <p>Firewall on, SSH off, an encrypted disk from the installer, and Tor for everything when you want it.</p>
+        <code>tormode on</code>
+      </div>
+      <div class="feature">
+        <h3>Games included</h3>
+        <p>Steam with Proton for every game, controller support, and a game mode that pauses notifications while you play.</p>
+        <code>gamemoderun %command%</code>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="hardware">
+  <div class="wrap split">
+    <div>
+      <p class="eyebrow">Hardware</p>
+      <h2>Plug in a board. Flash it.</h2>
+      <p class="intro">USB permissions, flashing tools and serial monitors are already set up, so a new board works the moment you plug it in. No sudo, no udev rules to copy from a forum.</p>
+      <div class="boards">
+        <span>Raspberry Pi Pico</span><span>ESP32</span><span>Arduino</span><span>STM32</span>
+        <span>QMK / Vial keyboards</span><span>Logic analysers</span><span>KiCad</span><span>3D printers</span>
+      </div>
+    </div>
+    <div class="term" aria-label="Terminal example">
+      <div class="term-bar"><i></i><i></i><i></i></div>
+<pre><span class="p">~ $</span> nix2 new board blinky
+<span class="c">Created /home/ada/projects/blinky</span>
+<span class="p">~ $</span> cd ~/projects/blinky
+<span class="p">blinky $</span> just flash      <span class="c"># build and upload to the Pico</span>
+<span class="p">blinky $</span> nix2 serial
+<span class="c">/dev/ttyACM0 at 115200 baud — quit with Ctrl+t then q</span>
+Hello from blinky!
+Hello from blinky!</pre>
+    </div>
+  </div>
+</section>
+
+<section id="download">
+  <div class="wrap">
+    <p class="eyebrow">Install</p>
+    <h2>Three steps, about half an hour</h2>
+    <ol class="steps">
+      <li>
+        <h3>Download</h3>
+        <p>Get <code>nix2-installer.iso</code> from the latest release.</p>
+      </li>
+      <li>
+        <h3>Make a USB stick</h3>
+        <p>Write it to a 4 GB+ stick with balenaEtcher, Ventoy or <code>dd</code>.</p>
+      </li>
+      <li>
+        <h3>Boot and install</h3>
+        <p>Start from the stick and type <code>nix2-install</code>. It connects to Wi-Fi, asks a few questions and does the rest.</p>
+      </li>
+    </ol>
+    <p class="req">Needs a 64-bit PC from about the last ten years, booting in UEFI mode, with internet for the install. AMD and Intel graphics work out of the box; NVIDIA gets NVIDIA's own driver. Already on NixOS? Clone the repo into <code>/etc/nixos</code> and run <code>nix2-setup</code>.</p>
+  </div>
+</section>
+
+<section id="yuki">
+  <div class="wrap meet">
+    <div class="mini" aria-hidden="true"><svg class="yuki-mini" xmlns="http://www.w3.org/2000/svg" viewBox="90 40 220 220" role="img" aria-hidden="true">
+  <title id="ym-title">Yuki, the nix² mascot: a girl with silver-blue hair, a snowflake hair clip and a blue nix² hoodie</title>
+  <defs>
+    <linearGradient id="ym-iris" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#25407f"/>
+      <stop offset=".55" stop-color="#4a72c4"/>
+      <stop offset="1" stop-color="#9cc8f0"/>
+    </linearGradient>
+    <linearGradient id="ym-hair" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e4ecfa"/>
+      <stop offset="1" stop-color="#b9cbed"/>
+    </linearGradient>
+    <linearGradient id="ym-hair-back" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b3c6ea"/>
+      <stop offset="1" stop-color="#8ea8da"/>
+    </linearGradient>
+  </defs>
+  <g stroke="#2f3b5c" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+    <!-- back hair -->
+    <path fill="url(#ym-hair-back)" d="M200 58C116 58 76 126 80 206C83 262 74 318 58 372L84 356L80 404L112 372L120 410L146 372L150 336L250 336L254 372L280 410L288 372L320 404L316 356L342 372C326 318 317 262 320 206C324 126 284 58 200 58Z"/>
+    <!-- hoodie -->
+    <path fill="#3f5ea8" d="M138 318C150 304 174 300 200 300C226 300 250 304 262 318C300 334 330 368 338 480L62 480C70 368 100 334 138 318Z"/>
+    <path fill="#34508f" d="M146 320C160 352 182 366 200 366C218 366 240 352 254 320C240 312 222 308 200 308C178 308 160 312 146 320Z"/>
+    <!-- neck -->
+    <path fill="#f9dccd" d="M182 270L218 270L220 318C212 330 188 330 180 318Z"/>
+    <path fill="none" stroke-width="2.5" d="M170 340L166 410M230 340L234 410"/>
+    <circle cx="166" cy="414" r="5" fill="#e9eef8"/>
+    <circle cx="234" cy="414" r="5" fill="#e9eef8"/>
+    <!-- face -->
+    <path fill="#fde8dc" d="M126 176C124 236 146 268 170 284C184 293 192 297 200 297C208 297 216 293 230 284C254 268 276 236 274 176Z"/>
+    <!-- shade under the bangs -->
+    <path fill="#f6d3c4" stroke="none" d="M128 178L272 178L270 200C246 190 220 186 200 190C178 186 152 190 130 200Z"/>
+    <!-- eyebrows -->
+    <path fill="none" stroke-width="2.5" d="M148 186Q164 180 180 186M220 186Q236 180 252 186"/>
+    <!-- eyes (blink together) -->
+    <g class="yuki-eyes">
+      <ellipse cx="164" cy="222" rx="18" ry="23" fill="url(#ym-iris)" stroke-width="2.5"/>
+      <ellipse cx="236" cy="222" rx="18" ry="23" fill="url(#ym-iris)" stroke-width="2.5"/>
+      <ellipse cx="164" cy="226" rx="8" ry="11" fill="#17234a" stroke="none"/>
+      <ellipse cx="236" cy="226" rx="8" ry="11" fill="#17234a" stroke="none"/>
+      <circle cx="171" cy="212" r="6" fill="#fff" stroke="none"/>
+      <circle cx="243" cy="212" r="6" fill="#fff" stroke="none"/>
+      <circle cx="157" cy="234" r="2.6" fill="#fff" stroke="none"/>
+      <circle cx="229" cy="234" r="2.6" fill="#fff" stroke="none"/>
+      <!-- upper lashes -->
+      <path fill="#2f3b5c" stroke-width="2" d="M142 208C150 194 176 192 188 204L190 199C178 186 148 188 138 204Z"/>
+      <path fill="#2f3b5c" stroke-width="2" d="M258 208C250 194 224 192 212 204L210 199C222 186 252 188 262 204Z"/>
+      <path fill="none" stroke-width="2" d="M154 247Q164 250 174 247M226 247Q236 250 246 247"/>
+    </g>
+    <!-- blush -->
+    <ellipse cx="146" cy="252" rx="13" ry="6" fill="#f4a2a8" fill-opacity=".55" stroke="none"/>
+    <ellipse cx="254" cy="252" rx="13" ry="6" fill="#f4a2a8" fill-opacity=".55" stroke="none"/>
+    <path fill="none" stroke="#e7838c" stroke-width="1.8" d="M140 254L144 249M146 255L150 250M152 255L156 250M244 254L248 249M250 255L254 250M256 255L260 250"/>
+    <!-- nose and mouth -->
+    <path fill="none" stroke-width="2" d="M199 244L201 248"/>
+    <path fill="#c75a6c" stroke-width="2.5" d="M189 260Q200 275 211 260Q200 264 189 260Z"/>
+    <!-- side locks -->
+    <path fill="url(#ym-hair)" d="M128 150C112 200 114 262 128 316C134 296 138 262 140 236C142 214 140 186 146 160Z"/>
+    <path fill="url(#ym-hair)" d="M272 150C288 200 286 262 272 316C266 296 262 262 260 236C258 214 260 186 254 160Z"/>
+    <!-- top of the head and bangs -->
+    <path fill="url(#ym-hair)" d="M118 206C110 118 152 64 200 64C248 64 290 118 282 206Q278 182 268 166Q266 188 258 200Q252 168 240 150Q240 176 232 190Q226 160 214 144Q214 168 208 184Q202 158 192 142Q190 168 184 186Q178 162 166 150Q164 178 158 196Q152 170 146 160Q144 184 136 198Q130 186 118 206Z"/>
+    <!-- a few strands of shine -->
+    <path fill="none" stroke="#ffffff" stroke-opacity=".8" stroke-width="3" d="M160 92Q182 82 204 84M226 88Q240 92 250 100"/>
+    <!-- ahoge -->
+    <path fill="url(#ym-hair)" d="M198 66C196 40 214 22 236 26C222 32 212 44 210 66Z"/>
+    <!-- snowflake hair clip -->
+    <g transform="translate(266 132)" stroke="#2f3b5c" stroke-width="2.4">
+      <circle r="17" fill="#ffffff"/>
+      <g stroke="#4a72c4" stroke-width="2.6" fill="none">
+        <path d="M0-11V11M-9.5-5.5L9.5 5.5M-9.5 5.5L9.5-5.5"/>
+        <path d="M-3-8L0-5L3-8M-3 8L0 5L3 8M-8.5-1.5L-5-2.5L-5.5-6M8.5 1.5L5 2.5L5.5 6M-8.5 1.5L-5 2.5L-5.5 6M8.5-1.5L5-2.5L5.5-6"/>
+      </g>
+    </g>
+    <!-- hoodie print -->
+    <text x="268" y="426" fill="#e9eef8" stroke="none" font-family="Sora, Inter, system-ui, sans-serif" font-size="26" font-weight="700" text-anchor="middle">nix²</text>
+  </g>
+</svg></div>
+    <div>
+      <p class="eyebrow">Mascot</p>
+      <h2>Meet Yuki</h2>
+      <p>Yuki (雪, "snow") lives in the snowflake that nix² is built on. She's the one who asks whether you tried <code>nix2 doctor</code> before you post on the forum.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>nix² is free software under the MIT license, built on NixOS and nixpkgs. It's an independent project, not affiliated with the NixOS Foundation.</p>
+    <p><a href="https://github.com/bnvac/nixosconfig">GitHub</a> · <a href="https://github.com/bnvac/nixosconfig/releases">Releases</a> · <a href="https://github.com/bnvac/nixosconfig/blob/claude/nixos-config-samadams-5g7hbe/CONTRIBUTING.md">Contribute</a></p>
+  </div>
+</footer>

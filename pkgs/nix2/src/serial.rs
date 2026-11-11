@@ -1,4 +1,4 @@
-//! hearth serial [PORT] [BAUD] — talk to a board over USB serial (Arduino,
+//! nix2 serial [PORT] [BAUD] — talk to a board over USB serial (Arduino,
 //! ESP32, Pico, any USB-serial adapter). Lists what's plugged in by name
 //! ("Raspberry Pi Pico on ttyACM0"), opens the one you pick in tio, which
 //! reconnects by itself when you reflash or replug the board.
@@ -127,7 +127,7 @@ pub fn run(args: &[String]) -> i32 {
         .is_err()
     {
         eprintln!("No permission to open {port}. You need to be in the 'dialout' group");
-        eprintln!("(Hearth adds you; log out and back in once after installing).");
+        eprintln!("(nix² adds you; log out and back in once after installing).");
         return 1;
     }
     println!("{port} at {baud} baud — quit with Ctrl+t then q\n");
@@ -136,7 +136,7 @@ pub fn run(args: &[String]) -> i32 {
     } else {
         Command::new("picocom").args(["-b", &baud, &port]).exec()
     };
-    eprintln!("hearth serial: couldn't start a serial terminal: {err}");
+    eprintln!("nix2 serial: couldn't start a serial terminal: {err}");
     1
 }
 
@@ -147,7 +147,7 @@ mod tests {
 
     #[test]
     fn lists_boards_by_name() {
-        let root = std::env::temp_dir().join(format!("hearth-serial-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("nix2-serial-{}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
         // /sys/bus/usb/devices/1-1 (the board) / 1-1:1.0 (its interface)
         let usb = root.join("devices/1-1");

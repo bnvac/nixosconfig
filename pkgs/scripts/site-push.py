@@ -85,7 +85,7 @@ def confirm(question):
 # ── API ─────────────────────────────────────────────────────────────────────
 def call(method, endpoint, key, params=None, files=None):
     url = f"{API}/{endpoint}"
-    headers = {"Authorization": f"Bearer {key}", "User-Agent": "site-push (NixOS Hearth)"}
+    headers = {"Authorization": f"Bearer {key}", "User-Agent": "site-push (NixOS nix²)"}
     data = None
     if files is not None:
         boundary = uuid.uuid4().hex

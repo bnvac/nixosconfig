@@ -1,4 +1,4 @@
-//! hearth rollback — go back to an earlier system version (for when an
+//! nix2 rollback — go back to an earlier system version (for when an
 //! update broke something). Lists the kept versions with their dates; Enter
 //! picks the one before the current. Your files are never touched; only the
 //! system software changes, and you can roll forward again the same way.
@@ -71,7 +71,7 @@ pub fn run(args: &[String]) -> i32 {
         return 0;
     }
 
-    // `hearth rollback N` skips the question.
+    // `nix2 rollback N` skips the question.
     let wanted = if let Some(n) = args.first() {
         n.parse::<u32>().ok()
     } else {
@@ -138,7 +138,7 @@ pub fn run(args: &[String]) -> i32 {
     if switched.is_ok_and(|s| s.success()) {
         println!("\nDone — now on version {target}. It's also the default at the next boot.");
         println!(
-            "To return to the newest: hearth rollback {}",
+            "To return to the newest: nix2 rollback {}",
             gens.last().map(|g| g.num).unwrap_or(cur)
         );
         0

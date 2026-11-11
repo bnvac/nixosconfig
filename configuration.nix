@@ -1,4 +1,4 @@
-# NixOS: Hearth. Everything lives in ./modules; this file only picks them.
+# NixOS: nix². Everything lives in ./modules; this file only picks them.
 #
 # A feature module (modules/<name>.nix, except core) is ON when an empty file
 # named <name> exists in ./mods. New modules register themselves — no list here.

@@ -1,4 +1,6 @@
-# Hearth
+<p align="center"><img src="site/yuki.svg" width="200" alt="Yuki, the nix² mascot"></p>
+
+<h1 align="center">nix²</h1>
 
 **A Linux for people who build things.** Write code, design circuit boards,
 flash microcontrollers, 3D print, game — on a fast, private desktop that
@@ -15,20 +17,20 @@ mod on virt       # switch a module on (it rebuilds for you)
   Super+Alt+F1 lists your keys.
 - **Hardware just works** — plug in an Arduino, ESP32, Raspberry Pi Pico, debug
   probe, logic analyser or QMK/Vial keyboard and it's usable straight away, no
-  sudo. `hearth serial` shows a board's output; `hearth new board` starts a
+  sudo. `nix2 serial` shows a board's output; `nix2 new board` starts a
   PlatformIO project you build and flash with `just flash`. KiCad, FreeCAD,
   OpenSCAD and OrcaSlicer are in.
-- **Coding without setup** — `hearth new` makes a Rust / Python / C++ / Go /
+- **Coding without setup** — `nix2 new` makes a Rust / Python / C++ / Go /
   Node project whose compiler, language server and formatter load when you
   `cd` in. Builds are fast by default: a compile cache (sccache/ccache) and the
   mold linker for every project, and a notification when a long build ends.
 - **Your machines help each other** — one computer can share what it built
   with your others over your home network, so they download instead of
   compiling.
-- **Looks after itself** — `hearth doctor` checks the things that usually
+- **Looks after itself** — `nix2 doctor` checks the things that usually
   break (audio, screenshots, graphics drivers, disk, backups, battery…) and
   tells you the fix; a weekly check only speaks up when something's wrong.
-  Updates are pre-built in the background, and `hearth rollback` undoes one.
+  Updates are pre-built in the background, and `nix2 rollback` undoes one.
 - **Private by default** — firewall on, SSH off, Tor one command away
   (`tormode on`), Proton VPN, Bitwarden, encrypted disk from the installer.
 - **Games** — Steam with Proton for every game, controllers, and a game mode
@@ -38,12 +40,12 @@ mod on virt       # switch a module on (it rebuilds for you)
 
 **New computer (or one you're happy to wipe): the installer USB.**
 
-1. Download `hearth-installer.iso` from the
+1. Download `nix2-installer.iso` from the
    [latest release](https://github.com/bnvac/nixosconfig/releases/latest).
 2. Write it to a USB stick (4 GB+) with [balenaEtcher](https://etcher.balena.io)
-   or Ventoy, or `sudo dd if=hearth-installer.iso of=/dev/sdX bs=4M status=progress`.
+   or Ventoy, or `sudo dd if=nix2-installer.iso of=/dev/sdX bs=4M status=progress`.
 3. Boot from the stick (UEFI mode; turn off Secure Boot) and type
-   `hearth-install`. It connects to Wi-Fi, asks which disk to use (and erases
+   `nix2-install`. It connects to Wi-Fi, asks which disk to use (and erases
    it), whether to encrypt it, and a few questions about you. Then it installs
    — about 15–40 minutes, depending on your internet.
 
@@ -81,7 +83,7 @@ writes it, it's not in git, so updates never touch it.
 }
 ```
 
-`rebuild` applies changes. `nixup` pulls the newest Hearth and rebuilds.
+`rebuild` applies changes. `nixup` pulls the newest nix² and rebuilds.
 
 ## Modules
 
@@ -90,7 +92,7 @@ On by default unless it says otherwise. `mod on <name>` / `mod off <name>`.
 | module | what |
 |---|---|
 | desktop | dwm/st/dmenu/dwmblocks (based on LARBS), picom, snowy live wallpaper, lock screen, Thunar + drives, apps menu, Bluetooth, clipboard history, night light |
-| devtools | coding toolkit: lazygit, gh/glab/tea, delta, difftastic, direnv, just, hyperfine, CMake/Ninja/clangd/gdb/valgrind, Meld, Zeal, Qalculate; sccache/ccache + mold for fast builds; `hearth new`; shared builds. `devExtras = true` adds VSCodium, Helix, Ghidra, Octave, OBS |
+| devtools | coding toolkit: lazygit, gh/glab/tea, delta, difftastic, direnv, just, hyperfine, CMake/Ninja/clangd/gdb/valgrind, Meld, Zeal, Qalculate; sccache/ccache + mold for fast builds; `nix2 new`; shared builds. `devExtras = true` adds VSCodium, Helix, Ghidra, Octave, OBS |
 | ee | hardware & electronics: KiCad, ngspice, PulseView/sigrok, PlatformIO, Arduino IDE, picotool, esptool/espflash, probe-rs, OpenOCD, ST-Link, dfu-util, Thonny/mpremote, QMK + Vial, FreeCAD, OpenSCAD, OrcaSlicer — and the device permissions for all of it |
 | apps | LibreOffice, browsers (+ Bitwarden), Discord/Slack, media, Calibre, torrents + Stremio, Onshape |
 | gaming | native Steam with Steam Play for every game, Proton-GE, NTSYNC, gamescope/gamemode, Xbox controllers, Prism Launcher |
@@ -113,15 +115,15 @@ On by default unless it says otherwise. `mod on <name>` / `mod off <name>`.
 | command | what |
 |---|---|
 | `modtui` | TUI: onboarding, modules, settings, AI model (with download bar), update |
-| `hearth-setup` | this machine's settings (you, hostname, timezone, laptop/desktop, graphics) → `settings.local.nix`; `hearth-setup set KEY VALUE` changes one |
+| `nix2-setup` | this machine's settings (you, hostname, timezone, laptop/desktop, graphics) → `settings.local.nix`; `nix2-setup set KEY VALUE` changes one |
 | `rebuild` (`nrs`) | apply your config + update your own git apps (seconds when nothing is new), live progress bar. `--upgrade` also moves to the newest NixOS packages — normally pre-built for you weekly in the background; `--no-update` just applies config |
 | `update-mine` | move your git-built apps (neb, backoffice, intraweb + `gitApps`) to their latest commit, only if it builds; runs daily too. `--status` to just look |
 | `debloat` | what's using space, and clean it; `debloat junk` finds old build folders (target/, node_modules/…) in projects you haven't touched for a month; `debloat remove <app>` drops an app from every module, or uninstalls a Flatpak by id (`org.gimp.GIMP`) and trims runtimes nothing else uses |
 | `nixup` | `git pull` /etc/nixos + rebuild (`autoUpdate = true` does it weekly) |
-| `hearth doctor` | system check: failed services, disk, memory, clock, network, screenshots, audio, Vulkan/Steam libraries, updates, backups, battery health, temperature — each problem with its fix. Menu: System → System check; runs weekly and notifies only if something's wrong |
-| `hearth rollback` | go back to an earlier system version if an update broke something (Enter = the one before); menu: System → Roll back |
-| `hearth new` | start a project in `~/projects` with its tools ready — Rust, Python, C/C++, Go, Node, a microcontroller board (PlatformIO: Pico, ESP32, Arduino) or MicroPython: shell.nix + direnv + git + `just` commands (`just watch` reruns on every save, `just flash` for boards) |
-| `hearth serial` | pick a plugged-in board by name and see its serial output (reconnects when you reflash) |
+| `nix2 doctor` | system check: failed services, disk, memory, clock, network, screenshots, audio, Vulkan/Steam libraries, updates, backups, battery health, temperature — each problem with its fix. Menu: System → System check; runs weekly and notifies only if something's wrong |
+| `nix2 rollback` | go back to an earlier system version if an update broke something (Enter = the one before); menu: System → Roll back |
+| `nix2 new` | start a project in `~/projects` with its tools ready — Rust, Python, C/C++, Go, Node, a microcontroller board (PlatformIO: Pico, ESP32, Arduino) or MicroPython: shell.nix + direnv + git + `just` commands (`just watch` reruns on every save, `just flash` for boards) |
+| `nix2 serial` | pick a plugged-in board by name and see its serial output (reconnects when you reflash) |
 | `nixmenu` | this system's actions by category — **Super+Alt+Space** (Backspace = back, Esc = close). Add/hide/reorder with `menu` in your settings, or `~/.config/nixmenu/menu` (no rebuild) |
 | `mykeys` | your keybind cheat sheet — **Super+Alt+F1** |
 | `apps` | every app, by category — **Super+Alt+a** |
@@ -134,7 +136,7 @@ On by default unless it says otherwise. `mod on <name>` / `mod off <name>`.
 | `wallpapers` | pick a wallpaper — your pictures, or live **Wallpaper Engine** ones from the Steam Workshop — **Super+Alt+w** |
 | `snow on\|off` | the live falling snow (never piles up) |
 | `clipmenu` | clipboard history — **Super+Alt+c** |
-| `nightlight` | night light on/off for now (warmer screen after sunset; `hearth-setup` sets where you are from your timezone) |
+| `nightlight` | night light on/off for now (warmer screen after sunset; `nix2-setup` sets where you are from your timezone) |
 | `steam-setup` | turns on Steam Play for all games (runs at login; Steam must be closed) |
 | `thunar` | GUI file manager — **Super+Alt+e** (`lf` is still Super+r) |
 | `dash` | the menu's Self-hosted section (your web apps + running Docker containers) — **Super+Alt+d** |
@@ -234,17 +236,17 @@ On by default unless it says otherwise. `mod on <name>` / `mod off <name>`.
 configuration.nix     imports core + every module that's on
 picker.nix            which modules exist / are on (mods/ + your settings)
 settings.nix          every setting, its default and what it does
-settings.local.nix    YOUR machine's values (not in git; hearth-setup writes it)
+settings.local.nix    YOUR machine's values (not in git; nix2-setup writes it)
 options.nix           shared options modules fill in (menu entries, packages…)
 modules/core.nix      always on: boot, network, user, audio, shell, updates
 modules/*.nix         one feature each (table above)
 mods/<name>           an empty file = that module is on by default
-pkgs/default.nix      everything built from source (dwm/st/dmenu, hearth, …)
-pkgs/hearth/          `hearth`: menu, doctor, rollback, game mode, new,
+pkgs/default.nix      everything built from source (dwm/st/dmenu, nix2, …)
+pkgs/nix2/          `nix2`: menu, doctor, rollback, game mode, new,
                       serial, printer alerts — one small Rust program
 pkgs/scripts/         the smaller tools (rebuild, setup, debloat, screenshot…)
 pkgs/tracked.nix      which commit every git-built app uses
-installer/            the installer USB (iso.nix) and hearth-install
+installer/            the installer USB (iso.nix) and nix2-install
 ci/                   stand-ins CI uses to check the config builds
 ```
 
@@ -253,11 +255,24 @@ ci/                   stand-ins CI uses to check the config builds
 Ideas, bug reports and pull requests are welcome — see
 [CONTRIBUTING.md](CONTRIBUTING.md). Every pull request is checked
 automatically: the config must evaluate for an AMD desktop, an Intel laptop
-and an NVIDIA desktop, hearth's tests must pass, and every script must pass
+and an NVIDIA desktop, nix2's tests must pass, and every script must pass
 shellcheck.
+
+## Yuki
+
+nix²'s mascot is Yuki (雪, "snow"): silver-blue hair, a snowflake hair clip
+and a nix² hoodie. The drawing is `site/yuki.svg` — use it freely under the
+same MIT license.
+
+## Website
+
+`site/` is the homepage. GitHub publishes it with Pages on every change
+(`.github/workflows/site.yml`; turn it on once under Settings → Pages →
+Source: GitHub Actions).
 
 ## Credits & license
 
-Hearth is MIT-licensed ([LICENSE](LICENSE)). The desktop is built on Luke
+nix² is MIT-licensed ([LICENSE](LICENSE)). The desktop is built on Luke
 Smith's [LARBS](https://larbs.xyz) builds of the suckless tools
-(dwm, st, dmenu), and on [NixOS](https://nixos.org) and nixpkgs.
+(dwm, st, dmenu), and on [NixOS](https://nixos.org) and nixpkgs. nix² is an
+independent project, not affiliated with the NixOS Foundation.

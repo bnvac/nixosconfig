@@ -1,5 +1,5 @@
 # Builds the installer USB image for every release (and on demand from the
-# Actions tab), and attaches it to the release as hearth-installer.iso.
+# Actions tab), and attaches it to the release as nix2-installer.iso.
 name: installer image
 on:
   release:
@@ -22,16 +22,16 @@ jobs:
       - name: Build the image
         run: |
           nix-build '<nixpkgs/nixos>' -A config.system.build.isoImage -I nixos-config=./installer/iso.nix
-          cp result/iso/*.iso hearth-installer.iso
-          sha256sum hearth-installer.iso > hearth-installer.iso.sha256
+          cp result/iso/*.iso nix2-installer.iso
+          sha256sum nix2-installer.iso > nix2-installer.iso.sha256
       - uses: actions/upload-artifact@v4
         with:
-          name: hearth-installer
-          path: hearth-installer.iso*
+          name: nix2-installer
+          path: nix2-installer.iso*
       - name: Attach to the release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            hearth-installer.iso
-            hearth-installer.iso.sha256
+            nix2-installer.iso
+            nix2-installer.iso.sha256

@@ -273,29 +273,29 @@ in
   tidy            = py "tidy" ./scripts/tidy.py;
   tidy-downloads  = final.writeShellScriptBin "tidy-downloads" ''exec ${final.tidy}/bin/tidy --downloads "$@"'';
   browser-sync    = py "browser-sync" ./scripts/browser-sync.py;
-  hearth-setup    = sh "hearth-setup" (with final; [ coreutils gnused gnugrep gawk util-linux git ]) ./scripts/setup.sh;
+  nix2-setup      = sh "nix2-setup" (with final; [ coreutils gnused gnugrep gawk util-linux git ]) ./scripts/setup.sh;
   debloat         = sh "debloat" (with final; [ gawk gnugrep gnused coreutils findutils util-linux ]) ./scripts/debloat.sh;
 
-  # ── hearth: this system's own tools in one small, fast Rust binary ────────
+  # ── nix2: this system's own tools in one small, fast Rust binary ────────
   # menu (nixmenu), doctor (system check), rollback, game-mode hooks and the
-  # printer watcher. Source in pkgs/hearth; `nixmenu`, `printer-notify` and
-  # `hearth-doctor` are links to it (it picks the tool by the name it's run as).
-  hearth = final.rustPlatform.buildRustPackage {
-    pname = "hearth"; version = "0.1.0";
+  # printer watcher. Source in pkgs/nix2; `nixmenu`, `printer-notify` and
+  # `nix2-doctor` are links to it (it picks the tool by the name it's run as).
+  nix2 = final.rustPlatform.buildRustPackage {
+    pname = "nix2"; version = "0.1.0";
     src = final.lib.cleanSourceWith {
-      src = ./hearth;
+      src = ./nix2;
       filter = path: _type: baseNameOf path != "target";
     };
-    cargoLock.lockFile = ./hearth/Cargo.lock;
+    cargoLock.lockFile = ./nix2/Cargo.lock;
     # The patched dmenu (Backspace = back) and st, found first at run time.
-    env.HEARTH_PATH = final.lib.makeBinPath [ final.larbs-dmenu final.larbs-st final.libnotify ];
+    env.NIX2_PATH = final.lib.makeBinPath [ final.larbs-dmenu final.larbs-st final.libnotify ];
     postInstall = ''
-      for n in nixmenu printer-notify hearth-doctor; do ln -s hearth $out/bin/$n; done
+      for n in nixmenu printer-notify nix2-doctor; do ln -s nix2 $out/bin/$n; done
     '';
-    meta.mainProgram = "hearth";
+    meta.mainProgram = "nix2";
   };
-  nixmenu         = final.hearth;
-  printer-notify  = final.hearth;
+  nixmenu         = final.nix2;
+  printer-notify  = final.nix2;
 
   # Apps from any git repo, listed in settings.gitApps (see pkgs/gitapps.nix).
   gitApps = import ./gitapps.nix { inherit final prev tracked fetchPinned; };

@@ -1,4 +1,4 @@
-//! hearth game start|end — gamemode runs these when a game starts and when
+//! nix2 game start|end — gamemode runs these when a game starts and when
 //! the last one closes. While you play: notifications wait, the live
 //! wallpaper freezes and the snow stops (both cost GPU time). Everything goes
 //! back exactly as it was afterwards. (gamemode itself sets the CPU to
@@ -20,7 +20,7 @@ fn snow_running() -> bool {
 pub fn run(args: &[String]) -> i32 {
     extend_path();
     load_x_env();
-    let state = runtime_dir().join("hearth-game");
+    let state = runtime_dir().join("nix2-game");
     match args.first().map(String::as_str) {
         Some("start") => {
             if state.exists() {
@@ -76,7 +76,7 @@ pub fn run(args: &[String]) -> i32 {
             0
         }
         _ => {
-            eprintln!("usage: hearth game start|end");
+            eprintln!("usage: nix2 game start|end");
             2
         }
     }

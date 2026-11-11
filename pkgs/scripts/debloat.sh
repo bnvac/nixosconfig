@@ -161,11 +161,11 @@ is_flatpak_app() {
 }
 
 # removePackages = [ … ] (this machine's, settings.local.nix), one name per line.
-current() { hearth-setup get removePackages | grep -oE '"[^"]+"' | tr -d '"' || true; }
+current() { nix2-setup get removePackages | grep -oE '"[^"]+"' | tr -d '"' || true; }
 setlist() {
   local items
   items=$(sort -u | awk 'NF {printf " \"%s\"", $0}')
-  sudo hearth-setup set removePackages "[${items} ]"
+  sudo nix2-setup set removePackages "[${items} ]"
   echo "settings.local.nix: removePackages = [${items} ];"
   echo "Apply with: rebuild --no-update"
 }

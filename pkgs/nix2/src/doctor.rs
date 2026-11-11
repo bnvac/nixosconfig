@@ -1,8 +1,8 @@
-//! hearth doctor — check that the system works, in plain words, with the fix
+//! nix2 doctor — check that the system works, in plain words, with the fix
 //! for anything that doesn't.
 //!
-//!   hearth doctor            the full report (menu: System → System check)
-//!   hearth doctor --notify   quiet: one notification, only if something's wrong
+//!   nix2 doctor            the full report (menu: System → System check)
+//!   nix2 doctor --notify   quiet: one notification, only if something's wrong
 //!                            (a weekly timer runs this)
 
 use crate::util::{
@@ -244,13 +244,13 @@ fn screenshots() -> Check {
             );
         }
     }
-    let shot = runtime_dir().join("hearth-doctor-shot.png");
+    let shot = runtime_dir().join("nix2-doctor-shot.png");
     let worked = ok(
         "maim",
         [
             "-u",
             "-q",
-            shot.to_str().unwrap_or("/tmp/hearth-doctor-shot.png"),
+            shot.to_str().unwrap_or("/tmp/nix2-doctor-shot.png"),
         ],
     ) && fs::metadata(&shot).map(|m| m.len() > 0).unwrap_or(false);
     let _ = fs::remove_file(&shot);
@@ -555,7 +555,7 @@ fn boards() -> Option<Check> {
         check(
             Level::Good,
             "Boards",
-            format!("can talk to {} (hearth serial)", ports.join(", ")),
+            format!("can talk to {} (nix2 serial)", ports.join(", ")),
             None,
         )
     } else if !in_group {
@@ -667,7 +667,7 @@ pub fn run(args: &[String]) -> i32 {
             s.to_string()
         }
     };
-    println!("{}\n", paint("1", "Hearth system check"));
+    println!("{}\n", paint("1", "nix² system check"));
     for c in &all {
         let (mark, code) = match c.level {
             Level::Good => ("✓", "32"),

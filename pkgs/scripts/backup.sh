@@ -79,7 +79,7 @@ case "$cmd" in
         --exclude "**/target"; then
       # Keep a sensible ladder of old snapshots and reclaim the rest.
       restic forget --prune --keep-daily 7 --keep-weekly 4 --keep-monthly 6 >/dev/null || true
-      # The system check (hearth doctor) reads this to say how old your last backup is.
+      # The system check (nix2 doctor) reads this to say how old your last backup is.
       stamp="${XDG_STATE_HOME:-$HOME/.local/state}/backup"
       mkdir -p "$stamp" && touch "$stamp/last-success"
       note "backup complete."

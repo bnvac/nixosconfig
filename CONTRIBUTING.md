@@ -1,11 +1,11 @@
-# Contributing to Hearth
+# Contributing to nix²
 
 Thanks for helping! Bug reports, ideas and pull requests are all welcome.
 
 ## Trying a change
 
-On a Hearth machine, `/etc/nixos` *is* your clone: edit, then `rebuild`. If it
-goes wrong, `hearth rollback` (or pick an older entry at boot) brings the last
+On a nix² machine, `/etc/nixos` *is* your clone: edit, then `rebuild`. If it
+goes wrong, `nix2 rollback` (or pick an older entry at boot) brings the last
 working system back.
 
 Without installing anything, check the config still fits together, the same
@@ -17,7 +17,7 @@ echo '{ device = "laptop"; gpu = "intel"; }' > settings.local.nix
 nix-instantiate '<nixpkgs/nixos>' -A system -I nixos-config=./configuration.nix
 ```
 
-Both files are ignored by git. For hearth (Rust): `cd pkgs/hearth && cargo test`.
+Both files are ignored by git. For nix2 (Rust): `cd pkgs/nix2 && cargo test`.
 Scripts: `shellcheck -s bash pkgs/scripts/*.sh installer/install.sh`.
 
 ## How things fit
@@ -31,7 +31,7 @@ Scripts: `shellcheck -s bash pkgs/scripts/*.sh installer/install.sh`.
   working.
 - **Small tools** are shell scripts in `pkgs/scripts/`, packaged in
   `pkgs/default.nix` with `sh` (which runs shellcheck at build time). Anything
-  that runs often or needs to be quick belongs in `pkgs/hearth` (Rust, one
+  that runs often or needs to be quick belongs in `pkgs/nix2` (Rust, one
   binary, one file per subcommand).
 - **Words matter**: messages, menu labels and comments are for people who may
   be new to Linux. Say what happened and what to do next, plainly.

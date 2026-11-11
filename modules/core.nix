@@ -17,12 +17,12 @@ let
     (`${s.username}`), timezone ${s.timeZone}.
 
     ## Shape of the config
-    - `/etc/nixos/configuration.nix` — picks modules: Hearth's defaults are the
+    - `/etc/nixos/configuration.nix` — picks modules: nix²'s defaults are the
       marker files in `/etc/nixos/mods/`, overridden by `modules.<name>` in
       settings.local.nix (`mod on|off` writes those).
     - `/etc/nixos/settings.nix` — every setting with its default (in git).
     - `/etc/nixos/settings.local.nix` — THIS machine's values (not in git):
-      username, hostname, gpu, modules… Edit it, or `hearth-setup set KEY VALUE`.
+      username, hostname, gpu, modules… Edit it, or `nix2-setup set KEY VALUE`.
     - `/etc/nixos/modules/<name>.nix` — one feature each. Off modules stay on
       disk, just unbuilt.
     - `/etc/nixos/pkgs/default.nix` — packages built from source (one overlay).
@@ -143,16 +143,16 @@ let
       and copies to the clipboard; failures show a notification.
     - `lock` (Super+Alt+l) — lock screen; also on suspend and after 10 idle min.
     - `snow on|off|toggle` — the live falling snow over the snowy wallpaper.
-    - `hearth` (pkgs/hearth, one Rust binary) holds this system's own tools:
-      the menu (`nixmenu` is a link to it), `hearth doctor` (system check with
+    - `nix2` (pkgs/nix2, one Rust binary) holds this system's own tools:
+      the menu (`nixmenu` is a link to it), `nix2 doctor` (system check with
       a fix for every problem; a weekly user timer runs `--notify`, which
-      only speaks up when something's wrong), `hearth rollback` (switch to an
-      earlier system generation), `hearth game start|end` (gamemode hooks:
+      only speaks up when something's wrong), `nix2 rollback` (switch to an
+      earlier system generation), `nix2 game start|end` (gamemode hooks:
       pause dunst, SIGSTOP the live wallpaper, stop snow — all restored on
-      exit; state in $XDG_RUNTIME_DIR/hearth-game), `hearth new` (project
+      exit; state in $XDG_RUNTIME_DIR/nix2-game), `nix2 new` (project
       starter: shell.nix + .envrc + git in ~/projects) and `printer-notify`.
       `backup` writes ~/.local/state/backup/last-success for the doctor.
-    - `hearth serial` (pick a USB board by name → tio) and `hearth new board|
+    - `nix2 serial` (pick a USB board by name → tio) and `nix2 new board|
       micropython` (PlatformIO / MicroPython projects with `just flash`). The
       `ee` module grants device access (udev: picotool, probe-rs, ST-Link,
       OpenOCD, sigrok, QMK, Vial/hidraw for the seat user, RTL-SDR, Flipper).
@@ -160,8 +160,8 @@ let
       with mold (env vars, so Nix's own builds are unaffected); zsh notifies
       when a command ran ≥30 s; `debloat junk` lists stale build folders.
     - Shared builds: settings.shareBuilds.serve runs harmonia (:5000, key in
-      /var/lib/hearth/cache-key); other machines set shareBuilds.from + key
-      (`hearth-setup share` prints them) and substitute from it first.
+      /var/lib/nix2/cache-key); other machines set shareBuilds.from + key
+      (`nix2-setup share` prints them) and substitute from it first.
     - Clipboard history: clipmenud + `clipmenu` (Super+Alt+c). Night light:
       gammastep via services.redshift, location from settings.location;
       `nightlight` toggles it for the session.
@@ -212,10 +212,10 @@ let
     export PATH=${lib.makeBinPath (with pkgs; [ gum coreutils gnused gnugrep curl jq ])}:/run/wrappers/bin:/run/current-system/sw/bin:$PATH
     dir=/etc/nixos
 
-    # This machine's values live in settings.local.nix (hearth-setup reads and
+    # This machine's values live in settings.local.nix (nix2-setup reads and
     # writes it; settings.nix only holds the defaults).
-    getset() { hearth-setup get "$1"; }
-    setset() { sudo hearth-setup set "$1" "$2"; }
+    getset() { nix2-setup get "$1"; }
+    setset() { sudo nix2-setup set "$1" "$2"; }
     modules() { for f in "$dir"/modules/*.nix; do n=$(basename "$f" .nix); [ "$n" = core ] || echo "$n"; done; }
     neb_dash() {
       if command -v xdg-open >/dev/null 2>&1; then xdg-open http://127.0.0.1:7000 >/dev/null 2>&1 &
@@ -224,13 +224,13 @@ let
 
     toggle_modules() {
       mapfile -t mods < <(modules)
-      mapfile -t pre < <(hearth-setup modules)
+      mapfile -t pre < <(nix2-setup modules)
       sel=$(printf '%s\n' "''${mods[@]}" | gum choose --no-limit --height 20 \
             --header "Space = toggle a module on/off, Enter = apply" \
             $(printf -- '--selected=%s ' "''${pre[@]}")) || return
       for m in "''${mods[@]}"; do
-        if printf '%s\n' "$sel" | grep -qx "$m"; then sudo hearth-setup module "$m" on
-        else sudo hearth-setup module "$m" off; fi
+        if printf '%s\n' "$sel" | grep -qx "$m"; then sudo nix2-setup module "$m" on
+        else sudo nix2-setup module "$m" off; fi
       done
       gum confirm "Rebuild now to apply?" && rebuild --no-update
     }
@@ -288,7 +288,7 @@ let
     onboard() {
       gum style --border double --padding "1 2" --margin "1 0" \
         "Welcome. A few questions to set this machine up."
-      sudo hearth-setup             # you, hostname, timezone, laptop/desktop, graphics
+      sudo nix2-setup             # you, hostname, timezone, laptop/desktop, graphics
       gum confirm "Choose which modules are on?" && toggle_modules
       gum confirm "Set up an AI model / brain now?" && ai_model
       if command -v devlink >/dev/null 2>&1 && gum confirm "Link this machine to your other one now?"; then
@@ -317,16 +317,16 @@ let
   '';
 
   # `mod` — modules on/off. Your choice goes in settings.local.nix
-  # (modules.<name>), so updates never undo it; mods/ holds Hearth's defaults.
+  # (modules.<name>), so updates never undo it; mods/ holds nix²'s defaults.
   mod = pkgs.writeShellScriptBin "mod" ''
     dir=/etc/nixos
     all() { for f in "$dir"/modules/*.nix; do n=$(basename "$f" .nix); [ "$n" = core ] || echo "$n"; done; }
     case "''${1:-list}" in
-      list) on=$(hearth-setup modules)
+      list) on=$(nix2-setup modules)
             for n in $(all); do printf '%s\n' "$on" | grep -qx "$n" && echo "  on   $n" || echo "  off  $n"; done ;;
       on|off|default)
             [ -n "''${2:-}" ] || { echo "usage: mod $1 <name>"; exit 2; }
-            sudo hearth-setup module "$2" "$1" && rebuild --no-update ;;
+            sudo nix2-setup module "$2" "$1" && rebuild --no-update ;;
       *)    echo "usage: mod list | mod on <name> | mod off <name> | mod default <name>" ;;
     esac
   '';
@@ -390,20 +390,20 @@ in
   # network; the others (from + key) download from it before the internet, so
   # your own apps and anything else it already built never compile twice.
   # Signed with this machine's own key, so the others accept only its builds.
-  # (It shares /nix/store: software only — Hearth keeps no secrets there.)
+  # (It shares /nix/store: software only — nix² keeps no secrets there.)
   services.harmonia.cache = lib.mkIf share.serve {
     enable = true;
-    signKeyPaths = [ "/var/lib/hearth/cache-key" ];
+    signKeyPaths = [ "/var/lib/nix2/cache-key" ];
   };
-  systemd.services.hearth-cache-key = lib.mkIf share.serve {
+  systemd.services.nix2-cache-key = lib.mkIf share.serve {
     description = "Make the signing key for shared builds";
     wantedBy = [ "harmonia.service" ];
     before = [ "harmonia.service" ];
-    serviceConfig = { Type = "oneshot"; RemainAfterExit = true; StateDirectory = "hearth"; };
+    serviceConfig = { Type = "oneshot"; RemainAfterExit = true; StateDirectory = "nix2"; };
     script = ''
-      k=/var/lib/hearth/cache-key
+      k=/var/lib/nix2/cache-key
       [ -s "$k" ] || ${config.nix.package}/bin/nix-store --generate-binary-cache-key \
-        "${s.hostName}-hearth-1" "$k" "$k.pub"
+        "${s.hostName}-nix2-1" "$k" "$k.pub"
       chmod 600 "$k"; chmod 644 "$k.pub"
     '';
   };
@@ -506,7 +506,7 @@ in
     assertion = s.hasLocal;
     message = ''
       This machine has no settings.local.nix yet (your username, hostname,
-      graphics…). Make it with:  sudo hearth-setup
+      graphics…). Make it with:  sudo nix2-setup
       (or: sudo bash /etc/nixos/pkgs/scripts/setup.sh), then rebuild.'';
   } {
     assertion = builtins.hasAttr s.espMountPoint config.fileSystems;
@@ -571,7 +571,7 @@ in
   # there strips an app out of every module — `debloat` shows what's big and
   # `debloat remove <name>` adds to that list.
   environment.systemPackages = with pkgs; [
-    mod modtui nixup rebuild update-mine debloat hearth hearth-setup git curl wget htop jq zoxide starship
+    mod modtui nixup rebuild update-mine debloat nix2 nix2-setup git curl wget htop jq zoxide starship
   ] ++ lib.filter (p: !(lib.elem (lib.getName p) removed)) config.my.packages;
   my.packages = with pkgs; [
     fastfetch-id fzf ripgrep fd bat eza tree unzip zip psmisc usbutils pciutils
@@ -588,18 +588,18 @@ in
     { label = "Full upgrade (newest NixOS packages)"; run = "rebuild --upgrade"; mode = "term"; }
     { label = "Update my git apps"; run = "update-mine --switch"; mode = "term"; }
     { label = "Free up space (debloat)"; run = "debloat"; mode = "term"; }
-    { label = "System check (what's broken + how to fix it)"; run = "hearth doctor"; mode = "term"; }
-    { label = "Roll back to an earlier version"; run = "hearth rollback"; mode = "term"; }
+    { label = "System check (what's broken + how to fix it)"; run = "nix2 doctor"; mode = "term"; }
+    { label = "Roll back to an earlier version"; run = "nix2 rollback"; mode = "term"; }
   ];
 
   # Weekly system check: a notification only if something needs a look
   # (failed services, a nearly full disk, no recent backup, missing Steam
-  # graphics libraries…). Run it yourself any time: `hearth doctor`.
-  systemd.user.services.hearth-doctor = {
+  # graphics libraries…). Run it yourself any time: `nix2 doctor`.
+  systemd.user.services.nix2-doctor = {
     description = "Weekly system check";
-    serviceConfig = { Type = "oneshot"; ExecStart = "${pkgs.hearth}/bin/hearth doctor --notify"; SuccessExitStatus = [ 1 ]; };
+    serviceConfig = { Type = "oneshot"; ExecStart = "${pkgs.nix2}/bin/nix2 doctor --notify"; SuccessExitStatus = [ 1 ]; };
   };
-  systemd.user.timers.hearth-doctor = {
+  systemd.user.timers.nix2-doctor = {
     wantedBy = [ "timers.target" ];
     timerConfig = { OnCalendar = "weekly"; Persistent = true; RandomizedDelaySec = "2h"; };
   };

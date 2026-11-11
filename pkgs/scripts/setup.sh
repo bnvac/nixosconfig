@@ -1,17 +1,17 @@
-# hearth-setup — this machine's own settings (settings.local.nix).
+# nix2-setup — this machine's own settings (settings.local.nix).
 #
-#   hearth-setup                 guided: works out user, hostname, timezone,
+#   nix2-setup                 guided: works out user, hostname, timezone,
 #                                laptop/desktop and graphics card, asks you to
 #                                confirm each, writes settings.local.nix
-#   hearth-setup --migrate       the same without questions (rebuild runs this
+#   nix2-setup --migrate       the same without questions (rebuild runs this
 #                                once on machines set up before settings.local.nix
 #                                existed, carrying your old values over)
-#   hearth-setup set KEY VALUE   one value; VALUE is Nix: "text", 42, true, [ "a" ]
-#   hearth-setup unset KEY       back to Hearth's default
-#   hearth-setup get KEY         print a value (yours, else the default)
-#   hearth-setup module NAME on|off|default
-#   hearth-setup modules         which modules are on
-#   hearth-setup share           the lines that let your other machines use
+#   nix2-setup set KEY VALUE   one value; VALUE is Nix: "text", 42, true, [ "a" ]
+#   nix2-setup unset KEY       back to nix²'s default
+#   nix2-setup get KEY         print a value (yours, else the default)
+#   nix2-setup module NAME on|off|default
+#   nix2-setup modules         which modules are on
+#   nix2-setup share           the lines that let your other machines use
 #                                this one's builds (settings shareBuilds)
 # --root DIR works on DIR/etc/nixos instead (the installer uses --root /mnt).
 
@@ -31,8 +31,8 @@ ensure_file() {
   [ -e "$local_file" ] && return 0
   cat > "$local_file" <<'EOF'
 # This machine's settings. Any name from settings.nix can go here and replaces
-# Hearth's default. Not in git, so updates never touch it. Change it with an
-# editor, `modtui` → Edit settings, `mod on|off`, or `hearth-setup set`.
+# nix²'s default. Not in git, so updates never touch it. Change it with an
+# editor, `modtui` → Edit settings, `mod on|off`, or `nix2-setup set`.
 {
 }
 EOF
@@ -157,14 +157,14 @@ ask() {   # ask "Question" default → answer
 
 usage() {
   cat <<'EOF'
-hearth-setup                 guided setup of this machine (settings.local.nix)
-hearth-setup --migrate       the same, no questions (rebuild runs it when needed)
-hearth-setup set KEY VALUE   one value; VALUE is Nix: "text", 42, true, [ "a" ]
-hearth-setup unset KEY       back to Hearth's default
-hearth-setup get KEY         print a value
-hearth-setup module NAME on|off|default
-hearth-setup modules         which modules are on
-hearth-setup share           how your other machines can use this one's builds
+nix2-setup                 guided setup of this machine (settings.local.nix)
+nix2-setup --migrate       the same, no questions (rebuild runs it when needed)
+nix2-setup set KEY VALUE   one value; VALUE is Nix: "text", 42, true, [ "a" ]
+nix2-setup unset KEY       back to nix²'s default
+nix2-setup get KEY         print a value
+nix2-setup module NAME on|off|default
+nix2-setup modules         which modules are on
+nix2-setup share           how your other machines can use this one's builds
 --root DIR (first) works on DIR/etc/nixos; the installer uses --root /mnt
 EOF
 }
@@ -172,7 +172,7 @@ EOF
 # ── commands ───────────────────────────────────────────────────────────────
 migrate() {
   need_root --migrate
-  [ -e "$local_file" ] && { echo "hearth-setup: $local_file already exists"; return 0; }
+  [ -e "$local_file" ] && { echo "nix2-setup: $local_file already exists"; return 0; }
   local user name host tz dev gpu esp grub=true old="" m
   user=$(detect_user); name=$(detect_name "$user"); host=$(hostname 2>/dev/null || cat /proc/sys/kernel/hostname)
   tz=$(detect_tz); dev=$(detect_device); gpu=$(detect_gpu); esp=$(detect_esp)
@@ -207,7 +207,7 @@ migrate() {
 
 guided() {
   need_root
-  echo "Hearth setup — this machine's settings. Enter keeps the value in [brackets]."
+  echo "nix² setup — this machine's settings. Enter keeps the value in [brackets]."
   echo
   local user name host tz dev gpu esp grub=true
   # From the installer (--root) the live USB's own user and hostname mean
@@ -242,7 +242,7 @@ module() {   # module NAME on|off|default
   case "$want" in
     on) want=true ;; off) want=false ;;
     default) unset_value "modules.$m"; return ;;
-    *) echo "usage: hearth-setup module NAME on|off|default"; exit 2 ;;
+    *) echo "usage: nix2-setup module NAME on|off|default"; exit 2 ;;
   esac
   if [ "$want" = "$def" ]; then unset_value "modules.$m"; else set_value "modules.$m" "$want"; fi
 }
@@ -253,11 +253,11 @@ modules_on() {
 }
 
 share() {
-  local key=/var/lib/hearth/cache-key
+  local key=/var/lib/nix2/cache-key
   if ! [ -r "$key.pub" ]; then
     echo "This machine doesn't share its builds yet. In settings.local.nix:"
     echo "  shareBuilds.serve = true;"
-    echo "then rebuild, and run hearth-setup share again."
+    echo "then rebuild, and run nix2-setup share again."
     return 1
   fi
   echo "Put these two lines in settings.local.nix on your OTHER machines, then rebuild there:"
@@ -269,12 +269,12 @@ share() {
 case "${1:-}" in
   "") guided ;;
   --migrate) migrate ;;
-  set) need_root "$@"; [ $# -eq 3 ] || { echo "usage: hearth-setup set KEY VALUE"; exit 2; }; set_value "$2" "$3" ;;
+  set) need_root "$@"; [ $# -eq 3 ] || { echo "usage: nix2-setup set KEY VALUE"; exit 2; }; set_value "$2" "$3" ;;
   unset) need_root "$@"; unset_value "${2:?KEY}" ;;
   get) get_value "${2:?KEY}" ;;
   module) need_root "$@"; module "${2:?NAME}" "${3:?on|off|default}" ;;
   modules) modules_on ;;
   share) share ;;
   -h|--help|help) usage ;;
-  *) echo "hearth-setup: unknown command '$1' (try: hearth-setup help)"; exit 2 ;;
+  *) echo "nix2-setup: unknown command '$1' (try: nix2-setup help)"; exit 2 ;;
 esac

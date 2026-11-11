@@ -6,10 +6,10 @@
 #     probe-rs and OpenOCD), STM32 DFU, Teensy, logic analysers (sigrok),
 #     QMK/Vial keyboards (Hack Club Hackpad), RTL-SDR radios, Flipper Zero
 #
-#   hearth serial          pick a board by name, see its output (tio)
-#   hearth new board NAME  a PlatformIO project (Pico/ESP32/Arduino):
+#   nix2 serial          pick a board by name, see its output (tio)
+#   nix2 new board NAME  a PlatformIO project (Pico/ESP32/Arduino):
 #                          just flash · just monitor
-#   hearth new micropython NAME   the same in MicroPython
+#   nix2 new micropython NAME   the same in MicroPython
 { pkgs, ... }:
 let
   app = label: run: { inherit label run; needs = run; };
@@ -51,8 +51,8 @@ in
 
   # In the menu next to the coding tools (each shows only if installed).
   my.menu."Code & engineering" = [
-    { label = "Serial monitor (pick a board)"; run = "hearth serial"; mode = "tty"; }
-    { label = "New board project (Pico, ESP32, Arduino…)"; run = "hearth new board"; mode = "term"; }
+    { label = "Serial monitor (pick a board)"; run = "nix2 serial"; mode = "tty"; }
+    { label = "New board project (Pico, ESP32, Arduino…)"; run = "nix2 new board"; mode = "term"; }
     (app "KiCad (circuit boards)" "kicad")
     (app "FreeCAD (3D CAD)" "freecad")
     (app "OpenSCAD (code-based CAD)" "openscad")

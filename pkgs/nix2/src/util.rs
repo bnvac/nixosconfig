@@ -37,12 +37,12 @@ pub fn uid() -> u32 {
 }
 
 /// Make sure the right commands are reachable, even from a bare environment
-/// (gamemode hooks, user services). The Nix build bakes in HEARTH_PATH (this
+/// (gamemode hooks, user services). The Nix build bakes in NIX2_PATH (this
 /// config's patched dmenu and st), which goes first so Backspace-goes-back
 /// always works; the system's own commands go last.
 pub fn extend_path() {
     let mut path = env::var("PATH").unwrap_or_default();
-    if let Some(baked) = option_env!("HEARTH_PATH").filter(|p| !p.is_empty()) {
+    if let Some(baked) = option_env!("NIX2_PATH").filter(|p| !p.is_empty()) {
         path = if path.is_empty() {
             baked.to_string()
         } else {

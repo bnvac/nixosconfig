@@ -1,6 +1,6 @@
 # Coding & engineering toolkit — small, fast, free/open-source tools for
 # writing code, reading code and working on FOSS projects. Each project's own
-# compilers come from its shell.nix (start one with `hearth new`), so the
+# compilers come from its shell.nix (start one with `nix2 new`), so the
 # system stays lean and two projects never fight over versions.
 #
 # Bigger apps (VSCodium, Ghidra, Octave, OBS…) only with settings.nix →
@@ -28,17 +28,17 @@ in
   # A notification when a terminal command that took 30 s or more finishes —
   # start a build, go do something else, hear when it's done (and whether it
   # worked). Not for programs you sit in (editors, ssh, lazygit…).
-  # HEARTH_NOTIFY_AFTER=60 changes the threshold.
+  # NIX2_NOTIFY_AFTER=60 changes the threshold.
   programs.zsh.interactiveShellInit = lib.mkBefore ''
     zmodload zsh/datetime
-    typeset -g __hearth_cmd="" __hearth_t0=0
-    __hearth_preexec() { __hearth_cmd=$1; __hearth_t0=$EPOCHSECONDS; }
-    __hearth_precmd() {
-      local st=$? cmd=$__hearth_cmd secs t
-      __hearth_cmd=""
+    typeset -g __nix2_cmd="" __nix2_t0=0
+    __nix2_preexec() { __nix2_cmd=$1; __nix2_t0=$EPOCHSECONDS; }
+    __nix2_precmd() {
+      local st=$? cmd=$__nix2_cmd secs t
+      __nix2_cmd=""
       [[ -n $cmd && -n $DISPLAY ]] || return 0
-      secs=$(( EPOCHSECONDS - __hearth_t0 ))
-      (( secs >= ''${HEARTH_NOTIFY_AFTER:-30} )) || return 0
+      secs=$(( EPOCHSECONDS - __nix2_t0 ))
+      (( secs >= ''${NIX2_NOTIFY_AFTER:-30} )) || return 0
       case ''${''${cmd## }%% *} in
         nvim|vim|vi|v|less|more|man|ssh|htop|btop|top|lazygit|tmux|lf|watch|mpv|nix-shell|python|python3|node|zsh|bash) return 0 ;;
       esac
@@ -47,8 +47,8 @@ in
       else notify-send -a Terminal -u critical "❌ Failed (exit $st) after $t" "$cmd"; fi
     }
     autoload -Uz add-zsh-hook
-    add-zsh-hook preexec __hearth_preexec
-    add-zsh-hook precmd __hearth_precmd
+    add-zsh-hook preexec __nix2_preexec
+    add-zsh-hook precmd __nix2_precmd
   '';
 
   # direnv: cd into a project and its tools (shell.nix) load by themselves,
@@ -108,7 +108,7 @@ in
   ];
 
   my.menu."Code & engineering" = lib.mkBefore [
-    { label = "New project (Rust, Python, C++, Go, Node…)"; run = "hearth new"; mode = "term"; }
+    { label = "New project (Rust, Python, C++, Go, Node…)"; run = "nix2 new"; mode = "term"; }
     { label = "Projects folder"; run = "thunar ~/projects"; needs = "thunar"; }
     { label = "Git (lazygit, in ~/projects)"; run = "cd ~/projects && lazygit"; mode = "tty"; }
     { label = "Offline docs (Zeal)"; run = "zeal"; }

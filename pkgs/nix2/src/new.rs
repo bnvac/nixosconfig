@@ -1,4 +1,4 @@
-//! hearth new [kind] [name] — start a project in ~/projects/NAME with its
+//! nix2 new [kind] [name] — start a project in ~/projects/NAME with its
 //! toolchain ready: a shell.nix (compiler, language server, formatter), an
 //! .envrc so the tools load the moment you `cd` in (direnv), a .gitignore,
 //! a hello-world, and a git repo. Nothing gets installed system-wide.
@@ -192,7 +192,7 @@ pub fn run(args: &[String]) -> i32 {
             Some(k) => k,
             None => {
                 eprintln!(
-                    "hearth new: unknown kind '{k}' — one of: {}",
+                    "nix2 new: unknown kind '{k}' — one of: {}",
                     KINDS.iter().map(|k| k.key).collect::<Vec<_>>().join(", ")
                 );
                 return 2;
@@ -229,7 +229,7 @@ pub fn run(args: &[String]) -> i32 {
     if name.is_empty() {
         return 0;
     }
-    let base = env::var_os("HEARTH_PROJECTS")
+    let base = env::var_os("NIX2_PROJECTS")
         .map(Into::into)
         .unwrap_or_else(|| home().join("projects"));
     let dir = base.join(&name);
@@ -238,7 +238,7 @@ pub fn run(args: &[String]) -> i32 {
         return 1;
     }
     if let Err(e) = create(&dir, kind, &name) {
-        eprintln!("hearth new: couldn't create {}: {e}", dir.display());
+        eprintln!("nix2 new: couldn't create {}: {e}", dir.display());
         return 1;
     }
     let d = dir.to_str().unwrap_or(".");
@@ -281,7 +281,7 @@ mod tests {
 
     #[test]
     fn scaffold() {
-        let dir = env::temp_dir().join(format!("hearth-new-test-{}", std::process::id()));
+        let dir = env::temp_dir().join(format!("nix2-new-test-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         create(&dir, find("rust").unwrap(), "demo").unwrap();
         assert!(fs::read_to_string(dir.join("Cargo.toml"))

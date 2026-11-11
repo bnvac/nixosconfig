@@ -1,4 +1,4 @@
-//! hearth — this system's own tools, in one small fast binary.
+//! nix2 — this system's own tools, in one small fast binary.
 //!
 //! Called by a tool's name (a link named `nixmenu`, `printer-notify`…) it runs
 //! that tool; otherwise the first argument picks one.
@@ -17,28 +17,29 @@ use std::path::Path;
 use std::process::ExitCode;
 
 const HELP: &str = "\
-hearth — this system's own tools
+nix2 — this system's own tools
 
-  hearth menu [category]     the menu (Super+Alt+Space; also runs as `nixmenu`)
-  hearth doctor [--notify]   check that everything works, with fixes for what doesn't
-  hearth rollback            go back to an earlier system version
-  hearth game start|end      game mode hooks (gamemode runs these for you)
-  hearth new [kind] [name]   start a coding project with its tools ready (rust, python, c++, go, node)
-  hearth serial [port] [baud] talk to a board over USB serial (lists boards by name)
-  hearth printer-notify      watch 3D printers, notify when a print ends
+  nix2 menu [category]       the menu (Super+Alt+Space; also runs as `nixmenu`)
+  nix2 doctor [--notify]     check that everything works, with fixes for what doesn't
+  nix2 rollback              go back to an earlier system version
+  nix2 new [kind] [name]     start a project with its tools ready (rust, python, c++,
+                             go, node, board, micropython)
+  nix2 serial [port] [baud]  talk to a board over USB serial (lists boards by name)
+  nix2 game start|end        game mode hooks (gamemode runs these for you)
+  nix2 printer-notify        watch 3D printers, notify when a print ends
 ";
 
 fn main() -> ExitCode {
     let args: Vec<String> = env::args().collect();
-    let called = Path::new(args.first().map(String::as_str).unwrap_or("hearth"))
+    let called = Path::new(args.first().map(String::as_str).unwrap_or("nix2"))
         .file_name()
         .and_then(|s| s.to_str())
-        .unwrap_or("hearth");
+        .unwrap_or("nix2");
 
     let (cmd, rest): (&str, &[String]) = match called {
         "nixmenu" => ("menu", &args[1..]),
         "printer-notify" => ("printer-notify", &args[1..]),
-        "hearth-doctor" => ("doctor", &args[1..]),
+        "nix2-doctor" => ("doctor", &args[1..]),
         _ => match args.get(1) {
             Some(c) => (c.as_str(), &args[2..]),
             None => ("help", &[]),
@@ -58,7 +59,7 @@ fn main() -> ExitCode {
             0
         }
         other => {
-            eprintln!("hearth: unknown command '{other}'\n");
+            eprintln!("nix2: unknown command '{other}'\n");
             eprint!("{HELP}");
             2
         }

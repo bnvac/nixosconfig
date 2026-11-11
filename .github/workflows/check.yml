@@ -1,5 +1,5 @@
 # Every push and pull request: the config evaluates for several kinds of
-# machine, the installer image evaluates, hearth's tests pass and every
+# machine, the installer image evaluates, nix2's tests pass and every
 # script passes shellcheck. (Evaluating checks the whole config fits
 # together without building it — fast, and catches most mistakes.)
 name: check
@@ -46,12 +46,12 @@ jobs:
           nix_path: nixpkgs=channel:nixos-26.05
       - run: nix-instantiate '<nixpkgs/nixos>' -A config.system.build.isoImage -I nixos-config=./installer/iso.nix
 
-  hearth:
-    name: hearth (Rust)
+  nix2:
+    name: nix2 (Rust)
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: pkgs/hearth
+        working-directory: pkgs/nix2
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable

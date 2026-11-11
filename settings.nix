@@ -1,8 +1,8 @@
-# Hearth's settings: every value you can change, with its default.
+# nix²'s settings: every value you can change, with its default.
 #
 # DON'T EDIT THIS FILE for your own machine. Your values live in
 # settings.local.nix next to it (not in git, so updates never clash with
-# them). `hearth-setup` writes it for you, and `modtui` → Edit settings, `mod`
+# them). `nix2-setup` writes it for you, and `modtui` → Edit settings, `mod`
 # and `debloat remove` change it. Any name below can go there, one per line:
 #
 #   username = "ada";
@@ -14,10 +14,10 @@
 # (location, menu, modules…) merge key by key.
 let
   defaults = {
-    # ── You and this machine (hearth-setup asks for these) ────────────────────
+    # ── You and this machine (nix2-setup asks for these) ────────────────────
     username = "user";
-    fullName = "Hearth user";
-    hostName = "hearth";
+    fullName = "nix² user";
+    hostName = "nix2";
     timeZone = "UTC";
     # "desktop" or "laptop" — laptops get battery/thermal tuning (`power`).
     device = "desktop";
@@ -41,7 +41,7 @@ let
     location = { latitude = 40.7; longitude = -74.0; };
 
     # ── Modules ───────────────────────────────────────────────────────────────
-    # Which are on comes from the marker files in mods/ (Hearth's defaults),
+    # Which are on comes from the marker files in mods/ (nix²'s defaults),
     # and here you override any of them: modules.gaming = false;
     modules = { };
 
@@ -69,7 +69,7 @@ let
     # Share builds between your machines (`devtools` module): one machine
     # builds, the others download the result over your home network instead of
     # compiling it again. On the machine that builds: shareBuilds.serve = true;
-    # then `hearth-setup share` prints the two lines to put on the others.
+    # then `nix2-setup share` prints the two lines to put on the others.
     shareBuilds = { serve = false; from = ""; key = ""; };
 
     # Folders made in your home on boot (never deleted). Nested is fine: "projects/work".
