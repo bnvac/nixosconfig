@@ -23,6 +23,19 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      # Until Pages is turned on (Settings → Pages → Source: GitHub Actions)
+      # there's nowhere to deploy: say so and skip, instead of failing.
+      - name: Is GitHub Pages on?
+        id: pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh api "repos/${{ github.repository }}/pages" >/dev/null 2>&1; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::GitHub Pages is off, so the site wasn't published. Turn it on: Settings → Pages → Source: GitHub Actions, then re-run this workflow."
+          fi
       - name: Build the page
         # site/index.html is the page's body (it also previews as a claude.ai
         # artifact); wrap it in a full HTML document.
@@ -37,8 +50,11 @@ jobs:
           } > _site/index.html
           cp site/yuki.svg _site/
       - uses: actions/configure-pages@v5
+        if: steps.pages.outputs.enabled == 'true'
       - uses: actions/upload-pages-artifact@v3
+        if: steps.pages.outputs.enabled == 'true'
         with:
           path: _site
       - id: deploy
+        if: steps.pages.outputs.enabled == 'true'
         uses: actions/deploy-pages@v4
