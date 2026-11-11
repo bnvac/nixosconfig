@@ -9,6 +9,10 @@
   # applies it; a FULLSCREEN terminal (Super+f) is always forced fully opaque.
   termOpacity = "0.72";
   liveSnow = true;           # falling snow over the wallpaper (`snow off` for now)
+  # Night light: warmer screen colours after sunset (`nightlight` toggles it).
+  # Sunset is worked out from where you are — rough is fine (city level).
+  nightLight = true;
+  location = { latitude = 40.7; longitude = -74.0; };   # New York
 
   # `nixup` pulls this repo (cloned at /etc/nixos) and rebuilds — no re-cloning.
   # autoUpdate = true adds a weekly timer that pulls + rebuilds on its own.
@@ -27,6 +31,9 @@
   # Apps to leave out of EVERY module, by name (`debloat list` shows them;
   # `debloat remove <name>` edits this line for you). Keep it on one line.
   removePackages = [ ];
+  # Coding toolkit (devtools module): the lean set is always in. true adds the
+  # big apps too — VSCodium, Helix, Ghidra, Octave, gnuplot, OBS (~3 GB).
+  devExtras = false;
 
   # Folders made in your home on boot (never deleted). Nested is fine: "projects/work".
   homeFolders = [ "projects" "notes" "junk" ];

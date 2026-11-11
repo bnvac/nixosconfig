@@ -19,7 +19,7 @@ let
   # my.menu + settings.nix → menu. pkgs/scripts/nixmenu.sh reads it (plus
   # ~/.config/nixmenu/menu) and shows it as category → action.
   menuCfg = s.menu or { };
-  defaultOrder = [ "System" "Apps & files" "Games" "Self-hosted" "Neb (AI)" "Sync & devices"
+  defaultOrder = [ "System" "Apps & files" "Code & engineering" "Games" "Self-hosted" "Neb (AI)" "Sync & devices"
                    "Containers & apps" "Neighborhood" "Network & privacy" ];
   allMenu = config.my.menu;
   catOrder = lib.unique (lib.filter (c: (allMenu.${c} or [ ]) != [ ])
@@ -78,6 +78,17 @@ let
     esac
   '';
 
+  # `nightlight` — night light (warmer screen after sunset) off for now / back on.
+  nightlight = pkgs.writeShellScriptBin "nightlight" ''
+    if systemctl --user is-active --quiet redshift; then
+      systemctl --user stop redshift
+      notify-send -a "Night light" "Night light off" "Back on at your next login, or run nightlight again."
+    else
+      systemctl --user start redshift
+      notify-send -a "Night light" "Night light on" "Warmer colours after sunset."
+    fi
+  '';
+
   # `mykeys` — a printable cheat sheet of MY custom keybinds (Super+Alt+F1, and
   # an entry in nixmenu). Stock LARBS keys stay on Super+F1's manual.
   mykeys = pkgs.writeShellScriptBin "mykeys" ''
@@ -95,6 +106,7 @@ let
       Super + Alt + d            self-hosted apps (menu section)
       Super + Alt + b            Bluetooth
       Super + Alt + v            audio: output/mic device, volume, mute
+      Super + Alt + c            clipboard history: paste anything you copied earlier
       Super + Alt + w            wallpapers: pictures + Wallpaper Engine (live)
       Super + Alt + t            Tor Browser
       Super + Alt + Return       tmux session
@@ -154,6 +166,23 @@ in
     };
   };
   services.libinput.enable = true;
+
+  # Clipboard history (Super+Alt+c): remembers what you copy, pick it back with dmenu.
+  services.clipmenu.enable = true;
+
+  # Night light: the screen turns gradually warmer after sunset (gammastep).
+  # Where you are sets sunset time: settings.nix → location. Off for now: nightlight.
+  services.redshift = {
+    enable = s.nightLight or true;
+    package = pkgs.gammastep;
+    executable = "/bin/gammastep";
+    temperature = { day = 6500; night = 3800; };
+  };
+  location = {
+    provider = "manual";
+    latitude = (s.location or { }).latitude or 40.7;
+    longitude = (s.location or { }).longitude or (-74.0);
+  };
   services.displayManager.ly.enable = true;
   hardware.graphics.enable = true;
   services.blueman.enable = true;            # Bluetooth GUI (Super+Alt+b)
@@ -220,6 +249,8 @@ in
         { label = "Lock screen"; run = "lock"; }
         { label = "Wallpapers (pictures + Wallpaper Engine)"; run = "wallpapers"; }
         { label = "Toggle live snow"; run = "snow toggle"; }
+        { label = "Night light on/off"; run = "nightlight"; }
+        { label = "Clipboard history"; run = "clipmenu -i -l 20 -p clipboard:"; }
         { label = "Suspend"; run = "zzz"; }
       ];
       "Apps & files" = [
@@ -240,7 +271,7 @@ in
     (menuCfg.extra or { })
   ];
 
-  my.packages = [ dash drives pkgs.nixmenu mykeys ] ++ dashItems ++ (with pkgs; [
+  my.packages = [ dash drives pkgs.nixmenu mykeys nightlight ] ++ dashItems ++ (with pkgs; [
     wallpapers wallpaper-live site-push
     (makeDesktopItem {
       name = "wallpapers"; desktopName = "Wallpapers"; exec = "wallpapers";

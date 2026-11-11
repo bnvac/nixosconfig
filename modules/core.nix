@@ -138,6 +138,22 @@ let
       and copies to the clipboard; failures show a notification.
     - `lock` (Super+Alt+l) — lock screen; also on suspend and after 10 idle min.
     - `snow on|off|toggle` — the live falling snow over the snowy wallpaper.
+    - `hearth` (pkgs/hearth, one Rust binary) holds this system's own tools:
+      the menu (`nixmenu` is a link to it), `hearth doctor` (system check with
+      a fix for every problem; a weekly user timer runs `--notify`, which
+      only speaks up when something's wrong), `hearth rollback` (switch to an
+      earlier system generation), `hearth game start|end` (gamemode hooks:
+      pause dunst, SIGSTOP the live wallpaper, stop snow — all restored on
+      exit; state in $XDG_RUNTIME_DIR/hearth-game), `hearth new` (project
+      starter: shell.nix + .envrc + git in ~/projects) and `printer-notify`.
+      `backup` writes ~/.local/state/backup/last-success for the doctor.
+    - Clipboard history: clipmenud + `clipmenu` (Super+Alt+c). Night light:
+      gammastep via services.redshift, location from settings.location;
+      `nightlight` toggles it for the session.
+    - `devtools` module: the coding toolkit (lazygit, gh/glab/tea, delta as the
+      git pager, difftastic, direnv + nix-direnv, just, hyperfine, CMake/Ninja/
+      clangd/gdb/valgrind, Meld, Zeal, Qalculate, sqlitebrowser); big apps only
+      with settings.devExtras. Menu: "Code & engineering".
     - Browsers: Bitwarden holds the passwords in Firefox and Chromium (sign in
       once per browser). `browser-sync` moves bookmarks between the machines
       with no live sync service: it exports them to an HTML file in ~/Sync (so
@@ -497,7 +513,7 @@ in
   # there strips an app out of every module — `debloat` shows what's big and
   # `debloat remove <name>` adds to that list.
   environment.systemPackages = with pkgs; [
-    mod modtui nixup rebuild update-mine debloat git curl wget htop jq zoxide starship
+    mod modtui nixup rebuild update-mine debloat hearth git curl wget htop jq zoxide starship
   ] ++ lib.filter (p: !(lib.elem (lib.getName p) removed)) config.my.packages;
   my.packages = with pkgs; [
     fastfetch-id fzf ripgrep fd bat eza tree unzip zip psmisc usbutils pciutils
@@ -514,7 +530,21 @@ in
     { label = "Full upgrade (newest NixOS packages)"; run = "rebuild --upgrade"; mode = "term"; }
     { label = "Update my git apps"; run = "update-mine --switch"; mode = "term"; }
     { label = "Free up space (debloat)"; run = "debloat"; mode = "term"; }
+    { label = "System check (what's broken + how to fix it)"; run = "hearth doctor"; mode = "term"; }
+    { label = "Roll back to an earlier version"; run = "hearth rollback"; mode = "term"; }
   ];
+
+  # Weekly system check: a notification only if something needs a look
+  # (failed services, a nearly full disk, no recent backup, missing Steam
+  # graphics libraries…). Run it yourself any time: `hearth doctor`.
+  systemd.user.services.hearth-doctor = {
+    description = "Weekly system check";
+    serviceConfig = { Type = "oneshot"; ExecStart = "${pkgs.hearth}/bin/hearth doctor --notify"; SuccessExitStatus = [ 1 ]; };
+  };
+  systemd.user.timers.hearth-doctor = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = { OnCalendar = "weekly"; Persistent = true; RandomizedDelaySec = "2h"; };
+  };
 
   # Your home folders (settings.homeFolders), created on boot if missing —
   # never clobbered or removed. Nested paths work too ("projects/work").

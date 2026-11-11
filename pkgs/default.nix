@@ -85,6 +85,7 @@ in
       { MODKEY|Mod1Mask,           XK_d,      spawn, {.v = (const char*[]){ "dash", NULL } } },
       { MODKEY|Mod1Mask,           XK_b,      spawn, {.v = (const char*[]){ "blueman-manager", NULL } } },
       { MODKEY|Mod1Mask,           XK_v,      spawn, {.v = (const char*[]){ "audio", NULL } } },
+      { MODKEY|Mod1Mask,           XK_c,      spawn, {.v = (const char*[]){ "clipmenu", "-i", "-l", "20", "-p", "clipboard:", NULL } } },
       { MODKEY|Mod1Mask,           XK_w,      spawn, {.v = (const char*[]){ "wallpapers", NULL } } },
       { MODKEY|Mod1Mask,           XK_t,      spawn, {.v = (const char*[]){ "tor-browser", NULL } } },
       { MODKEY|Mod1Mask,           XK_Return, spawn, {.v = (const char*[]){ TERMINAL, "-e", "tmux", "new-session", "-A", "-s", "main", NULL } } },
@@ -272,9 +273,28 @@ in
   tidy            = py "tidy" ./scripts/tidy.py;
   tidy-downloads  = final.writeShellScriptBin "tidy-downloads" ''exec ${final.tidy}/bin/tidy --downloads "$@"'';
   browser-sync    = py "browser-sync" ./scripts/browser-sync.py;
-  printer-notify  = py "printer-notify" ./scripts/printer-notify.py;
   debloat         = sh "debloat" (with final; [ gawk gnugrep gnused coreutils findutils util-linux ]) ./scripts/debloat.sh;
-  nixmenu         = sh "nixmenu" (with final; [ larbs-dmenu larbs-st coreutils gnused gnugrep systemd ]) ./scripts/nixmenu.sh;
+
+  # ── hearth: this system's own tools in one small, fast Rust binary ────────
+  # menu (nixmenu), doctor (system check), rollback, game-mode hooks and the
+  # printer watcher. Source in pkgs/hearth; `nixmenu`, `printer-notify` and
+  # `hearth-doctor` are links to it (it picks the tool by the name it's run as).
+  hearth = final.rustPlatform.buildRustPackage {
+    pname = "hearth"; version = "0.1.0";
+    src = final.lib.cleanSourceWith {
+      src = ./hearth;
+      filter = path: _type: baseNameOf path != "target";
+    };
+    cargoLock.lockFile = ./hearth/Cargo.lock;
+    # The patched dmenu (Backspace = back) and st, found first at run time.
+    env.HEARTH_PATH = final.lib.makeBinPath [ final.larbs-dmenu final.larbs-st final.libnotify ];
+    postInstall = ''
+      for n in nixmenu printer-notify hearth-doctor; do ln -s hearth $out/bin/$n; done
+    '';
+    meta.mainProgram = "hearth";
+  };
+  nixmenu         = final.hearth;
+  printer-notify  = final.hearth;
 
   # Apps from any git repo, listed in settings.gitApps (see pkgs/gitapps.nix).
   gitApps = import ./gitapps.nix { inherit final prev tracked fetchPinned; };

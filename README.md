@@ -27,6 +27,8 @@ pkgs/pins.json        which commit of YOUR repos (neb, backoffice, intraweb) to
                       build; `update-mine` keeps them current (pins.local.json)
 pkgs/tracked.nix      which commit every git-built app uses (built-ins + settings.gitApps)
 pkgs/gitapps.nix      how a gitApp of each type is built
+pkgs/hearth/          `hearth`: the menu, system check, rollback, game mode and
+                      printer alerts in one small Rust binary (Cargo project)
 pkgs/devlink/         the DeviceLink app (stdlib-only Python)
 pkgs/scripts/         the small tools (apps, desk, lock, snow, rebuild, backoffice-sync…)
 mods/<name>           an empty marker file = that module is ON
@@ -52,14 +54,15 @@ ESP isn't mounted where `settings.nix` says.
 
 | module | what |
 |---|---|
-| desktop | dwm/st/dmenu/dwmblocks (LARBS), picom, snowy live wallpaper, lock screen, Thunar + drives, apps menu, Bluetooth GUI |
+| desktop | dwm/st/dmenu/dwmblocks (LARBS), picom, snowy live wallpaper, lock screen, Thunar + drives, apps menu, Bluetooth GUI, clipboard history, night light |
+| devtools | coding & engineering toolkit: lazygit, gh/glab/tea, delta, difftastic, direnv, just, hyperfine, CMake/Ninja/clangd/gdb/valgrind, Meld, Zeal, Qalculate… and `hearth new` project starters. `devExtras = true` adds VSCodium, Helix, Ghidra, Octave, OBS |
 | apps | LibreOffice, browsers (+ Bitwarden), Discord/Slack, media, Calibre, torrents + Stremio, Onshape |
 | assistant | Neb (voice assistant, desktop actions, own workspace) + Ollama (Vulkan) / Open-WebUI on the desktop |
 | ai | Claude Code |
 | sync | Syncthing between the machines, DeviceLink, bookmark export/import |
 | ee | KiCad, EDA tools, OrcaSlicer (has Elegoo profiles), FreeCAD |
 | printing | mDNS + printrun for Klipper printers on the LAN |
-| gaming | native Steam with Steam Play on for every game, Proton-GE, NTSYNC, gamescope/gamemode, Xbox controllers (Bluetooth + wireless dongle), Prism Launcher |
+| gaming | native Steam with Steam Play on for every game, Proton-GE, NTSYNC, gamescope/gamemode (game mode also pauses notifications, the live wallpaper and the snow), Xbox controllers (Bluetooth + wireless dongle), Prism Launcher |
 | privacy | Tor (Tor Browser, per-app, system-wide — off until you turn it on), Proton VPN, I2P, Bitwarden, nheko |
 | virt | QEMU/KVM + virt-manager |
 | backoffice | the parts-inventory web app, synced between machines |
@@ -85,6 +88,9 @@ mod off gaming      # disable + rebuild (the module stays written, just unbuilt)
 | `update-mine` | move your git-built apps (neb, backoffice, intraweb + `gitApps`) to their latest commit, only if it builds; runs daily too. `--status` to just look |
 | `debloat` | what's using space, and clean it; `debloat remove <app>` drops an app from every module, or uninstalls a Flatpak by id (`org.gimp.GIMP`) and trims runtimes nothing else uses |
 | `nixup` | `git pull` /etc/nixos + rebuild (`autoUpdate = true` does it weekly) |
+| `hearth doctor` | system check: failed services, disk, memory, clock, network, screenshots, audio, Vulkan/Steam libraries, updates, backups, battery health, temperature — each problem with its fix. Menu: System → System check; runs weekly and notifies only if something's wrong |
+| `hearth rollback` | go back to an earlier system version if an update broke something (Enter = the one before); menu: System → Roll back |
+| `hearth new` | start a coding project in `~/projects` with its tools ready (Rust, Python, C/C++, Go, Node, plain): shell.nix + direnv + git + hello world |
 | `nixmenu` | this system's actions by category — **Super+Alt+Space** (Backspace = back, Esc = close). Add/hide/reorder in `settings.nix` → `menu`, or `~/.config/nixmenu/menu` (no rebuild) |
 | `mykeys` | your keybind cheat sheet — **Super+Alt+F1** |
 | `apps` | every app, by category — **Super+Alt+a** |
@@ -96,6 +102,8 @@ mod off gaming      # disable + rebuild (the module stays written, just unbuilt)
 | `site-push` | publish a folder to its Neocities site — menu: Apps & files → "Publish a folder to Neocities". The site comes from the repo's `.neocities` file; only changed files upload |
 | `wallpapers` | pick a wallpaper — your pictures, or live **Wallpaper Engine** ones from the Steam Workshop — **Super+Alt+w** |
 | `snow on\|off` | the live falling snow (never piles up) |
+| `clipmenu` | clipboard history — **Super+Alt+c** |
+| `nightlight` | night light on/off for now (warmer screen after sunset; where you are: `settings.nix` → `location`) |
 | `steam-setup` | turns on Steam Play for all games (runs at login; Steam must be closed) |
 | `thunar` | GUI file manager — **Super+Alt+e** (`lf` is still Super+r) |
 | `dash` | the menu's Self-hosted section (your web apps + running Docker containers) — **Super+Alt+d** |

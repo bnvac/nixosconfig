@@ -28,6 +28,14 @@
   # then just fails. Plain gamescope works everywhere.
   programs.gamescope.enable = true;
   programs.gamemode.enable = true;
+  # When a game starts (gamemode sets the CPU to performance itself):
+  # notifications wait, the live wallpaper freezes and the snow stops, so the
+  # GPU is all the game's. Everything comes back as it was when you quit.
+  # Steam: add `gamemoderun %command%` to a game's launch options.
+  programs.gamemode.settings.custom = {
+    start = "${pkgs.hearth}/bin/hearth game start";
+    end = "${pkgs.hearth}/bin/hearth game end";
+  };
   # /dev/ntsync (built into the zen kernel; the kernel makes it usable by
   # everyone). Only asked for on kernels that have it (6.14+).
   boot.kernelModules = lib.mkIf (lib.versionAtLeast config.boot.kernelPackages.kernel.version "6.14") [ "ntsync" ];
