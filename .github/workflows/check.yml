@@ -8,6 +8,12 @@ on:
   pull_request:
   workflow_dispatch:
 
+# A newer push to the same branch replaces runs still waiting or running, so
+# a stuck run never holds up the queue.
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   eval:
     name: config (${{ matrix.machine }})
