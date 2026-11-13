@@ -91,6 +91,9 @@ let
     - `setbg <image>` — set the wallpaper.
     - `rebuild` (alias `nrs`) — `nixos-rebuild switch` with a live progress display.
     - `nixup` — pull the config repo at /etc/nixos and rebuild (no re-cloning).
+      Edits made in /etc/nixos are committed locally first ("My changes on
+      <host>") by `nix2-pull` and rebased on top of the update; on a conflict
+      it aborts and restores everything. `nix2-pull --mine` lists them.
     - `rebuild` applies the config and updates the user's own git apps
       (`update-mine`); it stays on the current NixOS package set so it's quick.
       `rebuild --upgrade` moves to the newest NixOS packages; a weekly
@@ -356,15 +359,9 @@ let
       echo "  sudo git clone <your-repo-url> $dir   # keep hardware-configuration.nix"
       exit 1
     fi
-    echo ":: pulling $dir …"
-    # --autostash: shelve your local edits (e.g. this machine's settings.nix),
-    # pull, then put them back — so an uncommitted tweak no longer blocks an
-    # update. If reapplying them hits a real conflict, git stops and leaves the
-    # markers in the file for you to fix; rerun nixup after.
-    if ! sudo git -C "$dir" pull --rebase --autostash; then
-      echo "nixup: pull hit a conflict in $dir — fix the marked file(s), then run nixup again."
-      exit 1
-    fi
+    # Your own edits in $dir are committed locally first and kept on top of
+    # the update; if they clash with it, nothing changes (see pull.sh).
+    ${pkgs.nix2-pull}/bin/nix2-pull || exit 1
     echo ":: rebuilding …"
     # Run the rebuild script from the repo we just pulled, not the installed
     # one: the installed copy is from the PREVIOUS config, so a pull that
@@ -584,7 +581,7 @@ in
   # there strips an app out of every module — `debloat` shows what's big and
   # `debloat remove <name>` adds to that list.
   environment.systemPackages = with pkgs; [
-    mod modtui nixup rebuild update-mine debloat nix2 nix2-setup git curl wget htop jq zoxide starship
+    mod modtui nixup nix2-pull rebuild update-mine debloat nix2 nix2-setup git curl wget htop jq zoxide starship
   ] ++ lib.filter (p: !(lib.elem (lib.getName p) removed)) config.my.packages;
   my.packages = with pkgs; [
     fastfetch-id neofetch fzf ripgrep fd bat eza tree unzip zip psmisc usbutils pciutils
@@ -632,7 +629,8 @@ in
     (s.homeFolders or [ "projects" "notes" "junk" ]);
 
   # Optional weekly auto-update (settings.autoUpdate). Runs as root, so no sudo:
-  # pulls /etc/nixos and rebuilds. Skips quietly if the pull can't fast-forward.
+  # pulls /etc/nixos (your own edits kept, like nixup) and rebuilds. Skips
+  # this run if the update clashes with your edits (the journal says which file).
   systemd.services.nix-auto-update = lib.mkIf s.autoUpdate {
     description = "Pull /etc/nixos and rebuild";
     serviceConfig.Type = "oneshot";
@@ -640,7 +638,7 @@ in
     script = ''
       cd /etc/nixos || exit 0
       [ -d .git ] || exit 0
-      git pull --ff-only || exit 0
+      ${pkgs.nix2-pull}/bin/nix2-pull --quiet || exit 0   # keeps your edits; a clash = skip this week
       nixos-rebuild switch
     '';
   };

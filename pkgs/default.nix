@@ -231,6 +231,7 @@ in
   desk = sh "desk" (with final; [ final.apps-menu final.lock-screen xdotool xprop jq gawk coreutils gnused
                                   procps wireplumber playerctl brightnessctl libnotify maim util-linux ]) ./scripts/desk.sh;
   lock-screen = sh "lock" [ final.xsecurelock ] ./scripts/lock.sh;
+  nix2-pull = sh "nix2-pull" (with final; [ git coreutils gnused ]) ./scripts/pull.sh;
   screenshot      = sh "screenshot" (with final; [ maim xclip xdotool libnotify tesseract larbs-dmenu coreutils util-linux gnugrep ]) ./scripts/screenshot.sh;
   wallpaper-live  = sh "wallpaper-live" (with final; [ linux-wallpaperengine xrandr gawk coreutils ]) ./scripts/wallpaper-live.sh;
   steam-setup     = py "steam-setup" ./scripts/steam-setup.py;
