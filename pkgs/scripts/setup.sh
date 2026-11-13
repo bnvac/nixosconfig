@@ -6,7 +6,7 @@
 #   nix2-setup --migrate       the same without questions (rebuild runs this
 #                                once on machines set up before settings.local.nix
 #                                existed, carrying your old values over)
-#   nix2-setup set KEY VALUE   one value; VALUE is Nix: "text", 42, true, [ "a" ]
+#   nix2-setup set KEY VALUE   one value: F10, 42, true, [ "a" ] (a plain word = text)
 #   nix2-setup unset KEY       back to nix²'s default
 #   nix2-setup get KEY         print a value (yours, else the default)
 #   nix2-setup module NAME on|off|default
@@ -159,7 +159,7 @@ usage() {
   cat <<'EOF'
 nix2-setup                 guided setup of this machine (settings.local.nix)
 nix2-setup --migrate       the same, no questions (rebuild runs it when needed)
-nix2-setup set KEY VALUE   one value; VALUE is Nix: "text", 42, true, [ "a" ]
+nix2-setup set KEY VALUE   one value: F10, 42, true, [ "a" ] (a plain word = text)
 nix2-setup unset KEY       back to nix²'s default
 nix2-setup get KEY         print a value
 nix2-setup module NAME on|off|default
@@ -170,6 +170,42 @@ EOF
 }
 
 # ── commands ───────────────────────────────────────────────────────────────
+# `nix2-setup set`, forgiving: a name in the wrong case is corrected to the
+# one settings.nix uses (screenshotkey → screenshotKey), and a plain word
+# becomes text (F10 → "F10"), so the Nix quoting rules can't trip you up.
+set_cmd() {
+  local key=$1 value=$2 top rest known
+  top=${key%%.*}; rest=${key#"$top"}
+  # Every setting name settings.nix mentions, set or commented out.
+  known=$(sed -nE 's/^[[:space:]]*#?[[:space:]]*([A-Za-z][A-Za-z0-9]*)[[:space:]]*=.*/\1/p' "$defaults" | sort -u)
+  if ! printf '%s\n' "$known" | grep -qx "$top"; then
+    local fixed; fixed=$(printf '%s\n' "$known" | grep -ixm1 "$top" || true)
+    if [ -n "$fixed" ]; then
+      echo ":: (it's spelled $fixed)"
+      top=$fixed; key=$fixed$rest
+    else
+      echo "nix2-setup: note — settings.nix doesn't mention \"$top\"; setting it anyway."
+    fi
+  fi
+  case "$value" in
+    true | false | null | \"* | \[* | \{* | \'\'* ) ;;
+    *) printf '%s' "$value" | grep -qE '^-?[0-9]+(\.[0-9]+)?$' || value=$(str "$value") ;;
+  esac
+  cp "$local_file" "$local_file.bak" 2>/dev/null || true
+  set_value "$key" "$value"
+  # Never leave a file that breaks the next rebuild.
+  if command -v nix-instantiate >/dev/null \
+     && ! err=$(nix-instantiate --eval --strict "$local_file" 2>&1 >/dev/null); then
+    mv "$local_file.bak" "$local_file"
+    echo "nix2-setup: $key = $value isn't valid, so nothing was changed:"
+    printf '%s\n' "$err" | grep -m1 'error:' | sed 's/^/  /'
+    echo "  (a list needs quotes around it: nix2-setup set $key '[ \"a\" \"b\" ]')"
+    exit 1
+  fi
+  rm -f "$local_file.bak"
+  echo ":: $key = $value"
+}
+
 migrate() {
   need_root --migrate
   [ -e "$local_file" ] && { echo "nix2-setup: $local_file already exists"; return 0; }
@@ -269,7 +305,7 @@ share() {
 case "${1:-}" in
   "") guided ;;
   --migrate) migrate ;;
-  set) need_root "$@"; [ $# -eq 3 ] || { echo "usage: nix2-setup set KEY VALUE"; exit 2; }; set_value "$2" "$3" ;;
+  set) need_root "$@"; [ $# -ge 3 ] || { echo "usage: nix2-setup set KEY VALUE"; exit 2; }; k=$2; shift 2; set_cmd "$k" "$*" ;;
   unset) need_root "$@"; unset_value "${2:?KEY}" ;;
   get) get_value "${2:?KEY}" ;;
   module) need_root "$@"; module "${2:?NAME}" "${3:?on|off|default}" ;;
