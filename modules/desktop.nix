@@ -80,6 +80,20 @@ let
     esac
   '';
 
+  # After the screens changed (nix2 displays, a monitor plugged in): the
+  # wallpaper is set again for the new sizes, the live wallpaper gets its
+  # windows remade (one per screen), and the snow covers the new area.
+  displaysRefresh = pkgs.writeShellScriptBin "displays-refresh" ''
+    bg="$HOME/.local/share/bg"
+    fit=$(cat "$HOME/.config/wallpapers/fit" 2>/dev/null) || fit=zoom
+    [ -e "$bg" ] && ${pkgs.xwallpaper}/bin/xwallpaper "--''${fit:-zoom}" "$bg"
+    systemctl --user try-restart wallpaper-live.service 2>/dev/null || true
+    if ${pkgs.procps}/bin/pgrep -f '(^|/)xsnow( |$)' >/dev/null; then
+      ${pkgs.snow}/bin/snow off; ${pkgs.snow}/bin/snow on
+    fi
+    true
+  '';
+
   # `nightlight` — night light (warmer screen after sunset) off for now / back on.
   nightlight = pkgs.writeShellScriptBin "nightlight" ''
     if systemctl --user is-active --quiet redshift; then
@@ -116,6 +130,7 @@ let
       Super + Alt + c            clipboard history: paste anything you copied earlier
       Super + Alt + s            screenshot menu (same as Shift+Print)
       Print / Shift + Print      screenshot: whole screen / the menu${shotKeyLine}
+      Super + Alt + p            displays: mirror, extend, resolution (also Super + F3)
       Super + Alt + w            wallpapers: pictures + Wallpaper Engine (live)
       Super + Alt + t            Tor Browser
       Super + Alt + Return       tmux session
@@ -161,6 +176,8 @@ in
         ${pkgs.blueman}/bin/blueman-applet &
         ${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1 &   # password prompts (drives, etc.)
         ${pkgs.mpd}/bin/mpd &
+        # Screens: the layout you kept for this set of monitors (nix2 displays).
+        ${pkgs.autorandr}/bin/autorandr --change >/dev/null 2>&1 || true
         bg="$HOME/.local/share/bg"
         [ -e "$bg" ] || { mkdir -p "$HOME/.local/share"; ln -sfn ${wallpaper} "$bg"; }
         fit=$(cat "$HOME/.config/wallpapers/fit" 2>/dev/null) || fit=zoom   # set in `wallpapers`
@@ -196,6 +213,13 @@ in
     provider = "manual";
     latitude = (s.location or { }).latitude or 40.7;
     longitude = (s.location or { }).longitude or (-74.0);
+  };
+  # Screens (`nix2 displays`, Super+Alt+p): a layout you keep is saved for
+  # that exact set of monitors, and autorandr puts it back when they're
+  # plugged in, at login and after sleep.
+  services.autorandr = {
+    enable = true;
+    hooks.postswitch."nix2-refresh" = "${displaysRefresh}/bin/displays-refresh";
   };
   services.displayManager.ly.enable = true;
   hardware.graphics.enable = true;
@@ -270,6 +294,7 @@ in
       "System" = [
         { label = "My keybinds"; run = "mykeys"; mode = "term"; }
         { label = "Lock screen"; run = "lock"; }
+        { label = "Displays (mirror, extend, resolution, rotate)"; run = "nix2 displays"; }
         { label = "Wallpapers (pictures + Wallpaper Engine)"; run = "wallpapers"; }
         { label = "Toggle live snow"; run = "snow toggle"; }
         { label = "Night light on/off"; run = "nightlight"; }
@@ -295,7 +320,7 @@ in
     (menuCfg.extra or { })
   ];
 
-  my.packages = [ dash drives pkgs.nixmenu mykeys nightlight ] ++ dashItems ++ (with pkgs; [
+  my.packages = [ dash drives pkgs.nixmenu mykeys nightlight displaysRefresh ] ++ dashItems ++ (with pkgs; [
     wallpapers wallpaper-live site-push
     (makeDesktopItem {
       name = "wallpapers"; desktopName = "Wallpapers"; exec = "wallpapers";

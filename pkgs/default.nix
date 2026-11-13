@@ -80,6 +80,9 @@ in
         { TERMCLASS, "neb", NULL, 1 << 8, 0, 1, 0, -1 },
         { "steam", NULL, "notificationtoasts", 0, 1, 0, 0, -1 },
         { "steam", NULL, "Friends List", 0, 1, 0, 0, -1 },'
+      # Super+F3 (LARBS's displayselect) opens nix²'s display tool instead.
+      substituteInPlace config.h \
+        --replace-fail '{.v = (const char*[]){ "displayselect", NULL } }' '{.v = (const char*[]){ "nix2", "displays", NULL } }'
       # Screenshots: Print / Shift+Print run `screenshot` (absolute save path,
       # clipboard, a notification — and an error message if it fails) instead
       # of maim with a path relative to wherever the session started.
@@ -105,6 +108,7 @@ in
       { MODKEY|Mod1Mask,           XK_s,      spawn, {.v = (const char*[]){ "screenshot", NULL } } },
       { MODKEY|Mod1Mask,           XK_c,      spawn, {.v = (const char*[]){ "clipmenu", "-i", "-l", "20", "-p", "clipboard:", NULL } } },
       { MODKEY|Mod1Mask,           XK_w,      spawn, {.v = (const char*[]){ "wallpapers", NULL } } },
+      { MODKEY|Mod1Mask,           XK_p,      spawn, {.v = (const char*[]){ "nix2", "displays", NULL } } },
       { MODKEY|Mod1Mask,           XK_t,      spawn, {.v = (const char*[]){ "tor-browser", NULL } } },
       { MODKEY|Mod1Mask,           XK_Return, spawn, {.v = (const char*[]){ TERMINAL, "-e", "tmux", "new-session", "-A", "-s", "main", NULL } } },
       { MODKEY|Mod1Mask,           XK_i,      spawn, SHCMD(TERMINAL " -e sh -c 'fastfetch; read -r _'") },

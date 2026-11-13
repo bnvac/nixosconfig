@@ -168,6 +168,12 @@ let
       also used on the text console (ly login, LUKS prompt at boot).
     - Background jobs that rebuild (nixos-prebuild, update-mine, the optional
       nix-auto-update) get NIX_PATH explicitly: systemd units don't inherit it.
+    - `nix2 displays` (Super+Alt+p, Super+F3): xrandr layouts from dmenu —
+      mirror/extend/only/resolution/rate/rotate/primary, with a 15 s
+      keep-or-revert prompt. Kept layouts are autorandr profiles named
+      nix2-<hash of the connected monitors> (~/.config/autorandr), restored
+      by services.autorandr on hotplug/resume and at login; `displays-refresh`
+      (autorandr's postswitch hook) redoes wallpaper, live wallpaper and snow.
     - `lock` (Super+Alt+l) — lock screen; also on suspend and after 10 idle min.
     - `snow on|off|toggle` — the live falling snow over the snowy wallpaper.
     - `nix2` (pkgs/nix2, one Rust binary) holds this system's own tools:

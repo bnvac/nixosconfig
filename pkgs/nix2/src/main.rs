@@ -3,6 +3,7 @@
 //! Called by a tool's name (a link named `nixmenu`, `printer-notify`…) it runs
 //! that tool; otherwise the first argument picks one.
 
+mod displays;
 mod doctor;
 mod game;
 mod menu;
@@ -21,6 +22,7 @@ nix2 — this system's own tools
 
   nix2 menu [category]       the menu (also Super+Alt+Space)
   nix2 doctor [--notify]     check the system, with a fix for anything wrong
+  nix2 displays [mirror|…]   screens: mirror, extend, resolution, rotation
   nix2 rollback              go back to an earlier system version
   nix2 new [kind] [name]     start a project with its tools ready
   nix2 serial [port] [baud]  talk to a board over USB serial
@@ -50,6 +52,7 @@ fn main() -> ExitCode {
     let code = match cmd {
         "menu" => menu::run(rest),
         "doctor" => doctor::run(rest),
+        "displays" | "display" => displays::run(rest),
         "rollback" => rollback::run(rest),
         "game" => game::run(rest),
         "new" => new::run(rest),
