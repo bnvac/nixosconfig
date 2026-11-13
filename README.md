@@ -109,7 +109,7 @@ On by default unless it says otherwise. `mod on <name>` / `mod off <name>`.
 | assistant | Neb, a local voice assistant, + Ollama / Open-WebUI on your GPU — **off by default** |
 | backoffice | a parts-inventory web app — **off by default** |
 | intraweb | a local-first neighborhood web on your LAN (no server, no internet) — **off by default** |
-| slowtyper | SlowTyper: types the clipboard (or any text) into the focused window at a human pace, from the menu — **off by default** |
+| slowtyper | SlowTyper: types the clipboard (or any text) into the focused window at a human pace, from the menu: pick how long it should take (or type 7, 1h30, 60wpm) — **off by default** |
 | secrets | passwords/keys encrypted in git with sops-nix — **off by default** |
 | osint | security / OSINT toolkit — **off by default** |
 
