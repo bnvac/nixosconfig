@@ -561,6 +561,7 @@ in
     shellAliases = { v = "nvim"; nrs = "rebuild"; ll = "ls -lah --color=auto"; };
     interactiveShellInit = ''
       bindkey -v; export KEYTIMEOUT=1
+      setopt interactivecomments   # `cmd  # note` works when pasted, like in bash
       eval "$(${pkgs.zoxide}/bin/zoxide init zsh)"
       eval "$(${pkgs.starship}/bin/starship init zsh)"
     '';
