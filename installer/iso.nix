@@ -17,7 +17,8 @@ let
   };
   nix2-install = pkgs.writeShellApplication {
     name = "nix2-install";
-    runtimeInputs = with pkgs; [ systemd git curl parted dosfstools e2fsprogs cryptsetup util-linux gawk gnused gnugrep coreutils networkmanager ];
+    runtimeInputs = with pkgs; [ systemd git curl parted dosfstools e2fsprogs cryptsetup util-linux gawk gnused gnugrep coreutils networkmanager ckbcomp kbd ];
+    runtimeEnv.NIX2_XKB = "${pkgs.xkeyboard_config}/share/X11/xkb";   # the keyboard layouts it can switch to
     text = builtins.readFile ./install.sh;
   };
 in

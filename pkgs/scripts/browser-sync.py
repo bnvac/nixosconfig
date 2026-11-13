@@ -532,10 +532,11 @@ def have(cmd):
     return shutil.which(cmd) is not None
 
 
-def bw_logged_in():
+def bw_unlocked():
+    """Only an UNLOCKED vault can import ("locked" = logged in, no session key)."""
     try:
         out = subprocess.run(["bw", "status"], capture_output=True, text=True, timeout=30).stdout
-        return json.loads(out or "{}").get("status") not in (None, "unauthenticated")
+        return json.loads(out or "{}").get("status") == "unlocked"
     except Exception:
         return False
 
@@ -578,7 +579,7 @@ def do_passwords():
     if not csvs:
         print(help_text)
         return 0
-    if not bw_logged_in():
+    if not bw_unlocked():
         print("browser-sync: Bitwarden is locked or not logged in. Run:")
         print("    bw login        # first time only")
         print("    export BW_SESSION=$(bw unlock --raw)")
@@ -606,7 +607,13 @@ def do_passwords():
 def main(argv):
     cmd = argv[0] if argv else "sync"
     if cmd in ("-h", "--help", "help"):
-        print(__doc__.strip())
+        with open(__file__, encoding="utf-8") as f:       # the comment block at the top
+            for line in f:
+                if line.startswith("#!"):
+                    continue
+                if not line.startswith("#"):
+                    break
+                print(line[2:].rstrip())
         return 0
     if cmd == "export":
         return do_export()

@@ -246,7 +246,7 @@ in
   desk = sh "desk" (with final; [ final.apps-menu final.lock-screen xdotool xprop jq gawk coreutils gnused
                                   procps wireplumber playerctl brightnessctl libnotify maim util-linux ]) ./scripts/desk.sh;
   lock-screen = sh "lock" [ final.xsecurelock ] ./scripts/lock.sh;
-  nix2-pull = sh "nix2-pull" (with final; [ git coreutils gnused ]) ./scripts/pull.sh;
+  nix2-pull = sh "nix2-pull" (with final; [ git coreutils gnused util-linux ]) ./scripts/pull.sh;
   screenshot      = sh "screenshot" (with final; [ maim xclip xdotool libnotify tesseract larbs-dmenu coreutils util-linux gnugrep ]) ./scripts/screenshot.sh;
   wallpaper-live  = sh "wallpaper-live" (with final; [ linux-wallpaperengine xrandr gawk coreutils ]) ./scripts/wallpaper-live.sh;
   steam-setup     = py "steam-setup" ./scripts/steam-setup.py;
@@ -288,8 +288,9 @@ in
   backup          = sh "backup" (with final; [ restic coreutils util-linux libnotify ]) ./scripts/backup.sh;
   # fastfetch (also as `neofetch`) with nix²'s own layout (pkgs/fastfetch/
   # config.jsonc), unless you have ~/.config/fastfetch/config.jsonc. The logo
-  # swaps to match the git repo you're standing in: drop a <reponame>.txt in
-  # pkgs/fastfetch-logos/ to add one; default.txt shows everywhere else.
+  # is nix²'s blinking eye (fastfetch/eye.py draws it, fastfetch/fastfetch.sh
+  # animates it) — except inside a git repo that has its own logo: drop a
+  # <reponame>.txt in pkgs/fastfetch-logos/ to add one.
   # Replaces the plain `fastfetch` on PATH, so Super+Alt+i and the shell get it.
   fastfetch-id =
     let eye = final.runCommand "nix2-eye" { nativeBuildInputs = [ final.python3 ]; }

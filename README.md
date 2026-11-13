@@ -47,8 +47,9 @@ mod on virt       # switch a module on (it rebuilds for you)
 2. Write it to a USB stick (4 GB+) with [balenaEtcher](https://etcher.balena.io)
    or Ventoy, or `sudo dd if=nix2-installer.iso of=/dev/sdX bs=4M status=progress`.
 3. Boot from the stick (UEFI mode; turn off Secure Boot) and type
-   `nix2-install`. It connects to Wi-Fi, asks which disk to use (and erases
-   it), whether to encrypt it, and a few questions about you. Then it installs
+   `nix2-install`. It asks for your keyboard layout, connects to Wi-Fi, asks
+   which disk to use (and erases it), whether to encrypt it, and a few
+   questions about you. Then it installs
    — about 15–40 minutes, depending on your internet.
 
 **Already running NixOS:**

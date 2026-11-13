@@ -65,7 +65,11 @@ case "$cmd" in
     fi
 
     read -ra paths <<< "${BACKUP_PATHS:-$HOME /etc/nixos}"
-    if restic backup "${paths[@]}" \
+    # --exclude-caches skips any folder a tool marked as a cache (CACHEDIR.TAG):
+    # that covers Rust's target/ without skipping your own folders that
+    # merely happen to be called "target".
+    status=0
+    restic backup "${paths[@]}" \
         --one-file-system \
         --exclude-caches \
         --exclude "$HOME/.cache" \
@@ -75,14 +79,20 @@ case "$cmd" in
         --exclude "$HOME/.local/share/libvirt" \
         --exclude "$HOME/.local/share/Ollama" \
         --exclude "**/node_modules" \
-        --exclude "**/.direnv" \
-        --exclude "**/target"; then
+        --exclude "**/.direnv" || status=$?
+    # restic: 0 = all saved; 3 = snapshot saved, but some files couldn't be
+    # read (changed mid-backup, or not yours to read). Both are a backup.
+    if [ "$status" -eq 0 ] || [ "$status" -eq 3 ]; then
       # Keep a sensible ladder of old snapshots and reclaim the rest.
       restic forget --prune --keep-daily 7 --keep-weekly 4 --keep-monthly 6 >/dev/null || true
       # The system check (nix2 doctor) reads this to say how old your last backup is.
       stamp="${XDG_STATE_HOME:-$HOME/.local/state}/backup"
       mkdir -p "$stamp" && touch "$stamp/last-success"
-      note "backup complete."
+      if [ "$status" -eq 3 ]; then
+        note "backup complete — a few files couldn't be read and were skipped (journalctl --user -u backup -e lists them)."
+      else
+        note "backup complete."
+      fi
     else
       note "backup FAILED — see: journalctl --user -u backup -e"
       exit 1

@@ -66,7 +66,7 @@ set_value() {   # set KEY NIX-VALUE
 unset_value() {
   [ -e "$local_file" ] || return 0
   local k; k=$(rx "$1")
-  grep -vE "^[[:space:]]*${k}[[:space:]]*=" "$local_file" > "$local_file.new" || true
+  grep -viE "^[[:space:]]*${k}[[:space:]]*=" "$local_file" > "$local_file.new" || true
   mv "$local_file.new" "$local_file"
 }
 
@@ -153,6 +153,32 @@ ask() {   # ask "Question" default → answer
   local a
   read -r -p "$1 [$2]: " a </dev/tty || a=""
   echo "${a:-$2}"
+}
+
+ask_choice() {   # ask_choice "Question" default option… → one of the options
+  local q=$1 def=$2 a o
+  shift 2
+  while :; do
+    a=$(ask "$q" "$def" | tr '[:upper:]' '[:lower:]')
+    for o in "$@"; do [ "$a" = "$o" ] && { echo "$a"; return; }; done
+    echo "  Please type one of: $*" >/dev/tty
+  done
+}
+
+# Keyboard layout: from the installer (which already switched to it, so the
+# passwords typed there match), else asked here. Checked against the layouts
+# this system knows when that list is around.
+ask_keyboard() {
+  local kb=${NIX2_KEYBOARD:-} sym=""
+  [ -n "$kb" ] && { echo "$kb"; return; }
+  for sym in "${NIX2_XKB:-}" /run/current-system/sw/share/X11/xkb ""; do
+    [ -n "$sym" ] && [ -d "$sym/symbols" ] && break
+  done
+  while :; do
+    kb=$(ask "Keyboard layout (us, gb, de, fr, es, it, se, br…)" "$(get_value keyboardLayout)" | tr '[:upper:]' '[:lower:]')
+    if [[ "$kb" =~ ^[a-z0-9_]+$ ]] && { [ -z "$sym" ] || [ -e "$sym/symbols/$kb" ]; }; then echo "$kb"; return; fi
+    echo "  Don't know a layout called '$kb' — it's a short code like us, gb, de or fr." >/dev/tty
+  done
 }
 
 usage() {
@@ -254,17 +280,31 @@ guided() {
     [ "$defuser" != user ] || defuser=$(detect_user)
     defhost=$(hostname 2>/dev/null || echo "$defhost")
   fi
-  user=$(ask "Your username (lowercase, no spaces)" "$defuser")
+  while :; do
+    user=$(ask "Your username (lowercase, no spaces)" "$defuser")
+    [[ "$user" =~ ^[a-z_][a-z0-9_-]*$ ]] && [ "$user" != root ] && break
+    echo "  A username is lowercase letters, digits, - or _, starting with a letter (like ada or sam_2)." >/dev/tty
+  done
   [ -z "$root" ] && defname=$(detect_name "$user" || true)
   name=$(ask "Your name" "${defname:-$user}")
   host=$(ask "This computer's name (hostname)" "$defhost")
   tz=$(ask "Timezone (e.g. America/New_York, Europe/London)" "$(detect_tz)")
-  dev=$(ask "desktop or laptop" "$(detect_device)")
-  gpu=$(ask "Graphics: amd, intel, nvidia or none" "$(detect_gpu)")
+  local kb oldkb
+  oldkb=$(get_value keyboardLayout)
+  kb=$(ask_keyboard)
+  dev=$(ask_choice "desktop or laptop" "$(detect_device)" desktop laptop)
+  gpu=$(ask_choice "Graphics: amd, intel, nvidia or none" "$(detect_gpu)" amd intel nvidia none)
   esp=$(detect_esp)
   [ -d "$root$esp/loader" ] && ! [ -d "$root/boot/grub" ] && grub=false
   ensure_file
   write_machine "$user" "${name:-$user}" "$host" "$tz" "$dev" "$gpu" "$esp" "$grub"
+  if [ "$kb" = us ]; then unset_value keyboardLayout; else set_value keyboardLayout "$(str "$kb")"; fi
+  if [ -z "$root" ] && [ "$kb" != "$oldkb" ]; then
+    echo
+    echo "Note: after the rebuild and a restart, the login screen (and the disk password"
+    echo "prompt, if the disk is encrypted) use the $kb layout too — type passwords by"
+    echo "the letters printed on your keys."
+  fi
   echo
   echo ":: saved to $local_file:"
   sed -n '/^{/,/^}/p' "$local_file"

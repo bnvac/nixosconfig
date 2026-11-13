@@ -18,6 +18,27 @@ say "nix² installer"
 echo "This puts nix² on a disk of this computer. You'll pick the disk,"
 echo "and everything on it will be erased."
 
+# ── keyboard ────────────────────────────────────────────────────────────────
+# Asked first and switched on the spot: every password typed from here on
+# (Wi-Fi, disk, login) is typed with the layout the installed system uses.
+xkb=${NIX2_XKB:-/run/current-system/sw/share/X11/xkb}
+kb=us
+while :; do
+  a=$(ask "Keyboard layout? Enter for US English, or a code (gb, de, fr, es, it, se, no, dk, pt, br, ch, pl…):" | tr '[:upper:]' '[:lower:]')
+  if [ -z "$a" ] || [ "$a" = us ]; then break; fi
+  if [[ "$a" =~ ^[a-z0-9_]+$ ]] && [ -e "$xkb/symbols/$a" ]; then
+    if ckbcomp -I"$xkb" -layout "$a" 2>/dev/null | loadkeys - 2>/dev/null; then
+      kb=$a; echo "Keyboard: $a"
+    else
+      echo "Couldn't switch this screen to '$a', so the install stays on US."
+      echo "After installing, switch with: nix2-setup set keyboardLayout $a"
+    fi
+    break
+  fi
+  echo "Don't know a layout called '$a' — it's a short code like gb, de or fr."
+done
+export NIX2_KEYBOARD=$kb
+
 # ── checks ──────────────────────────────────────────────────────────────────
 [ -d /sys/firmware/efi ] || die "This computer started in legacy (BIOS) mode. nix² needs UEFI:
 turn on UEFI boot in the firmware settings (often F2/Del at power-on), then boot the USB again."

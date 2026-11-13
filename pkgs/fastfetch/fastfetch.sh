@@ -26,6 +26,9 @@ fi
 out=$("$ff" "${config[@]}" --pipe false --logo-type file --logo "$eye/space.txt" "$@"; printf x)
 out=${out%x}
 printf '\033[?7l%s\033[?7h' "$out"
+# No logo in what fastfetch printed (--help, --logo none, -l other, JSON…):
+# nothing to draw into. The blank logo's rows end in a braille blank (U+2800).
+[[ $out == *$'\xe2\xa0\x80'* ]] || exit 0
 
 # Cursor row now, counted from where the output started: newlines, minus
 # fastfetch's own moves up (it goes back up to print the info beside the

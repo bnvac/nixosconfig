@@ -3,6 +3,8 @@
 let
   s = import ../settings.nix;
   wallpaper = pkgs.snow-wallpaper;          # snowy night, drawn at build time (pkgs/scripts)
+  kbLayout = s.keyboardLayout or "us";
+  kbVariant = s.keyboardVariant or "";
 
   # `dash` (Super+Alt+d) — straight into the menu's Self-hosted section.
   dash = pkgs.writeShellScriptBin "dash" ''exec ${pkgs.nixmenu}/bin/nixmenu "Self-hosted"'';
@@ -91,6 +93,11 @@ let
 
   # `mykeys` — a printable cheat sheet of MY custom keybinds (Super+Alt+F1, and
   # an entry in nixmenu). Stock LARBS keys stay on Super+F1's manual.
+  # settings.screenshotKey (a laptop whose screenshot key sends e.g. F10): one more line.
+  shotKeyLine =
+    let k = s.screenshotKey or "Print"; label = "${k} / Shift + ${k}";
+        pad = lib.concatStrings (lib.genList (_: " ") (lib.max 2 (27 - builtins.stringLength label)));
+    in lib.optionalString (k != "Print") "\n  ${label}${pad}the same, on this keyboard's screenshot key";
   mykeys = pkgs.writeShellScriptBin "mykeys" ''
     cat <<'SHEET'
 
@@ -108,6 +115,7 @@ let
       Super + Alt + v            audio: output/mic device, volume, mute
       Super + Alt + c            clipboard history: paste anything you copied earlier
       Super + Alt + s            screenshot menu (same as Shift+Print)
+      Print / Shift + Print      screenshot: whole screen / the menu${shotKeyLine}
       Super + Alt + w            wallpapers: pictures + Wallpaper Engine (live)
       Super + Alt + t            Tor Browser
       Super + Alt + Return       tmux session
@@ -132,7 +140,7 @@ let
     backend = "glx";
     vsync = true;
     rules = (
-      { match = "class_g = 'St'"; opacity = ${s.termOpacity}; },
+      { match = "class_g = 'St'"; opacity = ${toString s.termOpacity}; },
       { match = "fullscreen";     opacity = 1.0; }
     );
   '';
@@ -140,7 +148,7 @@ in
 {
   services.xserver = {
     enable = true;
-    xkb = { layout = "us"; options = "caps:super,altwin:menu_win"; };
+    xkb = { layout = kbLayout; variant = kbVariant; options = "caps:super,altwin:menu_win"; };
     windowManager.dwm = {
       enable = true; package = pkgs.larbs-dwm;
       extraSessionCommands = ''
@@ -167,6 +175,10 @@ in
       '';
     };
   };
+  # A layout other than plain US also applies on the text console — that's
+  # the login screen (ly) and, on an encrypted disk, the password prompt at
+  # start-up — so a password is typed the same way everywhere.
+  console = lib.mkIf (kbLayout != "us" || kbVariant != "") { useXkbConfig = true; earlySetup = true; };
   services.libinput.enable = true;
 
   # Clipboard history (Super+Alt+c): remembers what you copy, pick it back with dmenu.

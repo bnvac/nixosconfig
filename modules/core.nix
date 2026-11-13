@@ -6,6 +6,14 @@ let
   share = { serve = false; from = ""; key = ""; } // (s.shareBuilds or { });
   picked = import ../picker.nix lib;     # same module list configuration.nix imports
 
+  # What a background job needs to rebuild the system. systemd units don't get
+  # your login environment, so without NIX_PATH `nixos-rebuild` can't find the
+  # NixOS channel or this config (the same set NixOS's own autoUpgrade uses).
+  rebuildEnv = config.nix.envVars // {
+    inherit (config.environment.sessionVariables) NIX_PATH;
+    HOME = "/root";
+  } // config.networking.proxy.envVars;
+
   # ── Jarvis's note-to-self: regenerated from the live config every rebuild ──
   # Lands at /etc/jarvis/SYSTEM.md (and ~/SYSTEM.md). Written for an assistant
   # bot so it knows how this machine is wired without being told.
@@ -101,7 +109,7 @@ let
       pre-builds them so the next rebuild switches in seconds, and rolls the
       channel back if they don't build. `rebuild --no-update` only applies
       config (mod on/off use it). Git-built apps — the built-ins neb, backoffice,
-      intraweb (pkgs/pins.json) plus anything in settings.gitApps (any repo,
+      intraweb, slowtyper (pkgs/pins.json) plus anything in settings.gitApps (any repo,
       any git server; types rust/go/node/python/make/script/docker) — also
       update daily by themselves (settings.autoUpdateMine). `update-mine
       --status` shows what's pinned vs. upstream. A new commit that doesn't
@@ -155,6 +163,11 @@ let
       sends e.g. F10) = full screen, with Shift or Super+Alt+s = menu (area, window,
       clipboard-only, OCR text). `screenshot` saves to ~/Pictures/screenshots
       and copies to the clipboard; failures show a notification.
+    - Keyboard layout and language: settings.keyboardLayout / keyboardVariant /
+      locale (currently ${s.keyboardLayout or "us"}, ${s.locale or "en_US.UTF-8"}). A non-US layout is
+      also used on the text console (ly login, LUKS prompt at boot).
+    - Background jobs that rebuild (nixos-prebuild, update-mine, the optional
+      nix-auto-update) get NIX_PATH explicitly: systemd units don't inherit it.
     - `lock` (Super+Alt+l) — lock screen; also on suspend and after 10 idle min.
     - `snow on|off|toggle` — the live falling snow over the snowy wallpaper.
     - `nix2` (pkgs/nix2, one Rust binary) holds this system's own tools:
@@ -446,7 +459,7 @@ in
     description = "Pre-build the system on the newest NixOS packages";
     wants = [ "network-online.target" ]; after = [ "network-online.target" ];
     path = [ config.nix.package config.system.build.nixos-rebuild pkgs.git pkgs.coreutils ];
-    environment.HOME = "/root";
+    environment = rebuildEnv;
     serviceConfig = {
       Type = "oneshot";
       Nice = 19; IOSchedulingClass = "idle"; CPUSchedulingPolicy = "idle";
@@ -522,6 +535,26 @@ in
       graphics…). Make it with:  sudo nix2-setup
       (or: sudo bash /etc/nixos/pkgs/scripts/setup.sh), then rebuild.'';
   } {
+    # A typo here used to be accepted silently (gpu = "Nvidia" meant no
+    # NVIDIA driver, device = "Laptop" meant no battery tuning).
+    assertion = builtins.elem s.gpu [ "amd" "intel" "nvidia" "none" ];
+    message = ''settings: gpu = "${toString s.gpu}" isn't one of "amd", "intel", "nvidia", "none" (all lowercase). Fix it: nix2-setup set gpu nvidia'';
+  } {
+    assertion = builtins.elem s.device [ "desktop" "laptop" ];
+    message = ''settings: device = "${toString s.device}" should be "desktop" or "laptop" (lowercase). Fix it: nix2-setup set device laptop'';
+  } {
+    assertion = builtins.match "[a-z_][a-z0-9_-]*" s.username != null && s.username != "root";
+    message = ''settings: username = "${s.username}" won't work as a Linux username: lowercase letters, digits, - and _ only, starting with a letter (and not root).'';
+  } {
+    assertion = builtins.match "(0|1|1\\.0+|0?\\.[0-9]+)" (toString s.termOpacity) != null;
+    message = ''settings: termOpacity = ${toString s.termOpacity} should be a number from 0.0 (see-through) to 1.0 (solid), e.g. 0.72'';
+  } {
+    assertion = builtins.match "[a-z0-9_,]+" (s.keyboardLayout or "us") != null;
+    message = ''settings: keyboardLayout = "${toString (s.keyboardLayout or "")}" should be a layout code like "us", "gb", "de" or "fr" (lowercase).'';
+  } {
+    assertion = builtins.match "[a-z]{2,3}_[A-Z]{2}(\\.UTF-8)?(@[a-z]+)?" (s.locale or "en_US.UTF-8") != null;
+    message = ''settings: locale = "${toString (s.locale or "")}" should look like "en_US.UTF-8" or "de_DE.UTF-8".'';
+  } {
     assertion = builtins.hasAttr s.espMountPoint config.fileSystems;
     message = ''
       Your settings say the EFI partition is at ${s.espMountPoint}, but
@@ -542,7 +575,7 @@ in
     settings.General.Experimental = true;   # battery % for mice/keyboards/headsets
   };                                        # (the blueman GUI lives in desktop.nix)
   time.timeZone = s.timeZone;
-  i18n.defaultLocale = "en_US.UTF-8";
+  i18n.defaultLocale = s.locale or "en_US.UTF-8";
 
   # ── user ───────────────────────────────────────────────────────────────────
   users.users.${s.username} = {
@@ -637,8 +670,11 @@ in
   # this run if the update clashes with your edits (the journal says which file).
   systemd.services.nix-auto-update = lib.mkIf s.autoUpdate {
     description = "Pull /etc/nixos and rebuild";
+    wants = [ "network-online.target" ];
+    after = [ "network-online.target" ];
     serviceConfig.Type = "oneshot";
-    path = [ pkgs.git pkgs.nix config.system.build.nixos-rebuild ];
+    path = [ pkgs.git config.nix.package config.system.build.nixos-rebuild ];
+    environment = rebuildEnv;
     script = ''
       cd /etc/nixos || exit 0
       [ -d .git ] || exit 0
@@ -651,7 +687,7 @@ in
     timerConfig = { OnCalendar = "weekly"; Persistent = true; RandomizedDelaySec = "1h"; };
   };
 
-  # Your own packages (pkgs/pins.json: neb, backoffice, intraweb) follow their
+  # Your own packages (pkgs/pins.json: neb, backoffice, intraweb, slowtyper) follow their
   # GitHub repos. `rebuild` runs update-mine first; this daily timer runs
   # `update-mine --switch`: it pins any newer commit that builds and switches
   # only if something changed. settings.autoUpdateMine = false turns it off.
@@ -660,7 +696,7 @@ in
     wants = [ "network-online.target" ];
     after = [ "network-online.target" ];
     path = [ pkgs.git config.nix.package config.system.build.nixos-rebuild ];
-    environment.HOME = "/root";
+    environment = rebuildEnv;
     serviceConfig.Type = "oneshot";
     script = "${pkgs.update-mine}/bin/update-mine --switch";
   };

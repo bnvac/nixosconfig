@@ -24,10 +24,20 @@ esac
 say() { [ "$quiet" = 1 ] || echo "$@"; }
 
 [ -d "$dir/.git" ] || { echo "nix2-pull: $dir isn't a git clone"; exit 1; }
-if [ "$(id -u)" -ne 0 ]; then                  # /etc/nixos belongs to root
+# /etc/nixos normally belongs to root; if you can't write it, become root.
+if [ "$(id -u)" -ne 0 ] && ! [ -w "$dir/.git" ]; then
   exec /run/wrappers/bin/sudo env "PATH=$PATH" "$0" "$@"
 fi
 cd "$dir" || exit 1
+# git always runs as whoever owns the folder. As root in a folder YOU own
+# (some people chown /etc/nixos to edit it without sudo), git refuses to work
+# ("dubious ownership") and would leave root's files in your repo.
+asowner=()
+owner=$(stat -c %U .)
+if [ "$(id -u)" -eq 0 ] && [ "$owner" != root ] && [ "$owner" != UNKNOWN ]; then
+  asowner=(runuser -u "$owner" --)
+fi
+git() { "${asowner[@]}" "$(type -P git)" "$@"; }
 host=$(uname -n)
 g() { git -c user.name="nix2 on $host" -c user.email="nix2@localhost" "$@"; }
 if [ "${1:-}" = --mine ]; then

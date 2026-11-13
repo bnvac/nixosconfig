@@ -21,6 +21,15 @@ let
     timeZone = "UTC";
     # "desktop" or "laptop" — laptops get battery/thermal tuning (`power`).
     device = "desktop";
+    # Keyboard layout: "us", "gb", "de", "fr", "es", "it", "se", "br"… plus an
+    # optional variant ("dvorak", "colemak", "intl", "nodeadkeys"). It applies
+    # everywhere you type: the desktop, the login screen and, on an encrypted
+    # disk, the password prompt at start-up.
+    keyboardLayout = "us";
+    keyboardVariant = "";
+    # Language and formats (dates, numbers, paper size): "en_US.UTF-8",
+    # "en_GB.UTF-8", "de_DE.UTF-8"…
+    locale = "en_US.UTF-8";
     # Graphics: "amd", "intel", "nvidia" (adds NVIDIA's own driver) or "none".
     gpu = "amd";
     # NVIDIA only: the open kernel module (RTX 20-series / GTX 16-series and
