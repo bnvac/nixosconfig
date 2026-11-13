@@ -291,21 +291,19 @@ in
   # swaps to match the git repo you're standing in: drop a <reponame>.txt in
   # pkgs/fastfetch-logos/ to add one; default.txt shows everywhere else.
   # Replaces the plain `fastfetch` on PATH, so Super+Alt+i and the shell get it.
-  fastfetch-id = final.writeShellApplication {
-    name = "fastfetch";
-    runtimeInputs = with final; [ git coreutils ];
-    text = ''
-      logos=${./fastfetch-logos}
-      name=default
-      if top=$(git rev-parse --show-toplevel 2>/dev/null); then
-        n=$(basename "$top")
-        [ -f "$logos/$n.txt" ] && name="$n"
-      fi
-      config=()
-      [ -f "''${XDG_CONFIG_HOME:-$HOME/.config}/fastfetch/config.jsonc" ] || config=(--config ${./fastfetch/config.jsonc})
-      exec ${final.fastfetch}/bin/fastfetch "''${config[@]}" --logo-type file --logo "$logos/$name.txt" "$@"
-    '';
-  };
+  fastfetch-id =
+    let eye = final.runCommand "nix2-eye" { nativeBuildInputs = [ final.python3 ]; }
+      "python3 ${./fastfetch/eye.py} $out";
+    in final.writeShellApplication {
+      name = "fastfetch";
+      runtimeInputs = with final; [ git coreutils gnugrep gawk ];
+      text = ''
+        ff=${final.fastfetch}/bin/fastfetch
+        cfg=${./fastfetch/config.jsonc}
+        logos=${./fastfetch-logos}
+        eye=${eye}
+      '' + builtins.readFile ./fastfetch/fastfetch.sh;
+    };
   neofetch = final.writeShellScriptBin "neofetch" ''exec ${final.fastfetch-id}/bin/fastfetch "$@"'';
 
   # The system's python3, made so `pip install x` just works like on other

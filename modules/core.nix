@@ -128,7 +128,9 @@ let
       which linux-wallpaperengine needs and user services don't get.
     - `neofetch` = fastfetch with pkgs/fastfetch/config.jsonc (unless
       ~/.config/fastfetch/config.jsonc exists); /etc/nix2/modules lists the
-      modules that are on. `lock` is xsecurelock: username + password.
+      modules that are on. The logo is an eye (pkgs/fastfetch/eye.py, 24-bit
+      half-blocks) the wrapper draws into a blank logo and blinks twice;
+      NIX2_NO_BLINK=1 skips that. `lock` is xsecurelock: username + password.
       Steam is native; `steam-setup` (runs at login) turns on Steam Play for
       all titles so Windows games and Wallpaper Engine install.
     - `site-push [folder]` publishes a folder to Neocities: the site comes from a
