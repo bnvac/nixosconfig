@@ -9,6 +9,20 @@ let
   # Git-tracked sources (built-ins neb/backoffice/intraweb + settings.gitApps):
   # tracked.nix decides which commit each builds; update-mine keeps them new.
   tracked = import ./tracked.nix;
+  settings = import ../settings.nix;
+
+  # settings.screenshotKey: laptops whose screenshot key sends something else
+  # (often F10) take screenshots with it too: the key = whole screen,
+  # Shift+key = the menu. Print always works.
+  shotKey = settings.screenshotKey or "Print";
+  shotKeys =
+    if shotKey == "Print" then ""
+    else if builtins.match "[A-Za-z0-9_]+" shotKey == null
+    then throw "settings.screenshotKey = \"${shotKey}\": use a key name like \"F10\" (what xev shows after keysym)"
+    else ''
+      { 0,         XK_${shotKey}, spawn, {.v = (const char*[]){ "screenshot", "full", NULL } } },
+      { ShiftMask, XK_${shotKey}, spawn, {.v = (const char*[]){ "screenshot", NULL } } },
+    '';
   basePins = builtins.fromJSON (builtins.readFile ./pins.json);
   fetchPinned = t: p:
     if t.github != null
@@ -95,6 +109,7 @@ in
       { MODKEY|Mod1Mask,           XK_Return, spawn, {.v = (const char*[]){ TERMINAL, "-e", "tmux", "new-session", "-A", "-s", "main", NULL } } },
       { MODKEY|Mod1Mask,           XK_i,      spawn, SHCMD(TERMINAL " -e sh -c 'fastfetch; read -r _'") },
       { MODKEY|Mod1Mask,           XK_F1,     spawn, SHCMD(TERMINAL " -e sh -c 'mykeys; read -r _'") },
+      ${shotKeys}
       KEYS
       substituteInPlace config.h --replace-fail 'static const Key keys[] = {' 'static const Key keys[] = {
       #include "larbs-extra-keys.h"'

@@ -133,7 +133,7 @@ On by default unless it says otherwise. `mod on <name>` / `mod off <name>`.
 | `audio` | pick output/mic device (speakers, headset, Bluetooth, HDMI), volume, mute — **Super+Alt+v** |
 | `drives` | mount / unlock / unmount drives, never automatic — **Super+Alt+m** |
 | `tidy` | clean up: loose files in your home folder go to Pictures / Videos / Music / Documents (screenshots and recordings get their own folders), the rest to Downloads, which is sorted into type folders; catches duplicates, never deletes, `--undo` (`--home`, `--downloads`, `--dry-run`) |
-| `screenshot` | **Print** = whole screen, **Shift+Print** (or **Super+Alt+s**) = area / window / clipboard / text (OCR); saved to `~/Pictures/screenshots` and copied to the clipboard |
+| `screenshot` | **Print** = whole screen, **Shift+Print** (or **Super+Alt+s**) = area / window / clipboard / text (OCR); saved to `~/Pictures/screenshots` and copied to the clipboard. Laptop whose screenshot key is really F10 (or anything else)? `nix2-setup set screenshotKey '"F10"'` |
 | `lock` | lock screen: just your username + password — **Super+Alt+l** (also on suspend / 10 idle min) |
 | `site-push` | publish a folder to its Neocities site — menu: Apps & files → "Publish a folder to Neocities". The site comes from the repo's `.neocities` file; only changed files upload |
 | `wallpapers` | the wallpaper picker — six built-in wallpapers (snowy night, aurora, dusk ridge, blueprint, topography, circuit board), your pictures, or live **Wallpaper Engine** ones from the Steam Workshop; fit, shuffle, snow on/off — **Super+Alt+w** |

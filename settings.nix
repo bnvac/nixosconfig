@@ -39,6 +39,11 @@ let
     # Sunset is worked out from where you are — rough is fine (city level).
     nightLight = true;
     location = { latitude = 40.7; longitude = -74.0; };
+    # The key that takes screenshots (with Shift: the screenshot menu). Print
+    # always does; set this when your laptop's screenshot key sends something
+    # else. Find out with: nix-shell -p xorg.xev --run "xev -event keyboard"
+    # (press it; the name after "keysym 0x…," is what goes here, e.g. "F10").
+    screenshotKey = "Print";
 
     # ── Modules ───────────────────────────────────────────────────────────────
     # Which are on comes from the marker files in mods/ (nix²'s defaults),

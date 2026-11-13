@@ -149,7 +149,8 @@ let
       then Downloads is sorted into type folders. Content duplicates go to
       Downloads/Duplicates (never deleted); folders, dotfiles and SYSTEM.md are
       never touched. `--home`, `--downloads`, `--dry-run`, `--undo`.
-    - Screenshots: Print = full screen, Shift+Print or Super+Alt+s = menu (area, window,
+    - Screenshots: Print (and settings.screenshotKey, for laptops whose key
+      sends e.g. F10) = full screen, with Shift or Super+Alt+s = menu (area, window,
       clipboard-only, OCR text). `screenshot` saves to ~/Pictures/screenshots
       and copies to the clipboard; failures show a notification.
     - `lock` (Super+Alt+l) — lock screen; also on suspend and after 10 idle min.
