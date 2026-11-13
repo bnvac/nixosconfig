@@ -1,4 +1,4 @@
-# screenshot — Print = whole screen, Shift+Print = this menu.
+# screenshot — Print = whole screen, Shift+Print (or Super+Alt+S) = this menu.
 #   screenshot [menu|full|area|window|copy-area|copy-window|text]
 # Saves to ~/Pictures/screenshots/<date>_<time>.png (always an absolute
 # path, so it works no matter which folder your session started in) and puts
@@ -15,9 +15,24 @@ fail() {
 }
 
 if [ "$mode" = menu ]; then
+  # One menu at a time: holding the keys makes key-repeat start this again
+  # and again, and the extra menus would fight over the keyboard.
+  exec 9>"${XDG_RUNTIME_DIR:-/tmp}/screenshot-menu.lock"
+  flock -n 9 || exit 0
+  err=$(mktemp)
+  status=0
   choice=$(printf '%s\n' "Area" "Window" "Full screen" "Area → clipboard only" \
              "Window → clipboard only" "Text from an area → clipboard (OCR)" \
-           | dmenu -i -l 6 -p "Screenshot:") || exit 0
+           | dmenu -i -l 6 -p "Screenshot:" 2>"$err") || status=$?
+  if [ "$status" -ne 0 ]; then
+    if grep -q 'cannot grab keyboard' "$err"; then
+      rm -f "$err"
+      fail "couldn't open the menu: another program had the keyboard. Try again, or press Super+Alt+S."
+    fi
+    rm -f "$err"; exit 0                       # Escape: you closed the menu
+  fi
+  rm -f "$err"
+  exec 9>&-         # menu's done: let go of the lock (xclip, below, lives on)
   case "$choice" in
     Area) mode=area ;;
     Window) mode=window ;;

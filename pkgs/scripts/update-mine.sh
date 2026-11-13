@@ -6,7 +6,7 @@
 #   update-mine --status   show what's pinned vs. what's upstream; change nothing
 #
 # What it tracks comes from pkgs/tracked.nix: the built-ins (neb, backoffice,
-# intraweb — pkgs/pins.json) plus every repo in settings.gitApps, from GitHub
+# intraweb, slowtyper — pkgs/pins.json) plus every repo in settings.gitApps, from GitHub
 # or any git server, on a branch if you set one. New pins go to
 # pkgs/pins.local.json (gitignored, so `nixup` pulls never conflict). For each:
 #   1. ask the repo for its latest commit (git ls-remote — no API, no token)

@@ -146,7 +146,7 @@ let
       then Downloads is sorted into type folders. Content duplicates go to
       Downloads/Duplicates (never deleted); folders, dotfiles and SYSTEM.md are
       never touched. `--home`, `--downloads`, `--dry-run`, `--undo`.
-    - Screenshots: Print = full screen, Shift+Print = menu (area, window,
+    - Screenshots: Print = full screen, Shift+Print or Super+Alt+s = menu (area, window,
       clipboard-only, OCR text). `screenshot` saves to ~/Pictures/screenshots
       and copies to the clipboard; failures show a notification.
     - `lock` (Super+Alt+l) — lock screen; also on suspend and after 10 idle min.
@@ -164,6 +164,11 @@ let
       micropython` (PlatformIO / MicroPython projects with `just flash`). The
       `ee` module grants device access (udev: picotool, probe-rs, ST-Link,
       OpenOCD, sigrok, QMK, Vial/hidraw for the seat user, RTL-SDR, Flipper).
+    - Python: python3/pip are pkgs.python-pip — `pip install x` outside a
+      venv installs into ~/.local (no --user or --break-system-packages
+      needed; ~/.local/bin is on PATH), and LD_LIBRARY_PATH gives wheels
+      libstdc++/zlib/libGL/glib/X11. pipx and uv are in; nix-ld has the same
+      libraries for downloaded binaries. venvs behave normally.
     - Builds (`devtools`): RUSTC_WRAPPER=sccache, CMake → ccache, Rust links
       with mold (env vars, so Nix's own builds are unaffected); zsh notifies
       when a command ran ≥30 s; `debloat junk` lists stale build folders.
@@ -583,8 +588,14 @@ in
   ] ++ lib.filter (p: !(lib.elem (lib.getName p) removed)) config.my.packages;
   my.packages = with pkgs; [
     fastfetch-id neofetch fzf ripgrep fd bat eza tree unzip zip psmisc usbutils pciutils
-    gcc gnumake python3          # build tools — `debloat remove gcc-wrapper gnumake` if you never compile
+    gcc gnumake                  # build tools — `debloat remove gcc-wrapper gnumake` if you never compile
+    python-pip pipx uv           # Python: `pip install x` just works (see python-pip in pkgs/default.nix)
   ];
+  # pip/pipx put commands in ~/.local/bin; prebuilt programs (and Pythons uv
+  # downloads) find the usual Linux libraries through nix-ld.
+  environment.localBinInPath = true;
+  programs.nix-ld.enable = true;
+  programs.nix-ld.libraries = pkgs.python-pip.wheelLibs;
   warnings = map (n: "settings.removePackages: \"${n}\" isn't installed by any module — `debloat list` shows the names")
     (lib.filter (n: !(lib.elem n (map lib.getName config.my.packages))) removed);
   environment.etc."debloat/packages".text =

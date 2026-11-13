@@ -17,5 +17,11 @@
     "repo": "intraweb",
     "rev": "4ad5205262939f5856feb597637364f0885518d8",
     "hash": "sha256-F+txp7Na9R9OZfHJCoBmfEeW1XIquQzenBFVlIalitA="
+  },
+  "slowtyper": {
+    "owner": "bnvac",
+    "repo": "slowtyper",
+    "rev": "25e1ce4f181425d09caefe4718b4ca734c968721",
+    "hash": "sha256-1FHNmhWd7PAqNgtTztD61IL9fkXw254pbprznR5t9oI="
   }
 }

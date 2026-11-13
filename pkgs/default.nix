@@ -88,6 +88,7 @@ in
       { MODKEY|Mod1Mask,           XK_d,      spawn, {.v = (const char*[]){ "dash", NULL } } },
       { MODKEY|Mod1Mask,           XK_b,      spawn, {.v = (const char*[]){ "blueman-manager", NULL } } },
       { MODKEY|Mod1Mask,           XK_v,      spawn, {.v = (const char*[]){ "audio", NULL } } },
+      { MODKEY|Mod1Mask,           XK_s,      spawn, {.v = (const char*[]){ "screenshot", NULL } } },
       { MODKEY|Mod1Mask,           XK_c,      spawn, {.v = (const char*[]){ "clipmenu", "-i", "-l", "20", "-p", "clipboard:", NULL } } },
       { MODKEY|Mod1Mask,           XK_w,      spawn, {.v = (const char*[]){ "wallpapers", NULL } } },
       { MODKEY|Mod1Mask,           XK_t,      spawn, {.v = (const char*[]){ "tor-browser", NULL } } },
@@ -130,7 +131,10 @@ in
     # Backspace with nothing typed exits with status 3 — but only when the
     # caller sets DMENU_BACK=1 (nixmenu uses it as "go back"); everywhere
     # else dmenu behaves exactly as before.
+    # Menus opened by a key combo (Shift+Print) have to wait for that key to
+    # be let go before they can take the keyboard: wait up to 3 s, not 1 s.
     postPatch = ''
+      substituteInPlace dmenu.c --replace-fail 'for (i = 0; i < 1000; i++) {' 'for (i = 0; i < 3000; i++) {'
       substituteInPlace dmenu.c --replace-fail $'\tcase XK_BackSpace:\n\t\tif (cursor == 0)\n\t\t\treturn;' \
         $'\tcase XK_BackSpace:\n\t\tif (cursor == 0) {\n\t\t\tif (text[0] == \'\\0\' && getenv("DMENU_BACK")) {\n\t\t\t\tcleanup();\n\t\t\t\texit(3);\n\t\t\t}\n\t\t\treturn;\n\t\t}'
     '';
@@ -227,7 +231,7 @@ in
   desk = sh "desk" (with final; [ final.apps-menu final.lock-screen xdotool xprop jq gawk coreutils gnused
                                   procps wireplumber playerctl brightnessctl libnotify maim util-linux ]) ./scripts/desk.sh;
   lock-screen = sh "lock" [ final.xsecurelock ] ./scripts/lock.sh;
-  screenshot      = sh "screenshot" (with final; [ maim xclip xdotool libnotify tesseract larbs-dmenu coreutils ]) ./scripts/screenshot.sh;
+  screenshot      = sh "screenshot" (with final; [ maim xclip xdotool libnotify tesseract larbs-dmenu coreutils util-linux gnugrep ]) ./scripts/screenshot.sh;
   wallpaper-live  = sh "wallpaper-live" (with final; [ linux-wallpaperengine xrandr gawk coreutils ]) ./scripts/wallpaper-live.sh;
   steam-setup     = py "steam-setup" ./scripts/steam-setup.py;
   # Publish a folder to its Neocities site (keys in the keyring; see the script).
@@ -287,6 +291,41 @@ in
     '';
   };
   neofetch = final.writeShellScriptBin "neofetch" ''exec ${final.fastfetch-id}/bin/fastfetch "$@"'';
+
+  # The system's python3, made so `pip install x` just works like on other
+  # Linux systems: outside a venv it installs for you (into ~/.local, commands
+  # in ~/.local/bin) instead of refusing, and wheels with compiled code
+  # (numpy, opencv, torch…) find the C libraries they expect. venv,
+  # virtualenv, pipx and uv work as usual; inside a venv nothing changes.
+  python-pip =
+    let
+      python = final.python3;
+      # What prebuilt wheels expect a normal Linux to have. nix-ld gets the
+      # same list (core.nix), for Pythons that uv downloads.
+      wheelLibs = with final; [
+        stdenv.cc.cc.lib zlib zstd bzip2 xz libffi expat libGL glib
+        libx11 libxext libxrender libice libsm
+        libxkbcommon fontconfig freetype dbus
+      ];
+      env = python.buildEnv.override {
+        extraLibs = with python.pkgs; [ pip setuptools wheel virtualenv ];
+        permitUserSite = true;
+        makeWrapperArgs = [
+          "--suffix" "LD_LIBRARY_PATH" ":" (final.lib.makeLibraryPath wheelLibs)
+          "--set-default" "PIP_BREAK_SYSTEM_PACKAGES" "1"
+        ];
+        # `pip` itself goes through `python3 -m pip`: the stand-alone pip
+        # script looks like it's in a venv to pip and refuses user installs.
+        postBuild = ''
+          for p in pip pip3 pip${python.pythonVersion}; do
+            rm -f "$out/bin/$p"
+            printf '#!%s\nexec %s -m pip "$@"\n' ${final.runtimeShell} "$out/bin/python3" > "$out/bin/$p"
+            chmod +x "$out/bin/$p"
+          done
+        '';
+      };
+    in
+    env // { inherit wheelLibs; };
   neb-voice       = py "neb-voice" ./scripts/neb-voice.py;
   tidy            = py "tidy" ./scripts/tidy.py;
   tidy-downloads  = final.writeShellScriptBin "tidy-downloads" ''exec ${final.tidy}/bin/tidy --downloads "$@"'';
@@ -319,6 +358,20 @@ in
   gitApps = import ./gitapps.nix { inherit final prev tracked fetchPinned; };
   snow-wallpaper  = final.runCommand "snow-wallpaper.png" { nativeBuildInputs = [ final.imagemagick ]; }
     "bash ${./scripts/snow-wallpaper.sh} $out";
+
+  # ── SlowTyper — types text into the focused window at a human pace ─────────
+  # Only its command-line half (cli/); the browser extension in the same repo
+  # isn't packaged.
+  slowtyper = final.python3Packages.buildPythonApplication {
+    pname = "slowtyper"; version = "1.0.0"; pyproject = true;
+    src = mine "slowtyper";          # pin in pins.json, kept current by update-mine
+    sourceRoot = "source/cli";
+    build-system = [ final.python3Packages.setuptools ];
+    dependencies = with final.python3Packages; [ pynput xlib ];
+    nativeCheckInputs = [ final.python3Packages.unittestCheckHook ];
+    unittestFlagsArray = [ "-s" "tests" ];
+    meta.mainProgram = "slowtyper";
+  };
 
   # ── Neb — the user's local voice assistant (stdlib-only Python) ────────────
   neb = final.python3Packages.buildPythonApplication {

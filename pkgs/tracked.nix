@@ -3,7 +3,7 @@
 #   nix-instantiate --eval --strict --json pkgs/tracked.nix
 #
 # Where it comes from:
-#   pins.json          the built-in apps (neb, backoffice, intraweb) — kept in git
+#   pins.json          the built-in apps (neb, backoffice, intraweb, slowtyper) — kept in git
 #   settings.gitApps   any repo you add, or a fork you point a built-in at
 #   pins.local.json    newer commits update-mine found (gitignored, per machine)
 # A local pin only counts while it matches the repo/branch you configured and

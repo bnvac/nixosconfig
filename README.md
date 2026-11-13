@@ -24,6 +24,8 @@ mod on virt       # switch a module on (it rebuilds for you)
   Node project whose compiler, language server and formatter load when you
   `cd` in. Builds are fast by default: a compile cache (sccache/ccache) and the
   mold linker for every project, and a notification when a long build ends.
+  `pip install` works like on any other Linux (into your home folder, wheels
+  like numpy and OpenCV included); pipx and uv are there too.
 - **Your machines help each other** — one computer can share what it built
   with your others over your home network, so they download instead of
   compiling.
@@ -107,6 +109,7 @@ On by default unless it says otherwise. `mod on <name>` / `mod off <name>`.
 | assistant | Neb, a local voice assistant, + Ollama / Open-WebUI on your GPU — **off by default** |
 | backoffice | a parts-inventory web app — **off by default** |
 | intraweb | a local-first neighborhood web on your LAN (no server, no internet) — **off by default** |
+| slowtyper | SlowTyper: types the clipboard (or any text) into the focused window at a human pace, from the menu — **off by default** |
 | secrets | passwords/keys encrypted in git with sops-nix — **off by default** |
 | osint | security / OSINT toolkit — **off by default** |
 
@@ -117,7 +120,7 @@ On by default unless it says otherwise. `mod on <name>` / `mod off <name>`.
 | `modtui` | TUI: onboarding, modules, settings, AI model (with download bar), update |
 | `nix2-setup` | this machine's settings (you, hostname, timezone, laptop/desktop, graphics) → `settings.local.nix`; `nix2-setup set KEY VALUE` changes one |
 | `rebuild` (`nrs`) | apply your config + update your own git apps (seconds when nothing is new), live progress bar. `--upgrade` also moves to the newest NixOS packages — normally pre-built for you weekly in the background; `--no-update` just applies config |
-| `update-mine` | move your git-built apps (neb, backoffice, intraweb + `gitApps`) to their latest commit, only if it builds; runs daily too. `--status` to just look |
+| `update-mine` | move your git-built apps (neb, backoffice, intraweb, slowtyper + `gitApps`) to their latest commit, only if it builds; runs daily too. `--status` to just look |
 | `debloat` | what's using space, and clean it; `debloat junk` finds old build folders (target/, node_modules/…) in projects you haven't touched for a month; `debloat remove <app>` drops an app from every module, or uninstalls a Flatpak by id (`org.gimp.GIMP`) and trims runtimes nothing else uses |
 | `nixup` | `git pull` /etc/nixos + rebuild (`autoUpdate = true` does it weekly) |
 | `nix2 doctor` | system check: failed services, disk, memory, clock, network, screenshots, audio, Vulkan/Steam libraries, updates, backups, battery health, temperature — each problem with its fix. Menu: System → System check; runs weekly and notifies only if something's wrong |
@@ -130,7 +133,7 @@ On by default unless it says otherwise. `mod on <name>` / `mod off <name>`.
 | `audio` | pick output/mic device (speakers, headset, Bluetooth, HDMI), volume, mute — **Super+Alt+v** |
 | `drives` | mount / unlock / unmount drives, never automatic — **Super+Alt+m** |
 | `tidy` | clean up: loose files in your home folder go to Pictures / Videos / Music / Documents (screenshots and recordings get their own folders), the rest to Downloads, which is sorted into type folders; catches duplicates, never deletes, `--undo` (`--home`, `--downloads`, `--dry-run`) |
-| `screenshot` | **Print** = whole screen, **Shift+Print** = area / window / clipboard / text (OCR); saved to `~/Pictures/screenshots` and copied to the clipboard |
+| `screenshot` | **Print** = whole screen, **Shift+Print** (or **Super+Alt+s**) = area / window / clipboard / text (OCR); saved to `~/Pictures/screenshots` and copied to the clipboard |
 | `lock` | lock screen: just your username + password — **Super+Alt+l** (also on suspend / 10 idle min) |
 | `site-push` | publish a folder to its Neocities site — menu: Apps & files → "Publish a folder to Neocities". The site comes from the repo's `.neocities` file; only changed files upload |
 | `wallpapers` | the wallpaper picker — six built-in wallpapers (snowy night, aurora, dusk ridge, blueprint, topography, circuit board), your pictures, or live **Wallpaper Engine** ones from the Steam Workshop; fit, shuffle, snow on/off — **Super+Alt+w** |

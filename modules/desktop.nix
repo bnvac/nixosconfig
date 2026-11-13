@@ -107,6 +107,7 @@ let
       Super + Alt + b            Bluetooth
       Super + Alt + v            audio: output/mic device, volume, mute
       Super + Alt + c            clipboard history: paste anything you copied earlier
+      Super + Alt + s            screenshot menu (same as Shift+Print)
       Super + Alt + w            wallpapers: pictures + Wallpaper Engine (live)
       Super + Alt + t            Tor Browser
       Super + Alt + Return       tmux session
@@ -261,6 +262,7 @@ in
         { label = "Toggle live snow"; run = "snow toggle"; }
         { label = "Night light on/off"; run = "nightlight"; }
         { label = "Clipboard history"; run = "clipmenu -i -l 20 -p clipboard:"; }
+        { label = "Screenshot (area, window, text…)"; run = "screenshot"; }
         { label = "Suspend"; run = "zzz"; }
       ];
       "Apps & files" = [
