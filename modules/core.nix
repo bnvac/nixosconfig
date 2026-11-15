@@ -687,6 +687,7 @@ in
     { label = "Update my git apps"; run = "update-mine --switch"; mode = "term"; }
     { label = "Free up space (debloat)"; run = "debloat"; mode = "term"; }
     { label = "System check (what's broken + how to fix it)"; run = "nix2 doctor"; mode = "term"; }
+    { label = "Fix problems (restart what's stuck, then check again)"; run = "nix2 doctor --fix"; mode = "term"; }
     { label = "Roll back to an earlier version"; run = "nix2 rollback"; mode = "term"; }
   ];
 

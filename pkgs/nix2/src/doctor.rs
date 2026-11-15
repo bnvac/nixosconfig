@@ -4,6 +4,10 @@
 //!   nix2 doctor            the full report (menu: System → System check)
 //!   nix2 doctor --notify   quiet: one notification, only if something's wrong
 //!                            (a weekly timer runs this)
+//!   nix2 doctor --fix      fix what's safe to fix by itself (restart failed
+//!                            services, the sound server, the clock, the
+//!                            network; unmute), then check again
+//!                            (menu: System → Fix problems)
 
 use crate::util::{
     ago, extend_path, home, load_x_env, notify, ok, output, runtime_dir, state_dir, which,
@@ -13,6 +17,7 @@ use std::fs;
 use std::io::IsTerminal;
 use std::net::{TcpStream, ToSocketAddrs};
 use std::path::Path;
+use std::process::Command;
 use std::time::{Duration, SystemTime};
 
 #[derive(Clone, Copy, PartialEq, PartialOrd)]
@@ -28,6 +33,15 @@ struct Check {
     area: &'static str,
     said: String,
     fix: Option<String>,
+    /// Commands `--fix` may run by itself (only safe ones: restarts, unmute).
+    auto: Vec<Vec<String>>,
+}
+
+impl Check {
+    fn auto(mut self, cmd: &[&str]) -> Self {
+        self.auto.push(cmd.iter().map(|s| s.to_string()).collect());
+        self
+    }
 }
 
 fn check(level: Level, area: &'static str, said: impl Into<String>, fix: Option<&str>) -> Check {
@@ -36,6 +50,7 @@ fn check(level: Level, area: &'static str, said: impl Into<String>, fix: Option<
         area,
         said: said.into(),
         fix: fix.map(String::from),
+        auto: Vec::new(),
     }
 }
 
@@ -72,12 +87,36 @@ fn services(user: bool) -> Check {
                 "systemctl status"
             };
             let first = names.first().copied().unwrap_or("NAME");
-            check(
+            let c = check(
                 Level::Bad,
                 area,
                 format!("failed: {}", names.join(", ")),
                 Some(&format!("see why: {how} {first}")),
-            )
+            );
+            // Restarting is safe for long-running services. One-shot jobs
+            // (an update, a backup) are left alone: rerunning them by
+            // surprise could take an hour.
+            let mut show = vec!["show", "-p", "Type", "--value"];
+            if user {
+                show.insert(0, "--user");
+            }
+            let again: Vec<&str> = names
+                .iter()
+                .copied()
+                .filter(|n| n.ends_with(".service"))
+                .filter(|n| {
+                    let mut a = show.clone();
+                    a.push(n);
+                    output("systemctl", &a).is_some_and(|t| !t.is_empty() && t != "oneshot")
+                })
+                .collect();
+            if again.is_empty() {
+                c
+            } else if user {
+                c.auto(&[&["systemctl", "--user", "restart"][..], &again].concat())
+            } else {
+                c.auto(&[&["sudo", "systemctl", "restart"][..], &again].concat())
+            }
         }
     }
 }
@@ -174,7 +213,8 @@ fn clock() -> Check {
             "Clock",
             "not synced with the internet",
             Some("sudo systemctl restart systemd-timesyncd"),
-        ),
+        )
+        .auto(&["sudo", "systemctl", "restart", "systemd-timesyncd"]),
         None => check(Level::Note, "Clock", "couldn't ask timedatectl", None),
     }
 }
@@ -213,13 +253,16 @@ fn network() -> Vec<Check> {
             "Network",
             "online, but names don't resolve (DNS)",
             Some("nmcli connection up <your connection>"),
-        ),
+        )
+        .auto(&["sudo", "systemctl", "restart", "NetworkManager"]),
         _ => check(
             Level::Bad,
             "Network",
             "offline",
             Some("nmtui, or the network icon"),
-        ),
+        )
+        .auto(&["nmcli", "networking", "on"])
+        .auto(&["nmcli", "radio", "wifi", "on"]),
     });
     out
 }
@@ -281,7 +324,16 @@ fn audio() -> Check {
             "Audio",
             "the sound server isn't answering",
             Some("systemctl --user restart pipewire wireplumber"),
-        ),
+        )
+        .auto(&[
+            "systemctl",
+            "--user",
+            "restart",
+            "pipewire.socket",
+            "pipewire",
+            "pipewire-pulse",
+            "wireplumber",
+        ]),
         Some(s) if s.is_empty() || s == "auto_null" => check(
             Level::Bad,
             "Audio",
@@ -299,6 +351,7 @@ fn audio() -> Check {
                     format!("output {name} is muted"),
                     Some("audio mute"),
                 )
+                .auto(&["pactl", "set-sink-mute", "@DEFAULT_SINK@", "0"])
             } else {
                 check(
                     Level::Good,
@@ -613,10 +666,7 @@ fn shared_builds() -> Option<Check> {
 
 // ── report ──────────────────────────────────────────────────────────────────
 
-pub fn run(args: &[String]) -> i32 {
-    extend_path();
-    let quiet = args.iter().any(|a| a == "--notify");
-
+fn collect() -> Vec<Check> {
     let mut all = vec![services(false), services(true)];
     all.extend(disk());
     all.push(generations());
@@ -632,6 +682,71 @@ pub fn run(args: &[String]) -> i32 {
     all.extend(temperature());
     all.extend(boards());
     all.extend(shared_builds());
+    all
+}
+
+/// `sudo …` as root needs no sudo; otherwise use the setuid wrapper.
+fn command_for(cmd: &[String]) -> Option<Command> {
+    let (first, rest) = cmd.split_first()?;
+    if first == "sudo" {
+        let (prog, args) = rest.split_first()?;
+        if output("id", ["-u"]).as_deref() == Some("0") {
+            let mut c = Command::new(prog);
+            c.args(args);
+            return Some(c);
+        }
+        let sudo = if Path::new("/run/wrappers/bin/sudo").exists() {
+            "/run/wrappers/bin/sudo"
+        } else {
+            "sudo"
+        };
+        let mut c = Command::new(sudo);
+        c.args(rest);
+        return Some(c);
+    }
+    let mut c = Command::new(first);
+    c.args(rest);
+    Some(c)
+}
+
+/// Run every safe fix for the problems found. Returns how many were tried.
+fn apply_fixes(all: &[Check]) -> usize {
+    let mut tried = 0;
+    for c in all
+        .iter()
+        .filter(|c| c.level >= Level::Warn && !c.auto.is_empty())
+    {
+        println!("  fixing {}: {}", c.area, c.said);
+        for cmd in &c.auto {
+            println!("    $ {}", cmd.join(" "));
+            match command_for(cmd).map(|mut c| c.status()) {
+                Some(Ok(s)) if s.success() => {}
+                Some(Ok(s)) => println!("      (it said no: exit {})", s.code().unwrap_or(-1)),
+                _ => println!("      (couldn't run it)"),
+            }
+        }
+        tried += 1;
+    }
+    tried
+}
+
+pub fn run(args: &[String]) -> i32 {
+    extend_path();
+    let quiet = args.iter().any(|a| a == "--notify");
+    let fix = args.iter().any(|a| a == "--fix");
+
+    let mut all = collect();
+    if fix {
+        println!("nix² fix-up\n");
+        if apply_fixes(&all) == 0 {
+            println!("  nothing doctor can fix by itself — the report below says what to do.");
+        } else {
+            println!("\n  checking again…\n");
+            std::thread::sleep(Duration::from_secs(3));
+            all = collect();
+        }
+        println!();
+    }
 
     let worst = all
         .iter()
@@ -652,7 +767,15 @@ pub fn run(args: &[String]) -> i32 {
                     problems.len(),
                     if problems.len() == 1 { "" } else { "s" }
                 ),
-                &format!("{}\nDetails: menu → System → System check", body.join("\n")),
+                &format!(
+                    "{}\nDetails: menu → System → System check{}",
+                    body.join("\n"),
+                    if problems.iter().any(|c| !c.auto.is_empty()) {
+                        " (Fix problems fixes some by itself)"
+                    } else {
+                        ""
+                    }
+                ),
                 worst == Level::Bad,
             );
         }
@@ -683,6 +806,22 @@ pub fn run(args: &[String]) -> i32 {
         }
     }
     println!();
+    let fixable = all
+        .iter()
+        .filter(|c| c.level >= Level::Warn && !c.auto.is_empty())
+        .count();
+    if fixable > 0 && !fix {
+        println!(
+            "{}",
+            paint(
+                "1",
+                &format!(
+                    "nix2 doctor --fix can fix {} of these by itself (menu: System → Fix problems).",
+                    if fixable == 1 { "one".to_string() } else { fixable.to_string() }
+                )
+            )
+        );
+    }
     println!(
         "{}",
         match worst {
