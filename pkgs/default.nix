@@ -80,6 +80,14 @@ in
         { TERMCLASS, "neb", NULL, 1 << 8, 0, 1, 0, -1 },
         { "steam", NULL, "notificationtoasts", 0, 1, 0, 0, -1 },
         { "steam", NULL, "Friends List", 0, 1, 0, 0, -1 },'
+      # Colours, gaps and border reload by themselves whenever the X
+      # resources change (`rice` runs xrdb; stock dwm waits for Super+F5), and
+      # windows that are already open get the new border colour and width too.
+      substituteInPlace dwm.c \
+        --replace-fail $'\tif ((ev->window == root) && (ev->atom == XA_WM_NAME)) {\n\t\tupdatestatus();\n\t} else if (ev->state == PropertyDelete) {' \
+                       $'\tif ((ev->window == root) && (ev->atom == XA_WM_NAME)) {\n\t\tupdatestatus();\n\t} else if ((ev->window == root) && (ev->atom == XA_RESOURCE_MANAGER) && ev->state != PropertyDelete) {\n\t\txrdb(NULL);\n\t} else if (ev->state == PropertyDelete) {' \
+        --replace-fail $'        scheme[i] = drw_scm_create(drw, colors[i], 3);\n\n    focus(NULL);' \
+                       $'        scheme[i] = drw_scm_create(drw, colors[i], 3);\n\n    for (Monitor *m = mons; m; m = m->next)\n        for (Client *c = m->clients; c; c = c->next) {\n            XSetWindowBorder(dpy, c->win, scheme[SchemeNorm][ColBorder].pixel);\n            if (c->bw != borderpx && !c->isfullscreen) {\n                XWindowChanges wc = { .border_width = borderpx };\n                c->bw = borderpx;\n                XConfigureWindow(dpy, c->win, CWBorderWidth, &wc);\n            }\n        }\n\n    focus(NULL);'
       # Super+F3 (LARBS's displayselect) opens nix²'s display tool instead.
       substituteInPlace config.h \
         --replace-fail '{.v = (const char*[]){ "displayselect", NULL } }' '{.v = (const char*[]){ "nix2", "displays", NULL } }'
@@ -109,6 +117,7 @@ in
       { MODKEY|Mod1Mask,           XK_c,      spawn, {.v = (const char*[]){ "clipmenu", "-i", "-l", "20", "-p", "clipboard:", NULL } } },
       { MODKEY|Mod1Mask,           XK_w,      spawn, {.v = (const char*[]){ "wallpapers", NULL } } },
       { MODKEY|Mod1Mask,           XK_p,      spawn, {.v = (const char*[]){ "nix2", "displays", NULL } } },
+      { MODKEY|Mod1Mask,           XK_r,      spawn, {.v = (const char*[]){ "rice", NULL } } },
       { MODKEY|Mod1Mask,           XK_t,      spawn, {.v = (const char*[]){ "tor-browser", NULL } } },
       { MODKEY|Mod1Mask,           XK_Return, spawn, {.v = (const char*[]){ TERMINAL, "-e", "tmux", "new-session", "-A", "-s", "main", NULL } } },
       { MODKEY|Mod1Mask,           XK_i,      spawn, SHCMD(TERMINAL " -e sh -c 'fastfetch; read -r _'") },
@@ -132,7 +141,14 @@ in
     buildInputs = with prev; [ libx11 libxft fontconfig freetype harfbuzz libxrender ];
     # Opaque surface: the compositor (picom) owns terminal opacity now, so a
     # fullscreen terminal can be forced fully opaque. See modules/desktop.nix.
-    postPatch = ''substituteInPlace config.h --replace-fail 'float alpha = 0.8;' 'float alpha = 1.0;' '';
+    # Colours a program sets while it runs (OSC 4/10/11/12 — how `rice`
+    # recolours open terminals) are remembered: this st reloads its colour
+    # table on every focus change, which used to throw them away again.
+    postPatch = ''
+      substituteInPlace config.h --replace-fail 'float alpha = 0.8;' 'float alpha = 1.0;'
+      substituteInPlace x.c --replace-fail $'\tXftColorFree(xw.dpy, xw.vis, xw.cmap, &dc.col[x]);\n\tdc.col[x] = ncolor;\n\n\treturn 0;' \
+        $'\tXftColorFree(xw.dpy, xw.vis, xw.cmap, &dc.col[x]);\n\tdc.col[x] = ncolor;\n\tif (name && x == (int)defaultbg)\n\t\tcolorname[background] = strdup(name);\n\telse if (name && x < (int)LEN(colorname))\n\t\tcolorname[x] = strdup(name);\n\n\treturn 0;'
+    '';
     makeFlags = [ "PREFIX=$(out)" "CC=cc" ];
     preInstall = ''export TERMINFO=$out/share/terminfo; mkdir -p "$TERMINFO"'';
     meta.mainProgram = "st";
@@ -288,6 +304,24 @@ in
                            --set-default WALLPAPER_BUILTIN_DIR ${final.nix2-wallpapers})
       '';
       meta.mainProgram = "wallpapers";
+    };
+  # `rice`: themes, colours from the wallpaper, opacity, corners, gaps — live.
+  rice =
+    let pyRice = final.python3.withPackages (ps: [ ps.pygobject3 ps.pillow ]); in
+    prev.stdenv.mkDerivation {
+      pname = "rice"; version = "1.0";
+      dontUnpack = true;
+      nativeBuildInputs = [ final.wrapGAppsHook3 final.gobject-introspection ];
+      buildInputs = [ final.gtk3 pyRice ];
+      installPhase = ''
+        mkdir -p $out/bin
+        { echo "#!${pyRice}/bin/python3"; cat ${./scripts/rice.py}; } > $out/bin/rice
+        chmod +x $out/bin/rice
+      '';
+      preFixup = ''
+        gappsWrapperArgs+=(--suffix PATH : ${prev.lib.makeBinPath (with final; [ xrdb dunst procps xsettingsd dconf picom ])})
+      '';
+      meta.mainProgram = "rice";
     };
   backup          = sh "backup" (with final; [ restic coreutils util-linux libnotify ]) ./scripts/backup.sh;
   # fastfetch (also as `neofetch`) with nix²'s own layout (pkgs/fastfetch/

@@ -132,6 +132,7 @@ let
       Print / Shift + Print      screenshot: whole screen / the menu${shotKeyLine}
       Super + Alt + p            displays: mirror, extend, resolution (also Super + F3)
       Super + Alt + w            wallpapers: pictures + Wallpaper Engine (live)
+      Super + Alt + r            look & feel: themes, colours from the wallpaper, gaps…
       Super + Alt + t            Tor Browser
       Super + Alt + Return       tmux session
       Super + Alt + i            system info (fastfetch)
@@ -169,8 +170,13 @@ in
       extraSessionCommands = ''
         export _JAVA_AWT_WM_NONREPARENTING=1
         [ -f "$HOME/.config/x11/xresources" ] && ${pkgs.xrdb}/bin/xrdb -merge "$HOME/.config/x11/xresources"
+        # Your look from `rice` (theme, gaps, opacity, light/dark), on top.
+        export NIX2_TERM_OPACITY=${toString s.termOpacity} NIX2_PICOM_CONF=${picomConf}
+        ${pkgs.rice}/bin/rice apply --startup 2>/dev/null || true
+        [ -f "$HOME/.config/xsettingsd/xsettingsd.conf" ] && ${pkgs.xsettingsd}/bin/xsettingsd &
         ${pkgs.larbs-dwmblocks}/bin/dwmblocks &
-        ${pkgs.picom}/bin/picom --config ${picomConf} &
+        picomconf=${picomConf}; [ -f "$HOME/.config/nix2/picom.conf" ] && picomconf="$HOME/.config/nix2/picom.conf"
+        ${pkgs.picom}/bin/picom --config "$picomconf" &
         ${pkgs.unclutter-xfixes}/bin/unclutter &
         ${pkgs.dunst}/bin/dunst &
         ${pkgs.blueman}/bin/blueman-applet &
@@ -300,6 +306,7 @@ in
         { label = "Lock screen"; run = "lock"; }
         { label = "Displays (mirror, extend, resolution, rotate)"; run = "nix2 displays"; }
         { label = "Wallpapers (pictures + Wallpaper Engine)"; run = "wallpapers"; }
+        { label = "Look & feel (themes, colours, see-through, gaps)"; run = "rice"; }
         { label = "Toggle live snow"; run = "snow toggle"; }
         { label = "Night light on/off"; run = "nightlight"; }
         { label = "Clipboard history"; run = "clipmenu -i -l 20 -p clipboard:"; }
@@ -325,7 +332,11 @@ in
   ];
 
   my.packages = [ dash drives pkgs.nixmenu mykeys nightlight displaysRefresh ] ++ dashItems ++ (with pkgs; [
-    wallpapers wallpaper-live site-push
+    wallpapers wallpaper-live site-push rice xsettingsd
+    (makeDesktopItem {
+      name = "rice"; desktopName = "Look & feel"; exec = "rice";
+      icon = "preferences-desktop-theme"; categories = [ "Settings" "DesktopSettings" ];
+    })
     (makeDesktopItem {
       name = "wallpapers"; desktopName = "Wallpapers"; exec = "wallpapers";
       icon = "preferences-desktop-wallpaper"; categories = [ "Settings" "DesktopSettings" ];

@@ -365,6 +365,8 @@ class Wallpapers(Gtk.Window):
         spawn("setbg", path)
         GLib.timeout_add(400, lambda: (spawn("xwallpaper", "--" + (read(FIT) or "zoom"), CURRENT_BG), False)[1])
         GLib.timeout_add(450, lambda: (self.show_current(), False)[1])
+        # Theme taken from the wallpaper (`rice`)? Take it from the new one.
+        GLib.timeout_add(600, lambda: (spawn("rice", "follow-wallpaper"), False)[1])
 
     def set_fit(self, mode):
         os.makedirs(CONF, exist_ok=True)

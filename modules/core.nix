@@ -175,6 +175,16 @@ let
       also used on the text console (ly login, LUKS prompt at boot).
     - Background jobs that rebuild (nixos-prebuild, update-mine, the optional
       nix-auto-update) get NIX_PATH explicitly: systemd units don't inherit it.
+    - `rice` (Super+Alt+r; pkgs/scripts/rice.py, GTK window + CLI): state in
+      ~/.config/nix2/rice.json. Writes ~/.config/nix2/theme.xresources (xrdb
+      -merge; dwm is patched to reload colours/gaps/border on a
+      RESOURCE_MANAGER change), ~/.config/nix2/picom.conf (opacity, corners;
+      the session starts picom with it when present), dunstrc.d drop-in,
+      xsettingsd + gtk-3.0/settings.ini + dconf color-scheme for dark/light.
+      Open terminals are recoloured with OSC 4/10/11 (st is patched to keep
+      them across focus changes). `rice apply --startup` runs at login;
+      `rice follow-wallpaper` re-derives the palette when `wallpapers` sets
+      a picture and the theme is "wallpaper".
     - `nix2 displays` (Super+Alt+p, Super+F3): xrandr layouts from dmenu —
       mirror/extend/only/resolution/rate/rotate/primary, with a 15 s
       keep-or-revert prompt. Kept layouts are autorandr profiles named
