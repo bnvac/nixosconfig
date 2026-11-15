@@ -148,11 +148,14 @@ let
     #   e.g. [ "http://ender.local:7125" "http://voron.local:7125" ]
     printers = [ ];
 
-    # ── Two machines (`sync` module) ───────────────────────────────────────────
-    # Syncthing device IDs, filled in after the first boot of each machine
-    # (run `syncthing` once, open http://127.0.0.1:8384, Actions → Show ID).
-    # Until both are set, pair by hand in the web UI.
-    syncIds = { desktop = ""; laptop = ""; };
+    # ── Your machines (`sync` module) ──────────────────────────────────────────
+    # Easiest: `devlink pin <code>` on two machines links them (no IDs needed).
+    # To declare them instead, list every machine's Syncthing ID by its host
+    # name (`devlink id` prints it) — the same list on every machine; each one
+    # leaves itself out:
+    #   syncDevices = { live = "ABC1234-…"; desktop = "XYZ9876-…"; den-pc = "…"; };
+    syncDevices = { };
+    syncIds = { desktop = ""; laptop = ""; };   # older two-machine form, still works
   };
 
   localFile = ./settings.local.nix;

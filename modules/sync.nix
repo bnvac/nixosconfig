@@ -1,4 +1,4 @@
-# Syncthing between the desktop and laptop, plus DeviceLink on top of it.
+# Syncthing between your machines (two or more), plus DeviceLink on top of it.
 #
 # Shared folders (my.syncFolders — other modules add theirs, e.g. backoffice):
 #   ~/Sync                       general shared files (browser bookmark exports
@@ -6,7 +6,8 @@
 #   ~/.config/neb-shared         Neb-to-Neb notes (never his live SQLite db)
 #
 # Pairing: `devlink pin <code>` on both machines links them AND creates/shares
-# every folder above. (Filling settings.syncIds instead makes it declarative.
+# every folder above; a third machine: pin it with each of the others.
+# (Filling settings.syncDevices instead makes it declarative.
 # Without IDs the folders are deliberately NOT declared to NixOS: its module
 # re-applies declared folders on every start, which would drop a peer added
 # at runtime.)
@@ -14,9 +15,15 @@
 let
   s = import ../settings.nix;
   home = "/home/${s.username}";
-  other = if s.device == "desktop" then "laptop" else "desktop";
-  otherId = s.syncIds.${other} or "";
-  havePeer = otherId != "";
+  # Every other machine with an ID: settings.syncDevices (any number, by host
+  # name) plus the older two-machine settings.syncIds (by device type).
+  # This machine is left out by its own host name / device type.
+  otherDevice = if s.device == "desktop" then "laptop" else "desktop";
+  legacy = lib.optionalAttrs ((s.syncIds.${otherDevice} or "") != "") { ${otherDevice} = s.syncIds.${otherDevice}; };
+  declared = s.syncDevices or { };
+  legacyNew = lib.filterAttrs (_: id: !(lib.elem id (lib.attrValues declared))) legacy;   # same machine twice
+  peers = lib.filterAttrs (name: id: id != "" && name != s.hostName) (declared // legacyNew);
+  havePeer = peers != { };
   folders = config.my.syncFolders;
   devlinkFolders = lib.concatStringsSep " " (lib.mapAttrsToList (id: path: "${id}=${path}") folders);
 in
@@ -35,8 +42,8 @@ in
     overrideDevices = false;        # don't fight pairing done at runtime
     overrideFolders = false;
     settings = lib.mkIf havePeer {
-      devices.${other}.id = otherId;
-      folders = lib.mapAttrs (_: path: { inherit path; devices = [ other ]; }) folders;
+      devices = lib.mapAttrs (_: id: { inherit id; }) peers;
+      folders = lib.mapAttrs (_: path: { inherit path; devices = lib.attrNames peers; }) folders;
     };
   };
 

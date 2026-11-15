@@ -2,6 +2,7 @@
 between them from one window.
 
   devlink pin <CODE>         type the same code on both machines → they link
+                             (a third machine: pin it with each of the others)
   devlink id                 print this machine's Syncthing ID
   devlink link <ID> [--name] add the peer + share the tray; the peer then accepts
   devlink accept [ID]        accept a pending link request (never automatic)
@@ -14,7 +15,8 @@ between them from one window.
                              reopen tab sets that arrive from the other machine
   devlink ui [--port 7010]   the window (open http://127.0.0.1:7010, or --app)
   devlink screen             share THIS machine's whole screen (peer runs view)
-  devlink view               open the other machine's screen in a window
+  devlink view [MACHINE]     open the other machine's screen in a window (with 3+
+                             linked machines: the one sharing, or the one named)
 """
 
 from __future__ import annotations
@@ -144,7 +146,7 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("auto")
     ui = sub.add_parser("ui"); ui.add_argument("--port", type=int, default=7010)
     sub.add_parser("screen")
-    sub.add_parser("view")
+    vw = sub.add_parser("view"); vw.add_argument("machine", nargs="?", default="")
     args = ap.parse_args(argv)
 
     try:
@@ -177,7 +179,7 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.cmd in ("screen", "view"):
             from . import screen
-            return screen.share() if args.cmd == "screen" else screen.view()
+            return screen.share() if args.cmd == "screen" else screen.view(args.machine)
 
         st = Syncthing()
         path = str(tray.tray_dir())

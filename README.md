@@ -106,7 +106,7 @@ On by default unless it says otherwise. `mod on <name>` / `mod off <name>`.
 | backups | daily restic snapshots of home + config to an external drive |
 | power | laptop battery/thermal tuning (TLP); does nearly nothing on a desktop. `batteryLimit = 80;` stops charging at 80% (longer battery life), `fingerprint = true;` turns on the fingerprint reader for login and sudo |
 | virt | QEMU/KVM + virt-manager — **off by default** |
-| sync | two machines: Syncthing, DeviceLink (send files, tabs, screen), bookmarks — **off by default** |
+| sync | your machines (two or more): Syncthing, DeviceLink (send files, tabs, screen), bookmarks. Link with `devlink pin <code>`, or list them in `syncDevices` — **off by default** |
 | ai | Claude Code — **off by default** |
 | assistant | Neb, a local voice assistant, + Ollama / Open-WebUI on your GPU — **off by default** |
 | backoffice | a parts-inventory web app — **off by default** |

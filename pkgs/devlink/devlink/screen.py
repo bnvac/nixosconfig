@@ -68,7 +68,9 @@ def share() -> int:
     _need("x11vnc")
     st = Syncthing()
     me = st.my_id()
-    peer_id, peer_ip = st.peer()
+    peers = st.connected_peers()
+    if not peers:
+        st.peer()                                            # raises the usual message
 
     pw = _mkpass()
     pwfile = _cache_dir() / "vnc.auth"                       # obfuscated, local only
@@ -79,12 +81,17 @@ def share() -> int:
 
     argv = ["x11vnc", "-display", _display(), "-rfbauth", str(pwfile),
             "-rfbport", str(PORT), "-forever", "-shared", "-noxdamage", "-quiet"]
-    allow = _allow(peer_ip)
+    # Only the linked machines' own networks may connect (all of them, with
+    # three or more machines). If any address can't be narrowed down, rely on
+    # the password alone rather than lock that machine out.
+    nets = [_allow(ip) for _, _, ip in peers]
+    allow = ",".join(sorted(set(nets))) if all(nets) else ""
     if allow:
         argv += ["-allow", allow]
 
-    print(f":: sharing this screen with {peer_id[:7]} "
-          f"({'subnet ' + allow + '0/24' if allow else 'password only'}).")
+    names = ", ".join(name for _, name, _ in peers)
+    print(f":: sharing this screen with {names} "
+          f"({'networks ' + allow if allow else 'password only'}).")
     print(":: on the other machine run:  devlink view")
     print(":: Ctrl-C here to stop sharing.")
     try:
@@ -101,23 +108,33 @@ def share() -> int:
     return 0
 
 
-def view() -> int:
+def view(which: str = "") -> int:
     import time
     _need("vncviewer")
     _need("x11vnc")
     st = Syncthing()
-    peer_id, peer_ip = st.peer()
-    if not peer_ip:
-        raise RuntimeError("couldn't find the other machine's address.")
+    if which:
+        pid, pip = st.peer(which)
+        peers = [(pid, which, pip)]
+    else:
+        peers = st.connected_peers()
+        if not peers:
+            st.peer()                                        # raises the usual message
 
-    handoff = _ctl_dir() / f"pass-{peer_id[:7]}.txt"
-    pw = None
-    for _ in range(20):                                      # wait for the password to sync in
-        if handoff.exists():
-            pw = handoff.read_text().strip()
-            if pw:
+    # Whichever linked machine is sharing its screen has left its password in
+    # the synced folder; wait for one to sync in.
+    peer_id = peer_ip = pw = None
+    for _ in range(20):
+        for pid, _name, pip in peers:
+            handoff = _ctl_dir() / f"pass-{pid[:7]}.txt"
+            if handoff.exists() and handoff.read_text().strip():
+                peer_id, peer_ip, pw = pid, pip, handoff.read_text().strip()
                 break
+        if pw:
+            break
         time.sleep(1)
+    if pw and not peer_ip:
+        raise RuntimeError("couldn't find the other machine's address.")
     if not pw:
         raise RuntimeError("no screen offered yet — run `devlink screen` on the other machine first.")
 

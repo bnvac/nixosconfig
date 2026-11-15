@@ -106,15 +106,16 @@ class Syncthing:
             for d in self.devices() if d["deviceID"] != me
         ]
 
-    def peer(self) -> tuple[str, str]:
-        """Return (device_id, ip) of the connected linked peer, else raise.
+    def connected_peers(self) -> list[tuple[str, str, str]]:
+        """[(device_id, name, ip)] for every other device connected right now.
 
         The ip is parsed from Syncthing's current connection address, so it's
-        the address the two machines actually reached each other on (the LAN
-        IP when they're on the same network).
+        the address the machines actually reached each other on (the LAN IP
+        when they're on the same network).
         """
         me = self.my_id()
         conns = self.connections().get("connections", {})
+        out = []
         for d in self.devices():
             did = d["deviceID"]
             if did == me:
@@ -123,9 +124,27 @@ class Syncthing:
             if c.get("connected"):
                 addr = (c.get("address") or "").strip()      # "ip:port" / "[v6]:port"
                 ip = addr.rsplit(":", 1)[0].strip("[]") if addr else ""
-                return did, ip
-        raise SyncthingError("the other machine isn't connected right now "
-                             "(open DeviceLink / Syncthing and check it's online).")
+                out.append((did, d.get("name") or did[:7], ip))
+        return out
+
+    def peer(self, which: str = "") -> tuple[str, str]:
+        """Return (device_id, ip) of a connected linked machine, else raise.
+
+        `which` picks one by name or ID prefix (case-insensitive); without it
+        the first connected one is used — which is the only one when you
+        link just two machines.
+        """
+        peers = self.connected_peers()
+        if which:
+            w = which.lower()
+            peers = [p for p in peers if p[1].lower() == w or p[0].lower().startswith(w)]
+            if not peers:
+                raise SyncthingError(f"no connected machine called {which!r} "
+                                     "(devlink status shows the linked ones).")
+        if not peers:
+            raise SyncthingError("the other machine isn't connected right now "
+                                 "(open DeviceLink / Syncthing and check it's online).")
+        return peers[0][0], peers[0][2]
 
     # --- writes --------------------------------------------------------
     def add_device(self, device_id: str, name: str = "") -> None:
