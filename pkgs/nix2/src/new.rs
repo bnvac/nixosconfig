@@ -18,6 +18,10 @@ struct Kind {
     run: &'static str,
     /// The `just` recipes: the same commands in every language.
     just: &'static str,
+    /// Extra lines for .envrc after `use nix` (Python's own venv).
+    envrc: &'static str,
+    /// Extra mkShell attributes for shell.nix.
+    shell: &'static str,
 }
 
 const KINDS: &[Kind] = &[
@@ -32,15 +36,22 @@ const KINDS: &[Kind] = &[
         ],
         run: "cargo run",
         just: "# just — this project's commands (`just` lists them)\n\nrun *args:\n    cargo run -- {{args}}\n\ntest:\n    cargo test\n\n# rebuild + rerun on every save\nwatch:\n    bacon run\n\nrelease:\n    cargo build --release\n\nfmt:\n    cargo fmt && cargo clippy --fix --allow-dirty --allow-staged\n",
+        envrc: "",
+        shell: "",
     },
     Kind {
         key: "python",
         about: "Python (ruff, pyright, pytest)",
         packages: "python3 ruff pyright python3Packages.pytest",
         ignore: "__pycache__/\n.venv/\n*.pyc\n",
-        files: &[("main.py", "def main():\n    print(\"Hello from NAME!\")\n\n\nif __name__ == \"__main__\":\n    main()\n")],
+        files: &[
+            ("main.py", "def main():\n    print(\"Hello from NAME!\")\n\n\nif __name__ == \"__main__\":\n    main()\n"),
+            ("requirements.txt", "# This project's Python packages, one per line (e.g. requests).\n# Install them into the project with: just deps\n"),
+        ],
         run: "python main.py",
-        just: "# just — this project's commands (`just` lists them)\n\nrun *args:\n    python main.py {{args}}\n\ntest:\n    pytest\n\n# rerun on every save\nwatch:\n    watchexec -e py -r -- python main.py\n\nfmt:\n    ruff format . && ruff check --fix .\n",
+        just: "# just — this project's commands (`just` lists them)\n\nrun *args:\n    python main.py {{args}}\n\n# install requirements.txt into this project's own Python (.direnv/)\ndeps:\n    pip install -r requirements.txt\n\ntest:\n    python -m pytest\n\n# rerun on every save\nwatch:\n    watchexec -e py -r -- python main.py\n\nfmt:\n    ruff format . && ruff check --fix .\n",
+        envrc: "# This project's own Python: `pip install` puts packages in .direnv/,\n# not system-wide (Nix's own tools like pytest stay visible).\nlayout python3 --system-site-packages\n",
+        shell: "  # Wheels from pip (numpy, pandas, torch…) need the C++ runtime and zlib.\n  LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib pkgs.zlib pkgs.libGL pkgs.glib ];\n",
     },
     Kind {
         key: "c++",
@@ -56,6 +67,8 @@ const KINDS: &[Kind] = &[
         ],
         run: "cmake -B build -G Ninja && cmake --build build && ./build/NAME",
         just: "# just — this project's commands (`just` lists them)\n\nbuild:\n    cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug\n    cmake --build build\n\nrun *args: build\n    ./build/NAME {{args}}\n\ntest: build\n    ctest --test-dir build --output-on-failure\n\n# rebuild + rerun on every save\nwatch:\n    watchexec -e cpp,hpp,c,h,txt -r -- just run\n\nrelease:\n    cmake -S . -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release\n    cmake --build build-release\n\nfmt:\n    clang-format -i src/*\n",
+        envrc: "",
+        shell: "",
     },
     Kind {
         key: "go",
@@ -68,6 +81,8 @@ const KINDS: &[Kind] = &[
         ],
         run: "go run .",
         just: "# just — this project's commands (`just` lists them)\n\nrun *args:\n    go run . {{args}}\n\ntest:\n    go test ./...\n\n# rebuild + rerun on every save\nwatch:\n    watchexec -e go -r -- go run .\n\nrelease:\n    go build -trimpath -ldflags='-s -w' -o NAME .\n\nfmt:\n    gofmt -w .\n",
+        envrc: "",
+        shell: "",
     },
     Kind {
         key: "node",
@@ -80,6 +95,8 @@ const KINDS: &[Kind] = &[
         ],
         run: "npm start",
         just: "# just — this project's commands (`just` lists them)\n\nrun *args:\n    node index.js {{args}}\n\ntest:\n    node --test\n\n# rerun on every save\nwatch:\n    node --watch index.js\n",
+        envrc: "",
+        shell: "",
     },
     Kind {
         key: "board",
@@ -103,6 +120,8 @@ const KINDS: &[Kind] = &[
         ],
         run: "just flash && just monitor",
         just: "# just — this project's commands (`just` lists them)\n\nbuild:\n    pio run\n\n# build and upload to the board (Pico: hold BOOTSEL while plugging in, the first time)\nflash:\n    pio run -t upload\n\n# the board's serial output (quit: Ctrl+c)\nmonitor:\n    pio device monitor\n\n# rebuild on every save\nwatch:\n    watchexec -e cpp,h,ini -- pio run\n\nclean:\n    pio run -t clean\n",
+        envrc: "",
+        shell: "",
     },
     Kind {
         key: "micropython",
@@ -115,9 +134,11 @@ const KINDS: &[Kind] = &[
         )],
         run: "just flash && just repl",
         just: "# just — this project's commands (`just` lists them)\n# The board needs MicroPython on it first: https://micropython.org/download\n\n# copy main.py to the board and restart it\nflash:\n    mpremote cp main.py :main.py + reset\n\n# run main.py on the board without saving it there\nrun:\n    mpremote run main.py\n\n# the board's Python prompt (quit: Ctrl+])\nrepl:\n    mpremote repl\n\n# copy to the board on every save\nwatch:\n    watchexec -e py -- just flash\n",
+        envrc: "",
+        shell: "",
     },
     Kind { key: "plain", about: "Plain (just git + direnv; add tools to shell.nix)", packages: "", ignore: "", files: &[], run: "",
-           just: "# just — this project's commands (`just` lists them)\n\nhello:\n    echo \"add your own commands here\"\n" },
+           just: "# just — this project's commands (`just` lists them)\n\nhello:\n    echo \"add your own commands here\"\n", envrc: "", shell: "" },
 ];
 
 /// Folder-safe project name: letters, digits, - and _.
@@ -152,18 +173,18 @@ fn find(key: &str) -> Option<&'static Kind> {
     KINDS.iter().find(|k| k.key == key)
 }
 
-fn shell_nix(packages: &str) -> String {
+fn shell_nix(packages: &str, extra: &str) -> String {
     format!(
         "# The tools for this project. They load when you cd in (direnv), or run: nix-shell\n\
          {{ pkgs ? import <nixpkgs> {{ }} }}:\n\
-         pkgs.mkShell {{\n  packages = with pkgs; [ {packages} just watchexec ];\n}}\n"
+         pkgs.mkShell {{\n  packages = with pkgs; [ {packages} just watchexec ];\n{extra}}}\n"
     )
 }
 
 fn create(dir: &Path, kind: &Kind, name: &str) -> std::io::Result<()> {
     fs::create_dir_all(dir)?;
-    fs::write(dir.join("shell.nix"), shell_nix(kind.packages))?;
-    fs::write(dir.join(".envrc"), "use nix\n")?;
+    fs::write(dir.join("shell.nix"), shell_nix(kind.packages, kind.shell))?;
+    fs::write(dir.join(".envrc"), format!("use nix\n{}", kind.envrc))?;
     fs::write(dir.join("justfile"), kind.just.replace("NAME", name))?;
     fs::write(
         dir.join(".gitignore"),
@@ -249,10 +270,14 @@ pub fn run(args: &[String]) -> i32 {
     }
 
     println!("\nCreated {}", dir.display());
-    println!(
-        "  cd ~/{}   — the tools load by themselves (first time: a short download)",
-        dir.strip_prefix(home()).unwrap_or(&dir).display()
-    );
+    let shown = match dir.strip_prefix(home()) {
+        Ok(rel) => format!("~/{}", rel.display()),
+        Err(_) => dir.display().to_string(),
+    };
+    println!("  cd {shown}   — the tools load by themselves (first time: a short download)");
+    if kind.key == "python" {
+        println!("  pip install …  — goes into this project only (its own Python in .direnv/)");
+    }
     println!("  just        — lists this project's commands (watch = rerun on every save)");
     if !kind.run.is_empty() {
         println!("  try:        {}", kind.run.replace("NAME", &name));
@@ -294,6 +319,19 @@ mod tests {
         assert!(fs::read_to_string(dir.join("justfile"))
             .unwrap()
             .contains("cargo test"));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn python_venv() {
+        let dir = env::temp_dir().join(format!("nix2-new-py-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        create(&dir, find("py").unwrap(), "demo").unwrap();
+        let envrc = fs::read_to_string(dir.join(".envrc")).unwrap();
+        assert!(envrc.starts_with("use nix\n") && envrc.contains("layout python3"));
+        let shell = fs::read_to_string(dir.join("shell.nix")).unwrap();
+        assert!(shell.contains("LD_LIBRARY_PATH") && shell.trim_end().ends_with('}'));
+        assert!(dir.join("requirements.txt").exists());
         let _ = fs::remove_dir_all(&dir);
     }
 }
