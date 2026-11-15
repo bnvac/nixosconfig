@@ -133,6 +133,7 @@ let
       Super + Alt + p            displays: mirror, extend, resolution (also Super + F3)
       Super + Alt + w            wallpapers: pictures + Wallpaper Engine (live)
       Super + Alt + r            look & feel: themes, colours from the wallpaper, gaps…
+      Super + Alt + o            shutdown timer: turn off (or suspend) in 30 min, at 23:30…
       Super + Alt + t            Tor Browser
       Super + Alt + Return       tmux session
       Super + Alt + i            system info (fastfetch)
@@ -312,6 +313,7 @@ in
         { label = "Clipboard history"; run = "clipmenu -i -l 20 -p clipboard:"; }
         { label = "Screenshot (area, window, text…)"; run = "screenshot"; }
         { label = "Suspend"; run = "zzz"; }
+        { label = "Shutdown timer (turn off later)"; run = "offtimer"; }
       ];
       "Apps & files" = [
         { label = "Apps"; run = "apps"; }
@@ -341,7 +343,7 @@ in
       name = "wallpapers"; desktopName = "Wallpapers"; exec = "wallpapers";
       icon = "preferences-desktop-wallpaper"; categories = [ "Settings" "DesktopSettings" ];
     })
-    apps-menu tidy tidy-downloads screenshot snow lock-screen audio
+    apps-menu tidy tidy-downloads screenshot snow lock-screen audio offtimer
     larbs-st larbs-dmenu larbs-dwmblocks larbs-scripts
     xinit xrdb xprop xwininfo xset setxkbmap xbacklight xrandr slop
     xclip xdotool xcape xwallpaper picom unclutter-xfixes maim slock

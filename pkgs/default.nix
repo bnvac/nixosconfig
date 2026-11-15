@@ -118,6 +118,7 @@ in
       { MODKEY|Mod1Mask,           XK_w,      spawn, {.v = (const char*[]){ "wallpapers", NULL } } },
       { MODKEY|Mod1Mask,           XK_p,      spawn, {.v = (const char*[]){ "nix2", "displays", NULL } } },
       { MODKEY|Mod1Mask,           XK_r,      spawn, {.v = (const char*[]){ "rice", NULL } } },
+      { MODKEY|Mod1Mask,           XK_o,      spawn, {.v = (const char*[]){ "offtimer", NULL } } },
       { MODKEY|Mod1Mask,           XK_t,      spawn, {.v = (const char*[]){ "tor-browser", NULL } } },
       { MODKEY|Mod1Mask,           XK_Return, spawn, {.v = (const char*[]){ TERMINAL, "-e", "tmux", "new-session", "-A", "-s", "main", NULL } } },
       { MODKEY|Mod1Mask,           XK_i,      spawn, SHCMD(TERMINAL " -e sh -c 'fastfetch; read -r _'") },
@@ -323,6 +324,7 @@ in
       '';
       meta.mainProgram = "rice";
     };
+  offtimer        = sh "offtimer" (with final; [ systemd coreutils gnused gawk libnotify larbs-dmenu ]) ./scripts/offtimer.sh;
   backup          = sh "backup" (with final; [ restic coreutils util-linux libnotify ]) ./scripts/backup.sh;
   # fastfetch (also as `neofetch`) with nix²'s own layout (pkgs/fastfetch/
   # config.jsonc), unless you have ~/.config/fastfetch/config.jsonc. The logo

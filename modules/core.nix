@@ -175,6 +175,10 @@ let
       also used on the text console (ly login, LUKS prompt at boot).
     - Background jobs that rebuild (nixos-prebuild, update-mine, the optional
       nix-auto-update) get NIX_PATH explicitly: systemd units don't inherit it.
+    - `offtimer` (Super+Alt+o): transient systemd --user timers
+      nix2-offtimer (+ -warn5/-warn1 notifications) running `systemctl
+      poweroff|suspend|reboot --check-inhibitors=no`; a polkit rule lets
+      ${s.username} power off/reboot/suspend from such background units.
     - `rice` (Super+Alt+r; pkgs/scripts/rice.py, GTK window + CLI): state in
       ~/.config/nix2/rice.json. Writes ~/.config/nix2/theme.xresources (xrdb
       -merge; dwm is patched to reload colours/gaps/border on a
@@ -742,6 +746,19 @@ in
       fi
     '';
   };
+
+  # The machine's owner may power off, restart and suspend from background
+  # jobs too (the shutdown timer, `offtimer`), not only from the desktop
+  # session — and past "something is blocking shutdown" (a timer means it).
+  security.polkit.enable = true;
+  security.polkit.extraConfig = ''
+    polkit.addRule(function (action, subject) {
+      var power = /^org\.freedesktop\.login1\.(power-off|reboot|suspend)(-multiple-sessions|-ignore-inhibit)?$/;
+      if (subject.user == "${s.username}" && power.test(action.id)) {
+        return polkit.Result.YES;
+      }
+    });
+  '';
 
   # ── hardening (light enough that Steam/Proton/VMs still work) ──────────────
   security.sudo.execWheelOnly = true;
