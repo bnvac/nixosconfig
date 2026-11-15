@@ -119,6 +119,7 @@ in
       { MODKEY|Mod1Mask,           XK_p,      spawn, {.v = (const char*[]){ "nix2", "displays", NULL } } },
       { MODKEY|Mod1Mask,           XK_r,      spawn, {.v = (const char*[]){ "rice", NULL } } },
       { MODKEY|Mod1Mask,           XK_o,      spawn, {.v = (const char*[]){ "offtimer", NULL } } },
+      { MODKEY|Mod1Mask,           XK_y,      spawn, {.v = (const char*[]){ "wifi", NULL } } },
       { MODKEY|Mod1Mask,           XK_t,      spawn, {.v = (const char*[]){ "tor-browser", NULL } } },
       { MODKEY|Mod1Mask,           XK_Return, spawn, {.v = (const char*[]){ TERMINAL, "-e", "tmux", "new-session", "-A", "-s", "main", NULL } } },
       { MODKEY|Mod1Mask,           XK_i,      spawn, SHCMD(TERMINAL " -e sh -c 'fastfetch; read -r _'") },
@@ -268,7 +269,8 @@ in
                                   procps wireplumber playerctl brightnessctl libnotify maim util-linux ]) ./scripts/desk.sh;
   lock-screen = sh "lock" [ final.xsecurelock ] ./scripts/lock.sh;
   nix2-pull = sh "nix2-pull" (with final; [ git coreutils gnused util-linux ]) ./scripts/pull.sh;
-  screenshot      = sh "screenshot" (with final; [ maim xclip xdotool libnotify tesseract larbs-dmenu coreutils util-linux gnugrep ]) ./scripts/screenshot.sh;
+  screenshot      = sh "screenshot" (with final; [ maim xclip xdotool libnotify tesseract larbs-dmenu coreutils util-linux gnugrep ffmpeg-full slop xwininfo gawk pulseaudio ]) ./scripts/screenshot.sh;   # ffmpeg-full: the plain one can't capture the screen (no x11grab)
+  wifi            = sh "wifi" (with final; [ networkmanager larbs-dmenu libnotify gawk gnused gnugrep coreutils ]) ./scripts/wifi.sh;
   wallpaper-live  = sh "wallpaper-live" (with final; [ linux-wallpaperengine xrandr gawk coreutils ]) ./scripts/wallpaper-live.sh;
   steam-setup     = py "steam-setup" ./scripts/steam-setup.py;
   # Publish a folder to its Neocities site (keys in the keyring; see the script).

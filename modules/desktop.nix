@@ -128,12 +128,13 @@ let
       Super + Alt + b            Bluetooth
       Super + Alt + v            audio: output/mic device, volume, mute
       Super + Alt + c            clipboard history: paste anything you copied earlier
-      Super + Alt + s            screenshot menu (same as Shift+Print)
+      Super + Alt + s            screenshot menu (same as Shift+Print) — also screen recording
       Print / Shift + Print      screenshot: whole screen / the menu${shotKeyLine}
       Super + Alt + p            displays: mirror, extend, resolution (also Super + F3)
       Super + Alt + w            wallpapers: pictures + Wallpaper Engine (live)
       Super + Alt + r            look & feel: themes, colours from the wallpaper, gaps…
       Super + Alt + o            shutdown timer: turn off (or suspend) in 30 min, at 23:30…
+      Super + Alt + y            Wi-Fi: pick a network (password asked once)
       Super + Alt + t            Tor Browser
       Super + Alt + Return       tmux session
       Super + Alt + i            system info (fastfetch)
@@ -314,6 +315,9 @@ in
         { label = "Screenshot (area, window, text…)"; run = "screenshot"; }
         { label = "Suspend"; run = "zzz"; }
         { label = "Shutdown timer (turn off later)"; run = "offtimer"; }
+        { label = "Wi-Fi (pick a network)"; run = "wifi"; }
+        { label = "Record the screen (video)"; run = "screenshot record"; }
+        { label = "Stop the screen recording"; run = "screenshot record-stop"; }
       ];
       "Apps & files" = [
         { label = "Apps"; run = "apps"; }
@@ -343,7 +347,7 @@ in
       name = "wallpapers"; desktopName = "Wallpapers"; exec = "wallpapers";
       icon = "preferences-desktop-wallpaper"; categories = [ "Settings" "DesktopSettings" ];
     })
-    apps-menu tidy tidy-downloads screenshot snow lock-screen audio offtimer
+    apps-menu tidy tidy-downloads screenshot snow lock-screen audio offtimer wifi
     larbs-st larbs-dmenu larbs-dwmblocks larbs-scripts
     xinit xrdb xprop xwininfo xset setxkbmap xbacklight xrandr slop
     xclip xdotool xcape xwallpaper picom unclutter-xfixes maim slock

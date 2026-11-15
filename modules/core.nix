@@ -175,6 +175,13 @@ let
       also used on the text console (ly login, LUKS prompt at boot).
     - Background jobs that rebuild (nixos-prebuild, update-mine, the optional
       nix-auto-update) get NIX_PATH explicitly: systemd units don't inherit it.
+    - nixmenu search: words typed at the top level (or "🔍 Search everything")
+      list every entry whose name/category holds them. `nix2-pull` prints
+      the update's commit titles (git log old-upstream..new-upstream).
+    - `wifi` (Super+Alt+y): nmcli from dmenu; a failed new connection is
+      deleted so a wrong password isn't kept. Screen recording: `screenshot
+      record|record-area|record-stop` (ffmpeg-full x11grab + the default
+      sink's monitor, pid in $XDG_RUNTIME_DIR/screen-recording.pid).
     - `offtimer` (Super+Alt+o): transient systemd --user timers
       nix2-offtimer (+ -warn5/-warn1 notifications) running `systemctl
       poweroff|suspend|reboot --check-inhibitors=no`; a polkit rule lets

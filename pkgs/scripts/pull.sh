@@ -69,6 +69,7 @@ fi
 
 # 2. Fetch and put your commits on top.
 say ":: fetching $up …"
+was=$(git rev-parse -q --verify "$up" || true)       # where the update stood last time
 git fetch -q || { echo "nix2-pull: couldn't reach the remote (offline?). Nothing changed."; exit 1; }
 before=$(git rev-parse HEAD)
 if g rebase -q "$up" >/dev/null 2>&1; then
@@ -76,7 +77,14 @@ if g rebase -q "$up" >/dev/null 2>&1; then
   if [ "$(git rev-parse HEAD)" = "$before" ]; then
     say ":: already up to date"
   else
-    say ":: updated"
+    say ":: updated — what's new:"
+    # Each change's one-line title, newest first (merges and your own commits left out).
+    if [ "$quiet" != 1 ] && [ -n "$was" ]; then
+      news=$(git log --no-merges --format='%s' "$was..$up" 2>/dev/null || true)
+      n=$(printf '%s' "$news" | grep -c . || true)
+      printf '%s\n' "$news" | head -n 15 | sed 's/^/     • /'
+      [ "$n" -gt 15 ] && echo "     … and $((n - 15)) more (git -C $dir log $was..$up)"
+    fi
   fi
   [ "$mine" -gt 0 ] && say ":: your own changes on top: $mine commit(s) (nix2-pull --mine lists them)"
   exit 0

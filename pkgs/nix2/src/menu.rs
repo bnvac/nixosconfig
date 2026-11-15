@@ -171,14 +171,49 @@ pub fn run(args: &[String]) -> i32 {
         }
     }
 
+    // The top level: the categories, then "Search everything". Typing the
+    // name of any entry there (not a category) finds it too.
+    let mut top = cats.clone();
+    top.push(EVERYTHING.to_string());
+
     let mut cat = args.first().cloned().unwrap_or_default();
     loop {
         if cat.is_empty() {
-            match dmenu("nix:", &cats, true) {
+            match dmenu("nix:", &top, true) {
                 Pick::Chose(c) => cat = c,
                 Pick::Back => continue, // Backspace at the top: stay
                 Pick::Cancel => return 0,
             }
+        }
+        if !cats.contains(&cat) {
+            // "Search everything", or words typed at the top: every entry
+            // whose name matches, wherever it lives.
+            let words = if cat == EVERYTHING {
+                String::new()
+            } else {
+                cat.clone()
+            };
+            let found = search(&menu.entries, &words);
+            cat.clear();
+            if found.is_empty() {
+                continue;
+            }
+            let rows: Vec<String> = found.iter().map(|e| row(e)).collect();
+            let prompt = if words.is_empty() {
+                "Everything:".to_string()
+            } else {
+                format!("\"{words}\":")
+            };
+            match dmenu(&prompt, &rows, true) {
+                Pick::Chose(sel) => {
+                    if let Some(e) = found.iter().find(|e| row(e) == sel) {
+                        return launch(&e.mode, &e.run);
+                    }
+                }
+                Pick::Back => {}
+                Pick::Cancel => return 0,
+            }
+            continue;
         }
         let shown: Vec<String> = menu
             .entries
@@ -187,7 +222,7 @@ pub fn run(args: &[String]) -> i32 {
             .map(|e| e.label.clone())
             .collect();
         if shown.is_empty() {
-            cat.clear(); // typed something that isn't a category
+            cat.clear();
             continue;
         }
         let sel = match dmenu(&format!("{cat}:"), &shown, true) {
@@ -203,6 +238,30 @@ pub fn run(args: &[String]) -> i32 {
         }
         // typed something that isn't an entry: show the same section again
     }
+}
+
+const EVERYTHING: &str = "🔍 Search everything";
+
+/// How an entry shows in a search: its name, then where it lives.
+fn row(e: &Entry) -> String {
+    format!("{}   ·  {}", e.label, e.cat)
+}
+
+/// Entries whose name (or category) holds every typed word, in any order and
+/// case; all of them for no words. Best first: name starts with the words.
+fn search<'a>(entries: &'a [Entry], words: &str) -> Vec<&'a Entry> {
+    let words: Vec<String> = words.split_whitespace().map(str::to_lowercase).collect();
+    let mut hits: Vec<&Entry> = entries
+        .iter()
+        .filter(|e| {
+            let hay = format!("{} {}", e.label, e.cat).to_lowercase();
+            words.iter().all(|w| hay.contains(w.as_str()))
+        })
+        .collect();
+    if let Some(first) = words.first() {
+        hits.sort_by_key(|e| !e.label.to_lowercase().starts_with(first.as_str()));
+    }
+    hits
 }
 
 fn launch(mode: &str, run: &str) -> i32 {
@@ -231,7 +290,42 @@ fn launch(mode: &str, run: &str) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use super::first_port;
+    use super::{first_port, search, Entry};
+
+    fn e(cat: &str, label: &str) -> Entry {
+        Entry {
+            cat: cat.into(),
+            label: label.into(),
+            mode: "exec".into(),
+            run: "true".into(),
+        }
+    }
+
+    #[test]
+    fn finds_entries_anywhere() {
+        let all = vec![
+            e("System", "Shutdown timer (turn off later)"),
+            e("Games", "Steam"),
+            e("Games", "Steam won't start? Fix it"),
+            e("Proton", "VPN: connect to the fastest server"),
+        ];
+        let names = |q: &str| {
+            search(&all, q)
+                .iter()
+                .map(|x| x.label.clone())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(names("steam").len(), 2);
+        assert_eq!(names("STEAM")[0], "Steam");
+        assert_eq!(
+            names("vpn fastest"),
+            vec!["VPN: connect to the fastest server"]
+        );
+        assert_eq!(names("proton"), vec!["VPN: connect to the fastest server"]); // by category too
+        assert_eq!(names("timer off"), vec!["Shutdown timer (turn off later)"]);
+        assert!(names("banana").is_empty());
+        assert_eq!(search(&all, "").len(), 4);
+    }
 
     #[test]
     fn ports() {
