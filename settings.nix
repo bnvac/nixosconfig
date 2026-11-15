@@ -35,6 +35,12 @@ let
     # NVIDIA only: the open kernel module (RTX 20-series / GTX 16-series and
     # newer). false = the older closed one, for GTX 10-series and before.
     nvidiaOpen = true;
+    # Laptops: stop charging at this % to make the battery last more years
+    # (e.g. 80; null = charge to full). Works on ThinkPads, Framework, ASUS,
+    # Lenovo, Huawei, LG, Samsung, Dell and others the kernel supports.
+    batteryLimit = null;
+    # Unlock and sudo with a fingerprint reader as well as the password.
+    fingerprint = false;
     # Run AI models on this machine's GPU (the `assistant` module). Default:
     # on for a desktop with a GPU; laptops use an API key instead.
     # localAI = true;

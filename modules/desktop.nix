@@ -21,7 +21,7 @@ let
   # my.menu + settings.nix → menu. pkgs/scripts/nixmenu.sh reads it (plus
   # ~/.config/nixmenu/menu) and shows it as category → action.
   menuCfg = s.menu or { };
-  defaultOrder = [ "System" "Apps & files" "Code & engineering" "Games" "Self-hosted" "Neb (AI)" "Sync & devices"
+  defaultOrder = [ "System" "Apps & files" "Code & engineering" "Games" "Self-hosted" "Neb (AI)" "Sync & devices" "Printers & scanners"
                    "Containers & apps" "Neighborhood" "Proton" "Network & privacy" ];
   allMenu = config.my.menu;
   catOrder = lib.unique (lib.filter (c: (allMenu.${c} or [ ]) != [ ])

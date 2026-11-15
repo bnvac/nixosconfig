@@ -101,9 +101,10 @@ On by default unless it says otherwise. `mod on <name>` / `mod off <name>`.
 | gaming | native Steam with Steam Play for every game, Proton-GE, NTSYNC, gamescope/gamemode, Xbox controllers, Prism Launcher. If Steam crashes while starting it fixes the usual cause and tries again by itself (`steam-fix` does it by hand) |
 | privacy | Tor (Tor Browser, per-app, system-wide — off until you turn it on), Proton (VPN, Mail, Mail Bridge, Pass, Authenticator — their own menu section), I2P, Bitwarden, nheko |
 | platform | Docker, Flatpak/Flathub, AppImage, Distrobox, and apps built from any git repo (`gitApps`) |
-| printing | mDNS + printrun for Klipper printers on the network; a notification when a print ends |
+| paper | printers and scanners: most work with no driver (network or USB), plus HP/Brother/Canon/Epson/Samsung/Gutenprint drivers for older ones. Menu → Printers & scanners |
+| printing | 3D printers: mDNS + printrun for Klipper printers on the network; a notification when a print ends |
 | backups | daily restic snapshots of home + config to an external drive |
-| power | laptop battery/thermal tuning (TLP); does nearly nothing on a desktop |
+| power | laptop battery/thermal tuning (TLP); does nearly nothing on a desktop. `batteryLimit = 80;` stops charging at 80% (longer battery life), `fingerprint = true;` turns on the fingerprint reader for login and sudo |
 | virt | QEMU/KVM + virt-manager — **off by default** |
 | sync | two machines: Syncthing, DeviceLink (send files, tabs, screen), bookmarks — **off by default** |
 | ai | Claude Code — **off by default** |

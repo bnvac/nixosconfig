@@ -563,6 +563,14 @@ in
   ];
   boot.kernelParams = [ "quiet" "udev.log_level=3" ];
   assertions = [{
+    # Guard for the bug that kept background updates from ever working: a
+    # service that rebuilds the system needs NIX_PATH (systemd doesn't pass
+    # the login environment on). Any new one without it fails the build.
+    assertion = lib.all (svc: !(lib.elem config.system.build.nixos-rebuild (svc.path or [ ]))
+                              || (svc.environment or { }) ? NIX_PATH)
+                        (lib.attrValues config.systemd.services);
+    message = "a systemd service runs nixos-rebuild without NIX_PATH: give it `environment = rebuildEnv;` (core.nix)";
+  } {
     assertion = s.hasLocal;
     message = ''
       This machine has no settings.local.nix yet (your username, hostname,
