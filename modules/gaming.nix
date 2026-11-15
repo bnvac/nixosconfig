@@ -14,6 +14,24 @@
 #   - Xbox controllers work over Bluetooth (xpadneo: proper buttons, rumble,
 #     battery) and with the Xbox Wireless Adapter dongle (xone).
 { config, pkgs, lib, ... }:
+let
+  # `steam` itself: starts the real Steam and, when it crashes while
+  # starting (a known NixOS problem), fixes the usual cause and tries again.
+  # See pkgs/scripts/steam-launch.sh. It wins over the plain `steam` command
+  # (hiPrio), so the app menu and a terminal both use it.
+  steamLaunch = pkgs.writeShellApplication {
+    name = "steam";
+    runtimeInputs = with pkgs; [ procps coreutils gnugrep libnotify systemd ];
+    runtimeEnv.NIX2_REAL_STEAM = "${config.programs.steam.package}/bin/steam";
+    text = builtins.readFile ../pkgs/scripts/steam-launch.sh;
+  };
+  steamFix = pkgs.writeShellScriptBin "steam-fix" ''
+    case "''${1:-}" in
+      --gpu) shift; exec ${steamLaunch}/bin/steam --nix2-gpu "$@" ;;
+      *) exec ${steamLaunch}/bin/steam --nix2-fix "$@" ;;
+    esac
+  '';
+in
 {
   programs.steam = {
     enable = true;
@@ -53,11 +71,13 @@
 
   my.menu."Games" = [
     { label = "Steam"; run = "steam"; }
+    { label = "Steam won't start? Fix it"; run = "steam-fix"; mode = "term"; }
     { label = "Steam: play Windows games (Steam Play setup)"; run = "steam-setup"; mode = "term"; }
     { label = "Minecraft (Prism Launcher)"; run = "prismlauncher"; }
     { label = "Proton versions (ProtonUp-Qt)"; run = "protonup-qt"; }
   ];
 
+  environment.systemPackages = [ (lib.hiPrio steamLaunch) steamFix ];
   my.packages = with pkgs; [
     steam-setup
     protonup-qt mangohud winetricks steam-run

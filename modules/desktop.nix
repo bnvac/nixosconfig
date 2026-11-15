@@ -22,7 +22,7 @@ let
   # ~/.config/nixmenu/menu) and shows it as category → action.
   menuCfg = s.menu or { };
   defaultOrder = [ "System" "Apps & files" "Code & engineering" "Games" "Self-hosted" "Neb (AI)" "Sync & devices"
-                   "Containers & apps" "Neighborhood" "Network & privacy" ];
+                   "Containers & apps" "Neighborhood" "Proton" "Network & privacy" ];
   allMenu = config.my.menu;
   catOrder = lib.unique (lib.filter (c: (allMenu.${c} or [ ]) != [ ])
     ((menuCfg.order or [ ]) ++ defaultOrder ++ lib.attrNames allMenu));
@@ -197,6 +197,10 @@ in
   # start-up — so a password is typed the same way everywhere.
   console = lib.mkIf (kbLayout != "us" || kbVariant != "") { useXkbConfig = true; earlySetup = true; };
   services.libinput.enable = true;
+  # Apps' own "start at login" (Proton VPN and Mail, Discord, earlyoom's
+  # low-memory warnings…) are XDG autostart entries, which a bare window
+  # manager never runs. This runs them when the session starts.
+  services.xserver.desktopManager.runXdgAutostartIfNone = true;
 
   # Clipboard history (Super+Alt+c): remembers what you copy, pick it back with dmenu.
   services.clipmenu.enable = true;

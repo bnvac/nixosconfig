@@ -139,6 +139,13 @@ let
       modules that are on. The logo is an eye (pkgs/fastfetch/eye.py, 24-bit
       half-blocks) the wrapper draws into a blank logo and blinks twice;
       NIX2_NO_BLINK=1 skips that. `lock` is xsecurelock: username + password.
+      `steam` is a launcher (pkgs/scripts/steam-launch.sh, hiPrio over the
+      real one): if Steam dies within 90 s of starting (steamwebhelper crash,
+      CCrossProcessPipe broken pipe — nixpkgs #324875/#521087) it restarts
+      PipeWire + clears Steam's htmlcache and retries, then retries with
+      -cef-disable-gpu (remembered in ~/.local/state/nix2/steam-cpu-ui;
+      `steam-fix --gpu` undoes it). Log: ~/.local/state/nix2/steam-start.log.
+      XDG autostart entries run at login (runXdgAutostartIfNone).
       Steam is native; `steam-setup` (runs at login) turns on Steam Play for
       all titles so Windows games and Wallpaper Engine install.
     - `site-push [folder]` publishes a folder to Neocities: the site comes from a

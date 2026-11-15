@@ -1,4 +1,4 @@
-# Privacy / comms: passwords, Matrix, Tor (three ways), I2P, Proton VPN.
+# Privacy / comms: passwords, Matrix, Tor (three ways), I2P, Proton (VPN, Mail, Pass).
 #   Tor Browser     Super+Alt+t — its own Tor, works any time
 #   torrun <app>    one app through Tor, leak-proof (oniux namespaces, own Tor)
 #   tormode on      ALL traffic through Tor (breaks voice/games/LAN/VPN) · off · status
@@ -131,6 +131,24 @@ in
   networking.networkmanager.plugins = [ pkgs.networkmanager-openvpn ];
   networking.firewall.checkReversePath = "loose";
 
+  # ── Proton (VPN, Mail, Pass) ────────────────────────────────────────────
+  # The official apps. Each signs in once and keeps the login in the system
+  # keyring. Proton Mail Bridge (paid plans) lets Thunderbird or any mail app
+  # read Proton mail; Proton Pass is the password manager. Their own "start
+  # at login" options work: the session runs XDG autostart entries
+  # (desktop.nix), which dwm alone doesn't.
+  my.menu."Proton" = [
+    { label = "Proton VPN"; run = "protonvpn-app"; }
+    { label = "VPN: connect to the fastest server"; run = "protonvpn connect"; mode = "term"; }
+    { label = "VPN: disconnect"; run = "protonvpn disconnect"; mode = "term"; }
+    { label = "VPN: status"; run = "protonvpn status"; mode = "term"; }
+    { label = "VPN: sign in (terminal, first time)"; run = "protonvpn signin"; mode = "tty"; }
+    { label = "Proton Mail"; run = "proton-mail"; }
+    { label = "Proton Mail Bridge (Thunderbird and other mail apps)"; run = "protonmail-bridge-gui"; }
+    { label = "Proton Pass (passwords)"; run = "proton-pass"; }
+    { label = "Proton Authenticator (2FA codes)"; run = "proton-authenticator"; needs = "proton-authenticator"; }
+  ];
+
   my.menu."Network & privacy" = [
     { label = "Proton VPN"; run = "protonvpn-app"; }
     { label = "VPN: what's connected"; run = "nmcli -f NAME,TYPE,DEVICE connection show --active"; mode = "term"; }
@@ -145,6 +163,7 @@ in
     torrun tormode oniux torsocks tor-browser
     bitwarden-desktop bitwarden-cli nheko
     proton-vpn proton-vpn-cli seahorse      # seahorse: see/unlock the keyring
+    protonmail-desktop protonmail-bridge-gui proton-pass proton-authenticator
   ];
   networking.wireguard.enable = true;
 }

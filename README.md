@@ -98,8 +98,8 @@ On by default unless it says otherwise. `mod on <name>` / `mod off <name>`.
 | devtools | coding toolkit: lazygit, gh/glab/tea, delta, difftastic, direnv, just, hyperfine, CMake/Ninja/clangd/gdb/valgrind, Meld, Zeal, Qalculate; sccache/ccache + mold for fast builds; `nix2 new`; shared builds. `devExtras = true` adds VSCodium, Helix, Ghidra, Octave, OBS |
 | ee | hardware & electronics: KiCad, ngspice, PulseView/sigrok, PlatformIO, Arduino IDE, picotool, esptool/espflash, probe-rs, OpenOCD, ST-Link, dfu-util, Thonny/mpremote, QMK + Vial, FreeCAD, OpenSCAD, OrcaSlicer — and the device permissions for all of it |
 | apps | LibreOffice, browsers (+ Bitwarden), Discord/Slack, media, Calibre, torrents + Stremio, Onshape |
-| gaming | native Steam with Steam Play for every game, Proton-GE, NTSYNC, gamescope/gamemode, Xbox controllers, Prism Launcher |
-| privacy | Tor (Tor Browser, per-app, system-wide — off until you turn it on), Proton VPN, I2P, Bitwarden, nheko |
+| gaming | native Steam with Steam Play for every game, Proton-GE, NTSYNC, gamescope/gamemode, Xbox controllers, Prism Launcher. If Steam crashes while starting it fixes the usual cause and tries again by itself (`steam-fix` does it by hand) |
+| privacy | Tor (Tor Browser, per-app, system-wide — off until you turn it on), Proton (VPN, Mail, Mail Bridge, Pass, Authenticator — their own menu section), I2P, Bitwarden, nheko |
 | platform | Docker, Flatpak/Flathub, AppImage, Distrobox, and apps built from any git repo (`gitApps`) |
 | printing | mDNS + printrun for Klipper printers on the network; a notification when a print ends |
 | backups | daily restic snapshots of home + config to an external drive |
