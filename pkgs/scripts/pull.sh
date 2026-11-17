@@ -27,15 +27,15 @@ say() { [ "$quiet" = 1 ] || echo "$@"; }
 # git's own files must all belong to the folder's owner. Running git with sudo
 # in a folder you own leaves some owned by root (often .git/FETCH_HEAD), and
 # then every later fetch fails with "Permission denied".
-foreign() { find "$dir/.git" ! -user "$(stat -c %U "$dir")" -print -quit 2>/dev/null; }
+foreign() { find "$dir" ! -user "$(stat -c %U "$dir")" -print -quit 2>/dev/null; }
 # /etc/nixos normally belongs to root; if you can't write it (or root's files
 # are in the way), become root.
 if [ "$(id -u)" -ne 0 ] && { ! [ -w "$dir/.git" ] || [ -n "$(foreign)" ]; }; then
   exec /run/wrappers/bin/sudo env "PATH=$PATH" "$0" "$@"
 fi
 if [ "$(id -u)" -eq 0 ] && [ -n "$(foreign)" ]; then
-  say ":: giving git's files in $dir back to $(stat -c %U "$dir") (some belonged to another user)"
-  chown -R "$(stat -c %U:%G "$dir")" "$dir/.git"
+  say ":: giving the files in $dir back to $(stat -c %U "$dir") (some belonged to another user)"
+  chown -R "$(stat -c %U:%G "$dir")" "$dir"
 fi
 cd "$dir" || exit 1
 # git always runs as whoever owns the folder. As root in a folder YOU own
@@ -81,7 +81,7 @@ say ":: fetching $up …"
 was=$(git rev-parse -q --verify "$up" || true)       # where the update stood last time
 git fetch -q || { echo "nix2-pull: couldn't reach the remote (offline?). Nothing changed."; exit 1; }
 before=$(git rev-parse HEAD)
-if g rebase -q "$up" >/dev/null 2>&1; then
+if why=$(g rebase -q "$up" 2>&1); then
   mine=$(git rev-list --count "$up..HEAD")
   if [ "$(git rev-parse HEAD)" = "$before" ]; then
     say ":: already up to date"
@@ -103,10 +103,19 @@ fi
 clash=$(git diff --name-only --diff-filter=U 2>/dev/null)
 g rebase --abort 2>/dev/null || true
 git reset -q --hard "$before"
+# As the folder's owner: running git with sudo in a folder you own is what
+# leaves root-owned files behind.
+as=""; [ "$(stat -c %U .)" = root ] && as="sudo "
+if [ -z "$clash" ]; then
+  echo "nix2-pull: the update couldn't be applied. Nothing changed. Git said:"
+  printf '%s\n' "$why" | grep -v '^hint:' | head -n 12 | sed 's/^/    /'
+  echo "  Your own commits on top of the update: ${as}git -C $dir log --oneline $up..HEAD"
+  exit 1
+fi
 echo "nix2-pull: the update changes the same lines as your own edits, so it wasn't applied."
 echo "  Your changes are safe: every file is just as it was. The files that clash:"
-printf '%s\n' "${clash:-(git listed none)}" | sed 's/^/    /'
-echo "  To merge them by hand:  cd $dir && sudo git rebase $up"
-echo "  (fix each file git names, then: sudo git add <file> && sudo git rebase --continue;"
-echo "   changed your mind: sudo git rebase --abort). Then run nixup again."
+printf '%s\n' "$clash" | sed 's/^/    /'
+echo "  To merge them by hand:  cd $dir && ${as}git rebase $up"
+echo "  (fix each file git names, then: ${as}git add <file> && ${as}git rebase --continue;"
+echo "   changed your mind: ${as}git rebase --abort). Then run nixup again."
 exit 1
