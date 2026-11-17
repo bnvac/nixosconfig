@@ -24,9 +24,18 @@ esac
 say() { [ "$quiet" = 1 ] || echo "$@"; }
 
 [ -d "$dir/.git" ] || { echo "nix2-pull: $dir isn't a git clone"; exit 1; }
-# /etc/nixos normally belongs to root; if you can't write it, become root.
-if [ "$(id -u)" -ne 0 ] && ! [ -w "$dir/.git" ]; then
+# git's own files must all belong to the folder's owner. Running git with sudo
+# in a folder you own leaves some owned by root (often .git/FETCH_HEAD), and
+# then every later fetch fails with "Permission denied".
+foreign() { find "$dir/.git" ! -user "$(stat -c %U "$dir")" -print -quit 2>/dev/null; }
+# /etc/nixos normally belongs to root; if you can't write it (or root's files
+# are in the way), become root.
+if [ "$(id -u)" -ne 0 ] && { ! [ -w "$dir/.git" ] || [ -n "$(foreign)" ]; }; then
   exec /run/wrappers/bin/sudo env "PATH=$PATH" "$0" "$@"
+fi
+if [ "$(id -u)" -eq 0 ] && [ -n "$(foreign)" ]; then
+  say ":: giving git's files in $dir back to $(stat -c %U "$dir") (some belonged to another user)"
+  chown -R "$(stat -c %U:%G "$dir")" "$dir/.git"
 fi
 cd "$dir" || exit 1
 # git always runs as whoever owns the folder. As root in a folder YOU own

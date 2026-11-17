@@ -285,7 +285,7 @@ in
   desk = sh "desk" (with final; [ final.apps-menu final.lock-screen xdotool xprop jq gawk coreutils gnused
                                   procps wireplumber playerctl brightnessctl libnotify maim util-linux ]) ./scripts/desk.sh;
   lock-screen = sh "lock" [ final.xsecurelock ] ./scripts/lock.sh;
-  nix2-pull = sh "nix2-pull" (with final; [ git coreutils gnused util-linux ]) ./scripts/pull.sh;
+  nix2-pull = sh "nix2-pull" (with final; [ git coreutils gnused util-linux findutils ]) ./scripts/pull.sh;
   nix2-prebuild = sh "nix2-prebuild" (with final; [ git coreutils util-linux gnutar ]) ./scripts/prebuild.sh;
   screenshot      = sh "screenshot" (with final; [ maim xclip xdotool libnotify tesseract larbs-dmenu coreutils util-linux gnugrep ffmpeg-full slop xwininfo gawk pulseaudio ]) ./scripts/screenshot.sh;   # ffmpeg-full: the plain one can't capture the screen (no x11grab)
   wifi            = sh "wifi" (with final; [ networkmanager larbs-dmenu libnotify gawk gnused gnugrep coreutils ]) ./scripts/wifi.sh;
