@@ -148,6 +148,23 @@ let
     #   e.g. [ "http://ender.local:7125" "http://voron.local:7125" ]
     printers = [ ];
 
+    # ── Home server (`homelab` module, off until `mod on homelab`) ────────────
+    # Runs Pi-hole, Gitea, Nextcloud, FreshRSS, Transmission and SearXNG 24/7,
+    # reachable from your devices over Tailscale. Each is on unless set false.
+    homelab = {
+      # pihole = true; git = true; cloud = true; rss = true; torrent = true; search = true;
+      # address = "nix2";      # how other devices reach this machine (MagicDNS name); default: hostName
+      # lan = false;           # true: web pages also open to the home network, not just the tailnet
+      # dataDir = "/srv";      # where torrents land
+      # torrentVpn = true;     # Transmission only through Proton VPN (kill switch); false = home IP
+      # vpnPortForward = true; # ask Proton for a forwarded port (P2P servers, NAT-PMP on in the config)
+      # dnsUpstreams = [ "9.9.9.9" "149.112.112.112" ];   # Pi-hole's upstream DNS (Quad9)
+      # BenOS dashboard: the agent reports these services to your Lab page.
+      # benos.url = "https://your-benos.example";
+      # More tiles for the Lab page (anything else this machine runs):
+      # dashboard = [ { key = "jellyfin"; name = "Jellyfin"; url = "http://nix2:8096"; check = "http://127.0.0.1:8096/health"; } ];
+    };
+
     # ── Your machines (`sync` module) ──────────────────────────────────────────
     # Easiest: `devlink pin <code>` on two machines links them (no IDs needed).
     # To declare them instead, list every machine's Syncthing ID by its host

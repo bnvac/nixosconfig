@@ -82,6 +82,17 @@ let
       presses and closing windows ask for a yes first, and what he opens goes on
       his workspace. This file is Neb's machine context — he reads it via his
       read_system_notes tool.
+    - `homelab` (its own module, off by default) — this desktop as a 24/7 home
+      server: Pi-hole (:53, admin :8053), Gitea (:3002, ssh :2222), Nextcloud
+      (:8091), FreshRSS (:8090), Transmission (:9091, only through Proton VPN:
+      its own network namespace whose sole exit is WireGuard from
+      /etc/homelab/protonvpn.conf; `homelab vpn` + desktop notifications say
+      whether it's up), SearXNG (:8888). Web pages
+      are open only on tailscale0 (settings.homelab.lan adds the LAN); sleep is
+      disabled. Passwords are generated once into /var/lib/homelab/secrets.
+      `homelab status|passwords|git-admin|setup`. With settings.homelab.benos.url
+      the benos-agent service reports them to BenOS's Lab page (token in
+      /etc/benos-agent.env).
     - `modtui` — a TUI for first-run onboarding, toggling modules, editing
       settings.nix, installing/choosing an AI model, and rebuilding.
     - **DeviceLink** (`sync` module) links this machine to the other over
