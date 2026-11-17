@@ -128,6 +128,9 @@ let
       Super + Alt + b            Bluetooth
       Super + Alt + v            audio: output/mic device, volume, mute
       Super + Alt + c            clipboard history: paste anything you copied earlier
+      In the terminal:           select text = copied · right-click = paste
+                                 Ctrl+Shift+C / Ctrl+Shift+V (or Alt+C / Alt+V) also work;
+                                 in vim/htop hold Shift while selecting or right-clicking
       Super + Alt + s            screenshot menu (same as Shift+Print) — also screen recording
       Print / Shift + Print      screenshot: whole screen / the menu${shotKeyLine}
       Super + Alt + p            displays: mirror, extend, resolution (also Super + F3)
@@ -212,6 +215,13 @@ in
 
   # Clipboard history (Super+Alt+c): remembers what you copy, pick it back with dmenu.
   services.clipmenu.enable = true;
+  # Copied text stays pasteable after you close the window you copied it from
+  # (on X the clipboard normally dies with that window). Only text: a copied
+  # image is left alone. Password managers' windows aren't recorded at all.
+  systemd.user.services.clipmenu.environment = {
+    CM_OWN_CLIPBOARD = "1";
+    CM_IGNORE_WINDOW = "Bitwarden|KeePass|Proton Pass|Password";
+  };
 
   # Night light: the screen turns gradually warmer after sunset (gammastep).
   # Where you are sets sunset time: settings.nix → location. Off for now: nightlight.

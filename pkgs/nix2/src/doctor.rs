@@ -314,6 +314,70 @@ fn screenshots() -> Check {
     }
 }
 
+/// Your own commands (pip, npm -g, cargo install, Claude Code's own build…)
+/// must be on PATH, ahead of the system's, or an updated copy never runs.
+fn user_path() -> Check {
+    // The PATH you have, not the one doctor extends with its own tools.
+    let path = env::var("NIX2_USER_PATH").unwrap_or_default();
+    let dirs: Vec<&str> = path.split(':').filter(|d| !d.is_empty()).collect();
+    let find = |name: &str| {
+        dirs.iter()
+            .map(|d| Path::new(d).join(name))
+            .find(|p| fs::metadata(p).is_ok_and(|m| m.is_file()))
+    };
+    let h = home();
+    let pos = |d: &Path| dirs.iter().position(|p| Path::new(p) == d);
+    let system = dirs
+        .iter()
+        .position(|p| *p == "/run/current-system/sw/bin")
+        .unwrap_or(usize::MAX);
+    let mut missing = Vec::new();
+    for sub in [".local/bin", ".npm-global/bin"] {
+        match pos(&h.join(sub)) {
+            Some(i) if i < system => {}
+            _ => missing.push(format!("~/{sub}")),
+        }
+    }
+    if !missing.is_empty() {
+        return check(
+            Level::Warn,
+            "Your commands",
+            format!("{} not first on PATH", missing.join(" and ")),
+            Some("log out and back in once (the new PATH applies at login)"),
+        );
+    }
+    // A command you installed that something earlier on PATH hides.
+    let mut hidden = Vec::new();
+    for sub in [".local/bin", ".npm-global/bin", ".cargo/bin"] {
+        let Ok(rd) = fs::read_dir(h.join(sub)) else {
+            continue;
+        };
+        for e in rd.flatten() {
+            let name = e.file_name().to_string_lossy().to_string();
+            if let Some(found) = find(&name) {
+                if found.parent() != Some(h.join(sub).as_path()) && !found.starts_with(&h) {
+                    hidden.push(format!("{name} (runs {})", found.display()));
+                }
+            }
+        }
+    }
+    if hidden.is_empty() {
+        check(
+            Level::Good,
+            "Your commands",
+            "~/.local/bin and ~/.npm-global/bin come first on PATH",
+            None,
+        )
+    } else {
+        check(
+            Level::Warn,
+            "Your commands",
+            format!("hidden by an earlier PATH entry: {}", hidden.join(", ")),
+            Some("echo $PATH — the folder listed first wins"),
+        )
+    }
+}
+
 fn audio() -> Check {
     if which("pactl").is_none() {
         return check(Level::Note, "Audio", "pactl not installed", None);
@@ -434,6 +498,33 @@ fn updates() -> Vec<Check> {
                 "Updates",
                 "new NixOS packages are pre-built and waiting",
                 Some("rebuild (takes seconds)"),
+            ));
+        }
+    }
+    // nix2-prebuild built what `nixup` would pull, and it isn't applied yet.
+    if let Some(rev) = fs::read_to_string("/var/lib/nixos-prebuild/next.key")
+        .ok()
+        .and_then(|k| k.split_whitespace().next().map(String::from))
+    {
+        let applied = ok(
+            "git",
+            [
+                "-c",
+                "safe.directory=*",
+                "-C",
+                "/etc/nixos",
+                "merge-base",
+                "--is-ancestor",
+                &rev,
+                "HEAD",
+            ],
+        );
+        if !applied && which("git").is_some() {
+            out.push(check(
+                Level::Note,
+                "Updates",
+                "an update is built and waiting",
+                Some("nixup (takes seconds)"),
             ));
         }
     }
@@ -673,6 +764,7 @@ fn collect() -> Vec<Check> {
     all.push(memory());
     all.push(clock());
     all.extend(network());
+    all.push(user_path());
     all.push(screenshots());
     all.push(audio());
     all.extend(graphics());
@@ -731,6 +823,9 @@ fn apply_fixes(all: &[Check]) -> usize {
 }
 
 pub fn run(args: &[String]) -> i32 {
+    if env::var_os("NIX2_USER_PATH").is_none() {
+        env::set_var("NIX2_USER_PATH", env::var_os("PATH").unwrap_or_default());
+    }
     extend_path();
     let quiet = args.iter().any(|a| a == "--notify");
     let fix = args.iter().any(|a| a == "--fix");

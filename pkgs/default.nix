@@ -146,8 +146,25 @@ in
     # Colours a program sets while it runs (OSC 4/10/11/12 — how `rice`
     # recolours open terminals) are remembered: this st reloads its colour
     # table on every focus change, which used to throw them away again.
+    # Copy & paste like PuTTY / Windows Terminal: selecting text copies it to
+    # the clipboard (Ctrl+V pastes it in any app), right-click pastes, and so
+    # do Ctrl+Shift+V, Shift+Insert and Alt+V; Ctrl+Shift+C / Alt+C copy.
+    # Middle-click still pastes the selection. In programs that use the mouse
+    # themselves (vim, htop…) hold Shift to select or right-click-paste.
+    # Text a program puts on the clipboard (OSC 52: nvim, tmux, ssh) lands in
+    # the real clipboard too.
     postPatch = ''
       substituteInPlace config.h --replace-fail 'float alpha = 0.8;' 'float alpha = 1.0;'
+      substituteInPlace config.h --replace-fail \
+        $'\t{ XK_ANY_MOD,           Button2, selpaste,       {.i = 0},      1 },' \
+        $'\t{ XK_ANY_MOD,           Button2, selpaste,       {.i = 0},      1 },\n\t{ XK_ANY_MOD,           Button3, clippaste,      {.i = 0},      1 },'
+      substituteInPlace x.c --replace-fail \
+        $'\tif (XGetSelectionOwner(xw.dpy, XA_PRIMARY) != xw.win)\n\t\tselclear();\n}' \
+        $'\tif (XGetSelectionOwner(xw.dpy, XA_PRIMARY) != xw.win)\n\t\tselclear();\n\tclipcopy(NULL);\n}'
+      # Keep the highlight when only the CLIPBOARD moves on (the clipboard
+      # history takes it over so it outlives this window).
+      substituteInPlace x.c --replace-fail $'selclear_(XEvent *e)\n{\n\tselclear();\n}' \
+        $'selclear_(XEvent *e)\n{\n\tif (e->xselectionclear.selection == XA_PRIMARY)\n\t\tselclear();\n}'
       substituteInPlace x.c --replace-fail $'\tXftColorFree(xw.dpy, xw.vis, xw.cmap, &dc.col[x]);\n\tdc.col[x] = ncolor;\n\n\treturn 0;' \
         $'\tXftColorFree(xw.dpy, xw.vis, xw.cmap, &dc.col[x]);\n\tdc.col[x] = ncolor;\n\tif (name && x == (int)defaultbg)\n\t\tcolorname[background] = strdup(name);\n\telse if (name && x < (int)LEN(colorname))\n\t\tcolorname[x] = strdup(name);\n\n\treturn 0;'
     '';
@@ -269,6 +286,7 @@ in
                                   procps wireplumber playerctl brightnessctl libnotify maim util-linux ]) ./scripts/desk.sh;
   lock-screen = sh "lock" [ final.xsecurelock ] ./scripts/lock.sh;
   nix2-pull = sh "nix2-pull" (with final; [ git coreutils gnused util-linux ]) ./scripts/pull.sh;
+  nix2-prebuild = sh "nix2-prebuild" (with final; [ git coreutils util-linux gnutar ]) ./scripts/prebuild.sh;
   screenshot      = sh "screenshot" (with final; [ maim xclip xdotool libnotify tesseract larbs-dmenu coreutils util-linux gnugrep ffmpeg-full slop xwininfo gawk pulseaudio ]) ./scripts/screenshot.sh;   # ffmpeg-full: the plain one can't capture the screen (no x11grab)
   wifi            = sh "wifi" (with final; [ networkmanager larbs-dmenu libnotify gawk gnused gnugrep coreutils ]) ./scripts/wifi.sh;
   wallpaper-live  = sh "wallpaper-live" (with final; [ linux-wallpaperengine xrandr gawk coreutils ]) ./scripts/wallpaper-live.sh;

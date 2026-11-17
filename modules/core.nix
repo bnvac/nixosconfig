@@ -46,7 +46,10 @@ let
       runs as a user service, data in ~/.local/share/backoffice). With the
       `sync` module its inventory hands off between the two machines as
       consistent snapshots (`backoffice-sync --status`); photos sync live.
-    - `claude-code` — Claude Code.
+    - `claude` / `freebuff` (ai module) — AI coding agents; each installs itself on
+      first run into ~/.local or ~/.npm-global and keeps itself up to date.
+      User-installed commands (~/.local/bin, ~/.npm-global/bin, ~/.cargo/bin,
+      ~/go/bin, ~/.bun/bin) come first on PATH everywhere; `npm i -g` needs no sudo.
     - `intraweb` (its own module) — a local-first neighborhood web on the LAN:
       it runs `intraweb up` as a user service at login, giving a dashboard on
       http://localhost:8420 where neighbors on the same Wi-Fi share pages,
@@ -408,6 +411,22 @@ let
     esac
   '';
 
+  # One of the two background pre-builds (see systemd.services.nix2-prebuild).
+  prebuildUnit = arg: {
+    description = if arg == "" then "Build the next config update ahead of time"
+                  else "Pre-build the system on the newest NixOS packages";
+    wants = [ "network-online.target" ]; after = [ "network-online.target" ];
+    unitConfig.ConditionACPower = true;     # a laptop on battery waits for the charger
+    path = [ config.nix.package config.system.build.nixos-rebuild pkgs.git pkgs.coreutils ];
+    environment = rebuildEnv;
+    serviceConfig = {
+      Type = "oneshot";
+      Nice = 19; IOSchedulingClass = "idle"; CPUSchedulingPolicy = "idle";
+      StateDirectory = "nixos-prebuild";   # its links keep the pre-builds from being GC'd
+      ExecStart = "${pkgs.nix2-prebuild}/bin/nix2-prebuild ${arg}";
+    };
+  };
+
   # `nixup` — pull the config repo at /etc/nixos and rebuild. No re-cloning:
   # your machine-local hardware-configuration.nix (untracked) is left alone.
   nixup = pkgs.writeShellScriptBin "nixup" ''
@@ -423,7 +442,13 @@ let
     # Your own edits in $dir are committed locally first and kept on top of
     # the update; if they clash with it, nothing changes (see pull.sh).
     ${pkgs.nix2-pull}/bin/nix2-pull || exit 1
-    echo ":: rebuilding …"
+    # Built in the background already (nix2-prebuild)? Then this is quick.
+    pre=$(cut -d' ' -f1 /var/lib/nixos-prebuild/next.key 2>/dev/null || true)
+    if [ -n "$pre" ] && [ "$pre" = "$(git -c safe.directory='*' -C "$dir" rev-parse '@{upstream}' 2>/dev/null)" ]; then
+      echo ":: rebuilding — this update was already built in the background, so it's quick …"
+    else
+      echo ":: rebuilding …"
+    fi
     # Run the rebuild script from the repo we just pulled, not the installed
     # one: the installed copy is from the PREVIOUS config, so a pull that
     # changes how updating works (like adding update-mine) would otherwise
@@ -495,37 +520,28 @@ in
   systemd.services.nix-gc.serviceConfig = { Nice = 19; IOSchedulingClass = "idle"; CPUSchedulingPolicy = "idle"; };
   systemd.services.nix-optimise.serviceConfig = { Nice = 19; IOSchedulingClass = "idle"; CPUSchedulingPolicy = "idle"; };
 
-  # Weekly, in the background: fetch the newest NixOS packages and pre-build
-  # this whole system with them (idle priority — you won't notice it). Nothing
-  # switches; the next `rebuild`/`nixup` just finds it all ready and takes
-  # seconds. If the new set doesn't build, the channel is rolled back so your
-  # next rebuild can't break. settings.channelUpdates = "never" turns it off.
-  systemd.services.nixos-prebuild = lib.mkIf ((s.channelUpdates or "weekly") != "never") {
-    description = "Pre-build the system on the newest NixOS packages";
-    wants = [ "network-online.target" ]; after = [ "network-online.target" ];
-    path = [ config.nix.package config.system.build.nixos-rebuild pkgs.git pkgs.coreutils ];
-    environment = rebuildEnv;
-    serviceConfig = {
-      Type = "oneshot";
-      Nice = 19; IOSchedulingClass = "idle"; CPUSchedulingPolicy = "idle";
-      StateDirectory = "nixos-prebuild";
-      WorkingDirectory = "/var/lib/nixos-prebuild";     # its `result` link keeps the pre-build from being GC'd
-    };
-    script = ''
-      nix-channel --update
-      if nixos-rebuild build; then
-        echo "nixos-prebuild: ready — the next rebuild switches to it in seconds."
-      else
-        echo "nixos-prebuild: the new packages don't build with this config; rolled the channel back."
-        nix-channel --rollback
-        exit 1
-      fi
-    '';
-  };
+  # Updates are built before you ask for them (nix2-prebuild, at idle priority,
+  # only on mains power — you won't notice it):
+  #   every 6 hours  fetch your config's git remote; if it has something new,
+  #                  build that system. `nixup` then only has to switch.
+  #   weekly         move to the newest NixOS packages and build this config
+  #                  on them; if it doesn't build, the channel goes back so
+  #                  your next rebuild can't break (settings.channelUpdates,
+  #                  "never" turns this one off).
+  # Nothing switches and /etc/nixos isn't changed; what's built waits in the
+  # Nix store (GC-rooted in /var/lib/nixos-prebuild).
+  systemd.services.nixos-prebuild = lib.mkIf ((s.channelUpdates or "weekly") != "never") (prebuildUnit "--channel");
+  systemd.services.nix2-prebuild = prebuildUnit "";
   systemd.timers.nixos-prebuild = lib.mkIf ((s.channelUpdates or "weekly") != "never") {
     wantedBy = [ "timers.target" ];
     timerConfig = { OnCalendar = s.channelUpdates or "weekly"; Persistent = true; RandomizedDelaySec = "2h"; };
   };
+  systemd.timers.nix2-prebuild = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = { OnBootSec = "20min"; OnUnitActiveSec = "6h"; RandomizedDelaySec = "15min"; };
+  };
+
+
 
   # ── lean + responsive (settings: kernel, removePackages) ─────────────────
   # zen kernel: tuned for desktop latency (input, audio, frame pacing).
@@ -567,8 +583,23 @@ in
     { efi.canTouchEfiVariables = true; efi.efiSysMountPoint = s.espMountPoint; }
     (lib.mkIf s.useGrub { grub = {
       enable = true; efiSupport = true; device = "nodev"; configurationLimit = 10;
-      useOSProber = true;                      # dual-boot Windows
+      useOSProber = s.osProber or false;       # Windows has its own entry, below
       theme = pkgs.xp-bliss-grub-theme; gfxmodeEfi = "auto";
+      # GRUB: Windows (if there is one) gets a menu entry that finds it when you
+      # boot. os-prober did the same by scanning every disk on EVERY rebuild —
+      # 10-30 s each time. settings.osProber = true brings it back (other Linuxes).
+      extraEntries = ''
+        insmod part_gpt
+        insmod fat
+        insmod search_fs_file
+        insmod chain
+        if search --no-floppy --file --set=winroot /EFI/Microsoft/Boot/bootmgfw.efi; then
+          menuentry "Windows" --class windows {
+            search --no-floppy --file --set=root /EFI/Microsoft/Boot/bootmgfw.efi
+            chainloader /EFI/Microsoft/Boot/bootmgfw.efi
+          }
+        fi
+      '';
     }; })
     (lib.mkIf (!s.useGrub) { systemd-boot = { enable = true; configurationLimit = 10; }; })
   ];
@@ -681,6 +712,16 @@ in
   # pip/pipx put commands in ~/.local/bin; prebuilt programs (and Pythons uv
   # downloads) find the usual Linux libraries through nix-ld.
   environment.localBinInPath = true;
+  # Commands you install yourself land in your home folder, and every program
+  # finds them — terminals, the app launcher, the desktop, background services
+  # (PAM + systemd get this, not just shells). They come BEFORE the system's,
+  # so a tool that updates itself (Claude Code's own build in ~/.local/bin, an
+  # npm/cargo/go/bun install) is the one that runs, not an older system copy.
+  # `npm install -g` needs no sudo: it installs into ~/.npm-global.
+  environment.sessionVariables = {
+    NPM_CONFIG_PREFIX = "$HOME/.npm-global";
+    PATH = [ "$HOME/.local/bin" "$HOME/.npm-global/bin" "$HOME/.cargo/bin" "$HOME/go/bin" "$HOME/.bun/bin" ];
+  };
   programs.nix-ld.enable = true;
   programs.nix-ld.libraries = pkgs.python-pip.wheelLibs;
   warnings = map (n: "settings.removePackages: \"${n}\" isn't installed by any module — `debloat list` shows the names")

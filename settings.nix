@@ -136,6 +136,9 @@ let
     # espMountPoint must match hardware-configuration.nix (checked at build).
     espMountPoint = "/boot";
     useGrub = true;            # GRUB = themeable; false = systemd-boot
+    # Windows shows up in the GRUB menu by itself. osProber = true also lists
+    # other Linux installs, but scans every disk on each rebuild (slower).
+    osProber = false;
 
     # ── Backups (`backups` module): restic to an external drive ────────────────
     # The restic repository on your backup drive. Default: a drive labelled

@@ -107,7 +107,7 @@ On by default unless it says otherwise. `mod on <name>` / `mod off <name>`.
 | power | laptop battery/thermal tuning (TLP); does nearly nothing on a desktop. `batteryLimit = 80;` stops charging at 80% (longer battery life), `fingerprint = true;` turns on the fingerprint reader for login and sudo |
 | virt | QEMU/KVM + virt-manager — **off by default** |
 | sync | your machines (two or more): Syncthing, DeviceLink (send files, tabs, screen), bookmarks. Link with `devlink pin <code>`, or list them in `syncDevices` — **off by default** |
-| ai | Claude Code — **off by default** |
+| ai | AI coding agents: Claude Code and Freebuff (free, ad-supported). Each installs itself the first time you run it and keeps itself up to date; menu → Code & engineering opens one in a project |
 | assistant | Neb, a local voice assistant, + Ollama / Open-WebUI on your GPU — **off by default** |
 | backoffice | a parts-inventory web app — **off by default** |
 | intraweb | a local-first neighborhood web on your LAN (no server, no internet) — **off by default** |
@@ -124,7 +124,7 @@ On by default unless it says otherwise. `mod on <name>` / `mod off <name>`.
 | `rebuild` (`nrs`) | apply your config + update your own git apps (seconds when nothing is new), live progress bar. `--upgrade` also moves to the newest NixOS packages — normally pre-built for you weekly in the background; `--no-update` just applies config |
 | `update-mine` | move your git-built apps (neb, backoffice, intraweb, slowtyper + `gitApps`) to their latest commit, only if it builds; runs daily too. `--status` to just look |
 | `debloat` | what's using space, and clean it; `debloat junk` finds old build folders (target/, node_modules/…) in projects you haven't touched for a month; `debloat remove <app>` drops an app from every module, or uninstalls a Flatpak by id (`org.gimp.GIMP`) and trims runtimes nothing else uses |
-| `nixup` | update /etc/nixos from git + rebuild (`autoUpdate = true` does it weekly). Your own edits there are kept: committed locally first and put back on top of the update; if one clashes, nothing changes and it names the file. `nix2-pull --mine` lists them |
+| `nixup` | update /etc/nixos from git + rebuild (`autoUpdate = true` does it weekly). Every 6 hours (on mains power, at idle priority) the update is fetched and built in the background (`nix2-prebuild`), so `nixup` usually just switches. Your own edits there are kept: committed locally first and put back on top of the update; if one clashes, nothing changes and it names the file. `nix2-pull --mine` lists them |
 | `nix2 doctor` | system check: failed services, disk, memory, clock, network, screenshots, audio, Vulkan/Steam libraries, updates, backups, battery health, temperature — each problem with its fix. Menu: System → System check; runs weekly and notifies only if something's wrong |
 | `nix2 doctor --fix` | fixes what's safe to fix by itself — restarts failed services and the sound server, resyncs the clock, turns networking back on, unmutes — then checks again. Menu: System → Fix problems |
 | `nix2 rollback` | go back to an earlier system version if an update broke something (Enter = the one before); menu: System → Roll back |
@@ -146,7 +146,7 @@ On by default unless it says otherwise. `mod on <name>` / `mod off <name>`.
 | `wallpapers` | the wallpaper picker — six built-in wallpapers (snowy night, aurora, dusk ridge, blueprint, topography, circuit board), your pictures, or live **Wallpaper Engine** ones from the Steam Workshop; fit, shuffle, snow on/off — **Super+Alt+w** |
 | `neofetch` / `fastfetch` | system summary with nix²'s eye logo, which blinks at you, and layout (version you can roll back from, modules on); your own `~/.config/fastfetch/config.jsonc` takes over — **Super+Alt+i** |
 | `snow on\|off` | the live falling snow (never piles up) |
-| `clipmenu` | clipboard history — **Super+Alt+c** |
+| `clipmenu` | clipboard history — **Super+Alt+c**. Copied text stays pasteable after you close the window it came from. In the terminal: **select = copy, right-click = paste** (Ctrl+Shift+C/V too) |
 | `nightlight` | night light on/off for now (warmer screen after sunset; `nix2-setup` sets where you are from your timezone) |
 | `steam-setup` | turns on Steam Play for all games (runs at login; Steam must be closed) |
 | `thunar` | GUI file manager — **Super+Alt+e** (`lf` is still Super+r) |
