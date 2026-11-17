@@ -162,6 +162,8 @@ let
       # torrentVpn = true;     # Transmission only through Proton VPN (kill switch); false = home IP
       # vpnPortForward = true; # ask Proton for a forwarded port (P2P servers, NAT-PMP on in the config)
       # dnsUpstreams = [ "9.9.9.9" "149.112.112.112" ];   # Pi-hole's upstream DNS (Quad9)
+      # searchLanguage = "en-US";   # SearXNG's default results language ("auto" = from your browser)
+      # searchEngines = [ { name = "yandex"; disabled = false; } { name = "google"; disabled = true; } ];
       # BenOS dashboard: the agent reports these services to your Lab page.
       # benos.url = "https://your-benos.example";
       # More tiles for the Lab page (anything else this machine runs):

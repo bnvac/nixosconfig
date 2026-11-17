@@ -116,7 +116,7 @@ let
 
   homelab = pkgs.writeShellApplication {
     name = "homelab";
-    runtimeInputs = with pkgs; [ coreutils systemd curl gnugrep iproute2 ];
+    runtimeInputs = with pkgs; [ coreutils systemd curl gnugrep iproute2 jq ];
     text = ''
       units=(${lib.concatStringsSep " " (
         lib.optional (on "pihole") "pihole-ftl"
@@ -144,6 +144,16 @@ let
       }
       case "''${1:-status}" in
         vpn) vpn ;;
+        search-test)
+          q="''${2:-nixos}"
+          r=$(curl -fsS --max-time 30 -G "http://127.0.0.1:${toString ports.search}/search" \
+                --data-urlencode "q=$q" --data-urlencode format=json) \
+            || { echo "SearXNG didn't answer: systemctl status searx"; exit 1; }
+          echo "Search for '$q': $(jq '.results | length' <<<"$r") results"
+          echo "Engines that answered: $(jq -r '[.results[].engines[]] | unique | join(", ")' <<<"$r")"
+          echo "Engines that failed (engine: reason):"
+          jq -r '.unresponsive_engines[] | "  \(.[0]): \(.[1])"' <<<"$r"
+          ;;
         status)
           vpn; echo
           echo "Services:"
@@ -190,7 +200,7 @@ let
            homelab vpn          # should say ONLINE with a Proton exit IP
       EOF
           ;;
-        *) echo "usage: homelab [status|vpn|passwords|git-admin [name] [email]|setup]"; exit 2 ;;
+        *) echo "usage: homelab [status|vpn|search-test [query]|passwords|git-admin [name] [email]|setup]"; exit 2 ;;
       esac
     '';
   };
@@ -207,6 +217,7 @@ in
   my.menu."Homelab" = [
     { label = "What's running + links"; run = "homelab status"; mode = "term"; }
     { label = "Passwords"; run = "homelab passwords"; mode = "term"; }
+    { label = "Search: which engines work?"; run = "homelab search-test"; mode = "term"; }
     { label = "Setup steps"; run = "homelab setup"; mode = "term"; }
   ] ++ lib.optional torrent { label = "Torrent VPN: online?"; run = "homelab vpn"; mode = "term"; };
   my.selfhosted = lib.listToAttrs (map (x: lib.nameValuePair x.name "http://127.0.0.1:${toString x.port}") services);
@@ -479,21 +490,59 @@ in
   };
 
   # ── SearXNG ───────────────────────────────────────────────────────────────
+  # SearXNG's own defaults (about 90 engines) stay on; this adds dependable
+  # web engines, drops ones that only ever error here (.onion search needs Tor,
+  # German recipes), gives slow engines more time, and turns on autocomplete,
+  # favicons and the image proxy. Engines that fail for a while (a CAPTCHA,
+  # rate limits) are skipped automatically and come back on their own.
+  # `homelab search-test` shows which engines answered and why the others didn't.
+  # Your own changes: homelab.searchEngines = [ { name = "yandex"; disabled = false; } ];
   services.searx = lib.mkIf (on "search") {
     enable = true;
     redisCreateLocally = true;
     environmentFile = "${secrets}/searx.env";
     settings = {
+      use_default_settings.engines.remove = [ "ahmia" "torch" "chefkoch" ];
       server = {
         bind_address = "0.0.0.0"; port = ports.search;
         secret_key = "$SEARX_SECRET_KEY";
         base_url = "${url ports.search}/";
         limiter = false;                    # private instance: no bot limiter needed
+        image_proxy = true;                 # images load via your server, not from the sites
       };
-      search.formats = [ "html" "json" ];   # json lets scripts and BenOS query it
       general.instance_name = "search";
+      search = {
+        formats = [ "html" "json" ];        # json lets scripts and BenOS query it
+        autocomplete = "duckduckgo";
+        favicon_resolver = "duckduckgo";
+        default_lang = h.searchLanguage or "en-US";
+        safe_search = 0;
+      };
+      outgoing = {
+        request_timeout = 5.0;              # default 3 s: too short for half the engines
+        max_request_timeout = 10.0;
+      };
+      ui = {
+        query_in_title = true;
+        center_alignment = true;
+        hotkeys = "vim";                    # j/k to move, Enter to open
+      };
+      plugins."searx.plugins.infinite_scroll.SXNGPlugin".active = true;
+      engines = map (name: { inherit name; disabled = false; }) [
+        # more general web results, so one blocked engine never leaves you empty
+        "mojeek" "qwant" "presearch" "yep"
+        # things you'd actually search for
+        "reddit" "hackernews" "nixos wiki" "crates.io" "npm" "lib.rs" "pkg.go.dev"
+        "codeberg" "gitlab" "imdb" "duckduckgo weather"
+      ] ++ (h.searchEngines or [ ]);
+    };
+    # Site icons next to results, cached on disk (default: a temp file, lost on restart).
+    faviconsSettings.favicons = {
+      cfg_schema = 1;
+      cache = { db_url = "/var/cache/searx/faviconcache.db"; MAINTENANCE_MODE = "auto"; };
     };
   };
+  systemd.services.searx.serviceConfig.CacheDirectory = lib.mkIf (on "search") "searx";
 
   # ── BenOS agent: reports these to your dashboard's Lab page ───────────────
   # The agent script is fetched from your BenOS itself (so it always matches the
