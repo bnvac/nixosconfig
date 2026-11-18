@@ -1,0 +1,8 @@
+{
+  "helium": {
+    "repo": "imputnet/helium-linux",
+    "version": "0.22.1.1",
+    "asset": "helium-{version}-x86_64.AppImage",
+    "sha256": "0rxkrfdl79y891wcjd1pcg13mg02klv3ni1kvhs8b9jiwgh88img"
+  }
+}

@@ -204,6 +204,7 @@ def read_firefox(profile, tree):
 
 # ── Chromium: read/write Bookmarks JSON ─────────────────────────────────────
 CHROMIUM_DIRS = [
+    HOME / ".config" / "net.imput.helium",          # Helium (the default browser)
     HOME / ".config" / "chromium",
     HOME / ".config" / "google-chrome",
     HOME / ".config" / "BraveSoftware" / "Brave-Browser",

@@ -5,3 +5,4 @@ pkgs/.pins.*
 /settings.local.nix
 /hardware-configuration.nix
 /result
+pkgs/releases.local.json

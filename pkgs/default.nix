@@ -49,7 +49,7 @@ in
     nativeBuildInputs = [ prev.pkg-config ];
     buildInputs = with prev; [ libx11 libxinerama libxft libxcb fontconfig freetype ];
     postPatch = ''
-      substituteInPlace config.h --replace-fail '#define BROWSER "librewolf"' '#define BROWSER "firefox"'
+      substituteInPlace config.h --replace-fail '#define BROWSER "librewolf"' '#define BROWSER "helium"'
       substituteInPlace config.h --replace-fail "/usr/local/share/dwm/larbs.mom" "$out/share/dwm/larbs.mom"
       substituteInPlace config.h \
         --replace-fail '{ "xbacklight", "-inc", "15", NULL }' '{ "brightnessctl", "set", "10%+", NULL }' \
@@ -277,7 +277,7 @@ in
   # ── small tools (sources in pkgs/scripts/, shellchecked at build) ─────────
   rebuild         = sh "rebuild" (with final; [ nix-output-monitor git jq util-linux gawk gnugrep gnused coreutils ]) ./scripts/rebuild.sh;
   audio           = sh "audio" (with final; [ larbs-dmenu pulseaudio jq libnotify procps gawk gnugrep gnused coreutils util-linux pavucontrol ]) ./scripts/audio.sh;
-  update-mine     = sh "update-mine" (with final; [ git jq coreutils util-linux gnugrep gawk ]) ./scripts/update-mine.sh;
+  update-mine     = sh "update-mine" (with final; [ git jq coreutils util-linux gnugrep gnused gawk ]) ./scripts/update-mine.sh;
   apps-menu       = sh "apps" (with final; [ larbs-dmenu gawk coreutils gnused libnotify util-linux ]) ./scripts/apps.sh;
   snow            = sh "snow" (with final; [ xsnow procps util-linux ]) ./scripts/snow.sh;
   neb-space       = sh "neb-space" (with final; [ xdotool util-linux ]) ./scripts/neb-space.sh;
@@ -428,6 +428,24 @@ in
   };
   nixmenu         = final.nix2;
   printer-notify  = final.nix2;
+
+  # Helium: a Chromium without Google (ungoogled-chromium base), with uBlock
+  # Origin built in and !bangs handled locally. It's released as an AppImage
+  # (not in nixpkgs); releases.json pins the version and update-mine moves it
+  # to each new release once it builds — like the git apps.
+  helium = let r = (import ./releases.nix).helium; in prev.appimageTools.wrapType2 {
+    pname = "helium";
+    inherit (r) version;
+    src = prev.fetchurl { inherit (r) url sha256; };
+    extraInstallCommands = let
+      x = prev.appimageTools.extract { pname = "helium"; inherit (r) version; src = prev.fetchurl { inherit (r) url sha256; }; };
+    in ''
+      install -Dm444 ${x}/helium.desktop $out/share/applications/helium.desktop
+      install -Dm444 ${x}/usr/share/icons/hicolor/256x256/apps/helium.png \
+        $out/share/icons/hicolor/256x256/apps/helium.png
+    '';
+    meta = { description = "Private Chromium-based browser with uBlock Origin and bangs"; mainProgram = "helium"; };
+  };
 
   # Apps from any git repo, listed in settings.gitApps (see pkgs/gitapps.nix).
   gitApps = import ./gitapps.nix { inherit final prev tracked fetchPinned; };

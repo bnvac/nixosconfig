@@ -8,8 +8,19 @@ let
   };
 in
 {
+  # Browsers:
+  #   Helium     the default (Super+w, links, BROWSER). Chromium without Google
+  #              (ungoogled-chromium base), no telemetry, uBlock Origin built in,
+  #              !bangs in the address bar handled on this machine (no search
+  #              engine sees the query first). First run asks whether to use
+  #              Helium's own services (its privacy proxy for extension
+  #              downloads and spellcheck): say yes, or extensions — Bitwarden
+  #              included — can't install. No DRM: Netflix & co. play in
+  #              Firefox or Chromium, which stay installed.
+  #   Mullvad Browser / Tor Browser: privacy module.
+  #
   # Passwords + bookmarks across browsers AND machines:
-  #   Bitwarden  — one end-to-end-encrypted vault in Firefox, Chromium and the
+  #   Bitwarden  — one end-to-end-encrypted vault in Helium, Firefox, Chromium and the
   #                desktop app; sign in once per browser. It's also where your
   #                browser-saved passwords go: `browser-sync passwords` pushes
   #                each browser's own password export into it (see sync.nix).
@@ -25,7 +36,7 @@ in
       };
     };
   };
-  programs.chromium = {                                     # policies only; the browser is below
+  programs.chromium = {    # policies only (/etc/chromium/policies) — Helium reads them too
     enable = true;
     extensions = [
       "nngceckbapebfimnlniiiahkandclblb"                    # Bitwarden
@@ -44,7 +55,7 @@ in
   my.packages = with pkgs; [
     libreoffice-fresh hunspell hunspellDicts.en_US
     onshape
-    chromium discord slack
+    helium chromium discord slack
     mpv ani-cli yt-dlp ffmpeg mpd mpc ncmpcpp pulsemixer pavucontrol playerctl mediainfo
     cider-2                                  # Apple Music desktop client
     newsboat abook calcurse sc-im

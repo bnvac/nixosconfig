@@ -249,7 +249,9 @@ let
       git pager, difftastic, direnv + nix-direnv, just, hyperfine, CMake/Ninja/
       clangd/gdb/valgrind, Meld, Zeal, Qalculate, sqlitebrowser); big apps only
       with settings.devExtras. Menu: "Code & engineering".
-    - Browsers: Bitwarden holds the passwords in Firefox and Chromium (sign in
+    - Browsers: Helium is the default (pkgs `helium`, an AppImage pinned in
+      pkgs/releases.json; update-mine moves it to new releases). Bitwarden holds
+      the passwords in Helium, Firefox and Chromium (sign in
       once per browser). `browser-sync` moves bookmarks between the machines
       with no live sync service: it exports them to an HTML file in ~/Sync (so
       Syncthing carries it over) and merges the other machine's file back in,

@@ -75,7 +75,7 @@ if ! g archive "$rev" | tar -x -C "$src.tmp"; then
   rm -rf "$src.tmp"; echo "nix2-prebuild: couldn't copy ${rev:0:7}"; exit 1
 fi
 # This machine's own files, which aren't in git.
-for f in settings.local.nix hardware-configuration.nix pkgs/pins.local.json; do
+for f in settings.local.nix hardware-configuration.nix pkgs/pins.local.json pkgs/releases.local.json; do
   [ -e "$dir/$f" ] && cp "$dir/$f" "$src.tmp/$f"
 done
 mv "$src.tmp" "$src"

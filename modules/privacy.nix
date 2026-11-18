@@ -153,6 +153,7 @@ in
     { label = "Proton VPN"; run = "protonvpn-app"; }
     { label = "VPN: what's connected"; run = "nmcli -f NAME,TYPE,DEVICE connection show --active"; mode = "term"; }
     { label = "Tor Browser"; run = "tor-browser"; }
+    { label = "Mullvad Browser (look like everyone else; no Tor)"; run = "mullvad-browser"; }
     { label = "Tor: route everything ON"; run = "tormode on"; mode = "term"; }
     { label = "Tor: stop routing"; run = "tormode off"; mode = "term"; }
     { label = "Tor: am I on Tor?"; run = "tormode status"; mode = "term"; }
@@ -161,6 +162,7 @@ in
 
   my.packages = with pkgs; [
     torrun tormode oniux torsocks tor-browser
+    mullvad-browser                         # Tor Browser's anti-fingerprinting, on your normal connection
     bitwarden-desktop bitwarden-cli nheko
     proton-vpn proton-vpn-cli seahorse      # seahorse: see/unlock the keyring
     protonmail-desktop protonmail-bridge-gui proton-pass proton-authenticator
