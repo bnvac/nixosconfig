@@ -46,6 +46,8 @@ let
       runs as a user service, data in ~/.local/share/backoffice). With the
       `sync` module its inventory hands off between the two machines as
       consistent snapshots (`backoffice-sync --status`); photos sync live.
+    - `claude-desktop` (ai module) — the Claude desktop app (Anthropic's .deb,
+      pinned in pkgs/releases.json, updated by update-mine).
     - `claude` / `freebuff` (ai module) — AI coding agents; each installs itself on
       first run into ~/.local or ~/.npm-global and keeps itself up to date.
       User-installed commands (~/.local/bin, ~/.npm-global/bin, ~/.cargo/bin,

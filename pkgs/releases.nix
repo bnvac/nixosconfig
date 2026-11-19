@@ -1,5 +1,6 @@
-# Apps that come as a released file on GitHub (an AppImage, say) rather than
-# built from a commit. Pure Nix, like tracked.nix, so update-mine reads it fast:
+# Apps that come as a released file (an AppImage, a .deb) rather than built
+# from a commit: a GitHub release (repo + asset), or a Debian-style apt
+# repository (index + package + url). Pure Nix, like tracked.nix, so update-mine reads it fast:
 #   nix-instantiate --eval --strict --json pkgs/releases.nix
 #
 #   releases.json        the version each one ships with — kept in git
@@ -21,10 +22,14 @@ let
         && builtins.compareVersions l.version b.version > 0;
       p = if useLocal then l else b;
     in {
-      inherit (b) repo asset;
       inherit (p) version sha256;
       baseVersion = b.version;
-      url = "https://github.com/${b.repo}/releases/download/${p.version}/${replace p.version b.asset}";
+      repo = b.repo or null;
+      index = b.index or null;
+      package = b.package or n;
+      url = if b ? url then replace p.version b.url
+            else "https://github.com/${b.repo}/releases/download/${p.version}/${replace p.version b.asset}";
+      urlTemplate = b.url or "https://github.com/${b.repo}/releases/download/{version}/${b.asset}";
     };
 in
 builtins.listToAttrs (map (n: { name = n; value = one n; }) (builtins.attrNames base))
