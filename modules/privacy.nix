@@ -5,6 +5,25 @@
 # The Tor daemon does NOT run at boot — `tormode on` starts it, `off` stops it.
 { pkgs, lib, ... }:
 let
+  # Proton Mail Bridge: the background service below serves your mail to
+  # Thunderbird; opening the Bridge app pauses it (only one Bridge can hold
+  # your mailbox at a time) and hands back to it when you quit the app.
+  bridgeGui = pkgs.symlinkJoin {
+    name = "protonmail-bridge-gui-nix2";
+    paths = [ pkgs.protonmail-bridge-gui ];
+    postBuild = ''
+      rm $out/bin/protonmail-bridge-gui
+      cat > $out/bin/protonmail-bridge-gui <<EOF
+      #!${pkgs.runtimeShell}
+      systemctl --user stop protonmail-bridge.service 2>/dev/null
+      ${pkgs.protonmail-bridge-gui}/bin/protonmail-bridge-gui "\$@"
+      rc=\$?
+      systemctl --user start protonmail-bridge.service 2>/dev/null
+      exit \$rc
+      EOF
+      chmod +x $out/bin/protonmail-bridge-gui
+    '';
+  };
   torrun = pkgs.writeShellScriptBin "torrun" ''
     [ "$#" -gt 0 ] || { echo "usage: torrun <command> [args…]   e.g. torrun firefox"; exit 2; }
     exec ${pkgs.oniux}/bin/oniux "$@"
@@ -133,10 +152,20 @@ in
 
   # ── Proton (VPN, Mail, Pass) ────────────────────────────────────────────
   # The official apps. Each signs in once and keeps the login in the system
-  # keyring. Proton Mail Bridge (paid plans) lets Thunderbird or any mail app
-  # read Proton mail; Proton Pass is the password manager. Their own "start
-  # at login" options work: the session runs XDG autostart entries
-  # (desktop.nix), which dwm alone doesn't.
+  # keyring. Proton Pass is the password manager. Their own "start at login"
+  # options work: the session runs XDG autostart entries (desktop.nix), which
+  # dwm alone doesn't.
+  #
+  # Proton Mail Bridge (paid plans) lets Thunderbird — or any mail app — read
+  # and send Proton mail. Once: menu → Proton → "Mail Bridge: sign in /
+  # settings", sign in, then "Configure email client" shows the address and
+  # password to give Thunderbird (IMAP 127.0.0.1:1143, SMTP 127.0.0.1:1025,
+  # STARTTLS). Quit the app (its menu → Quit Bridge): from then on Bridge runs
+  # in the background from every login, no window needed (dwm has no tray).
+  # Leave Bridge's own "Open on startup" off — the service does that job.
+  services.protonmail-bridge.enable = true;
+  # Only once it has been set up (it makes this folder on first run).
+  systemd.user.services.protonmail-bridge.unitConfig.ConditionPathExists = "%h/.config/protonmail/bridge-v3";
   my.menu."Proton" = [
     { label = "Proton VPN"; run = "protonvpn-app"; }
     { label = "VPN: connect to the fastest server"; run = "protonvpn connect"; mode = "term"; }
@@ -144,7 +173,9 @@ in
     { label = "VPN: status"; run = "protonvpn status"; mode = "term"; }
     { label = "VPN: sign in (terminal, first time)"; run = "protonvpn signin"; mode = "tty"; }
     { label = "Proton Mail"; run = "proton-mail"; }
-    { label = "Proton Mail Bridge (Thunderbird and other mail apps)"; run = "protonmail-bridge-gui"; }
+    { label = "Mail Bridge: sign in / settings (mail in Thunderbird)"; run = "protonmail-bridge-gui"; }
+    { label = "Mail Bridge: is it running?"; run = "systemctl --user status protonmail-bridge --no-pager -n 5"; mode = "term"; }
+    { label = "Thunderbird (mail)"; run = "thunderbird"; }
     { label = "Proton Pass (passwords)"; run = "proton-pass"; }
     { label = "Proton Authenticator (2FA codes)"; run = "proton-authenticator"; needs = "proton-authenticator"; }
   ];
@@ -165,7 +196,8 @@ in
     mullvad-browser                         # Tor Browser's anti-fingerprinting, on your normal connection
     bitwarden-desktop bitwarden-cli nheko
     proton-vpn proton-vpn-cli seahorse      # seahorse: see/unlock the keyring
-    protonmail-desktop protonmail-bridge-gui proton-pass proton-authenticator
+    protonmail-desktop bridgeGui proton-pass proton-authenticator
+    thunderbird                             # reads Proton mail through Bridge
   ];
   networking.wireguard.enable = true;
 }
