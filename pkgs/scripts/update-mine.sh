@@ -5,6 +5,10 @@
 #   update-mine --switch   …and if anything changed, nixos-rebuild switch (daily timer)
 #   update-mine --status   show what's pinned vs. what's upstream; change nothing
 #
+# Apps released as a file instead (pkgs/releases.json: the Claude desktop
+# app) move to each new release the same way: checksum, test-build,
+# or hold back.
+#
 # What it tracks comes from pkgs/tracked.nix: the built-ins (neb, backoffice,
 # intraweb, slowtyper — pkgs/pins.json) plus every repo in settings.gitApps, from GitHub
 # or any git server, on a branch if you set one. New pins go to
@@ -147,6 +151,65 @@ for n in $(jq -r 'keys[]' <<<"$tracked"); do
   echo "  $n: updated to ${latest:0:7}"
   changed+=("$n")
 done
+
+# ── Apps released as a file (pkgs/releases.json — the Claude desktop app) ───
+# Newest version: a GitHub release tag (git ls-remote again: no API, no token)
+# or an apt repository's index → its checksum → test-build. A release that
+# doesn't download or build is held back.
+rlocalf="$dir/pkgs/releases.local.json"
+if [ -r "$dir/pkgs/releases.nix" ] && releases=$(nix-instantiate --eval --strict --json "$dir/pkgs/releases.nix" 2>/dev/null); then
+  rlocal='{}'
+  if [ -s "$rlocalf" ] && jq -e 'type == "object"' "$rlocalf" >/dev/null 2>&1; then rlocal=$(cat "$rlocalf"); fi
+  saverlocal() {
+    local tmp
+    tmp=$(mktemp "$dir/pkgs/.pins.XXXXXX")
+    printf '%s\n' "$rlocal" >"$tmp"; chmod 644 "$tmp"; mv "$tmp" "$rlocalf"
+  }
+  for n in $(jq -r 'keys[]' <<<"$releases"); do
+    r=$(jq -c --arg n "$n" '.[$n]' <<<"$releases")
+    repo=$(jq -r '.repo // empty' <<<"$r"); index=$(jq -r '.index // empty' <<<"$r")
+    pkg=$(jq -r .package <<<"$r"); have=$(jq -r .version <<<"$r")
+    latest=""; sha=""
+    if [ -n "$index" ]; then
+      # An apt repository: its index lists every version with its SHA256.
+      line=$(curl -fsSL --max-time 60 "$index" 2>/dev/null | awk -v p="$pkg" '
+        /^Package:/ { cur = $2 } /^Version:/ { v = $2 }
+        /^SHA256:/ && cur == p { print v, $2 }' | sort -V | tail -n 1)
+      latest=${line%% *}; sha=${line#* }
+      where=$index
+    else
+      latest=$(git ls-remote --tags --refs "https://github.com/$repo" 2>/dev/null \
+        | sed 's|.*refs/tags/||' | grep -E '^[0-9]+(\.[0-9]+)+$' | sort -V | tail -n 1)
+      where="github.com/$repo"
+    fi
+    if [ -z "$latest" ]; then echo "  $n: couldn't reach $where — keeping $have"; continue; fi
+    if [ "$(printf '%s\n%s\n' "$have" "$latest" | sort -V | tail -n 1)" = "$have" ]; then
+      echo "  $n: up to date ($have)"; continue
+    fi
+    if [ "$mode" = --status ]; then echo "  $n: $have → $latest available"; continue; fi
+
+    echo "  $n: $have → $latest …"
+    template=$(jq -r .urlTemplate <<<"$r")
+    url=${template//\{version\}/$latest}
+    # The apt index already gave the checksum; for a GitHub release, Nix
+    # downloads it once to work it out (the test build below reuses that).
+    if [ -z "$sha" ] && { ! sha=$(nix-prefetch-url --type sha256 "$url" 2>/dev/null) || [ -z "$sha" ]; }; then
+      echo "  $n: kept $have — couldn't download $latest"; failed+=("$n"); continue
+    fi
+    prev=$(jq -c --arg n "$n" '.[$n] // null' <<<"$rlocal")
+    rlocal=$(jq --arg n "$n" --arg v "$latest" --arg s "$sha" --arg b "$(jq -r .baseVersion <<<"$r")" \
+      '.[$n] = {version: $v, sha256: $s, base: $b}' <<<"$rlocal"); saverlocal
+    if ! log=$(nixbuild "$n" 2>&1); then
+      tail -n 15 <<<"$log"
+      if [ "$prev" = null ]; then rlocal=$(jq --arg n "$n" 'del(.[$n])' <<<"$rlocal")
+      else rlocal=$(jq --arg n "$n" --argjson e "$prev" '.[$n] = $e' <<<"$rlocal"); fi
+      saverlocal
+      echo "  $n: kept $have — $latest doesn't build (log above)"; failed+=("$n"); continue
+    fi
+    echo "  $n: updated to $latest"
+    changed+=("$n")
+  done
+fi
 
 [ "$mode" = --status ] && exit 0
 if [ ${#changed[@]} -eq 0 ]; then

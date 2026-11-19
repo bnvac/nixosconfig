@@ -1,7 +1,17 @@
-# AI coding agents in the terminal. (Neb, the voice assistant, is the
-# `assistant` module.) Both install themselves the first time you run them and
-# then keep themselves up to date — no `nixup` needed for a new version, and
-# nothing is downloaded until you use one.
+# Claude and AI coding agents. (Neb, the voice assistant, is the `assistant`
+# module.)
+#
+#   Claude (app)  Anthropic's desktop app for Linux (beta): Chat, Cowork and
+#              Claude Code in a window. App menu → Claude, or the nix² menu →
+#              Code & engineering. Packaged from Anthropic's own .deb
+#              (pkgs/default.nix `claude-desktop`); update-mine moves it to
+#              each new version. Claude Code inside it needs a paid plan.
+#              Cowork runs tasks in a small VM: it uses /dev/kvm (you're in
+#              the kvm group) and QEMU, both provided.
+#
+# The two terminal agents below install themselves the first time you run
+# them and then keep themselves up to date — no `nixup` needed for a new
+# version, and nothing is downloaded until you use one.
 #
 #   claude     Claude Code. The first run installs Anthropic's own build into
 #              ~/.local (the same as their installer); it updates itself in the
@@ -20,6 +30,7 @@
 # open it in.
 { pkgs, ... }:
 let
+  s = import ../settings.nix;
   claude = pkgs.writeShellScriptBin "claude" ''
     native="$HOME/.local/bin/claude"
     if [ -x "$native" ]; then exec "$native" "$@"; fi
@@ -75,10 +86,12 @@ let
   };
 in
 {
-  my.packages = [ claude freebuff agentHere pkgs.nodejs ];
+  my.packages = [ pkgs.claude-desktop claude freebuff agentHere pkgs.nodejs ];
+  users.users.${s.username}.extraGroups = [ "kvm" ];    # Cowork's VM
 
   my.menu."Code & engineering" = [
-    { label = "Claude Code (pick a project)"; run = "agent-here claude"; }
+    { label = "Claude (desktop app: Chat, Cowork, Code)"; run = "claude-desktop"; }
+    { label = "Claude Code in a terminal (pick a project)"; run = "agent-here claude"; }
     { label = "Freebuff — free coding agent (pick a project)"; run = "agent-here freebuff"; }
   ];
 }

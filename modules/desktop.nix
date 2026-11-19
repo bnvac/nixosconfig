@@ -187,6 +187,13 @@ in
         ${pkgs.blueman}/bin/blueman-applet &
         ${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1 &   # password prompts (drives, etc.)
         ${pkgs.mpd}/bin/mpd &
+        # Brave is the default browser: say so once in your own defaults (a
+        # browser may have claimed links there before). Change it later and it
+        # stays changed.
+        if [ "$(cat "$HOME/.local/state/nix2/default-browser" 2>/dev/null)" != brave ]; then
+          ${pkgs.xdg-utils}/bin/xdg-mime default brave-browser.desktop x-scheme-handler/http x-scheme-handler/https text/html application/xhtml+xml 2>/dev/null \
+            && mkdir -p "$HOME/.local/state/nix2" && echo brave > "$HOME/.local/state/nix2/default-browser"
+        fi
         # Screens: the layout you kept for this set of monitors (nix2 displays).
         ${pkgs.autorandr}/bin/autorandr --change >/dev/null 2>&1 || true
         bg="$HOME/.local/share/bg"
@@ -284,10 +291,19 @@ in
   services.udisks2.enable = true;
   services.gvfs.enable = true;               # Thunar's drive sidebar, trash, phones (MTP/iPhone)
   services.tumbler.enable = true;            # thumbnails
-  xdg.mime.defaultApplications."inode/directory" = "thunar.desktop";   # "open folder" → Thunar
+  # "Open folder" → Thunar; links and web pages → Brave (apps.nix). Your own
+  # ~/.config/mimeapps.list still wins if you set something else there.
+  xdg.mime.defaultApplications = {
+    "inode/directory" = "thunar.desktop";
+  } // lib.genAttrs [
+    "x-scheme-handler/http" "x-scheme-handler/https" "text/html" "application/xhtml+xml"
+  ] (_: "brave-browser.desktop");
 
+  # Session-wide (PAM + systemd), not just shells: an app started at login or
+  # by a service still knows which browser opens links.
+  environment.sessionVariables.BROWSER = "brave";
   environment.variables = {
-    TERMINAL = "st"; BROWSER = "firefox"; READER = "zathura"; FILE = "lfub";
+    TERMINAL = "st"; READER = "zathura"; FILE = "lfub";
     SUDO_ASKPASS = "${pkgs.larbs-scripts}/bin/dmenupass";
   };
 

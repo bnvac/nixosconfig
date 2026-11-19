@@ -1,0 +1,10 @@
+{
+  "claude-desktop": {
+    "about": "Anthropic's official Linux build (beta), from their apt repository",
+    "index": "https://downloads.claude.ai/claude-desktop/apt/stable/dists/stable/main/binary-amd64/Packages",
+    "package": "claude-desktop",
+    "url": "https://downloads.claude.ai/claude-desktop/apt/stable/pool/main/c/claude-desktop/claude-desktop_{version}_amd64.deb",
+    "version": "5.11492.5",
+    "sha256": "b96208b207e450b740f7dbe304f6077fed80e7f3d37ddd545991c4e8201564cf"
+  }
+}

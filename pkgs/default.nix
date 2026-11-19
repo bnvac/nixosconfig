@@ -49,7 +49,7 @@ in
     nativeBuildInputs = [ prev.pkg-config ];
     buildInputs = with prev; [ libx11 libxinerama libxft libxcb fontconfig freetype ];
     postPatch = ''
-      substituteInPlace config.h --replace-fail '#define BROWSER "librewolf"' '#define BROWSER "firefox"'
+      substituteInPlace config.h --replace-fail '#define BROWSER "librewolf"' '#define BROWSER "brave"'
       substituteInPlace config.h --replace-fail "/usr/local/share/dwm/larbs.mom" "$out/share/dwm/larbs.mom"
       substituteInPlace config.h \
         --replace-fail '{ "xbacklight", "-inc", "15", NULL }' '{ "brightnessctl", "set", "10%+", NULL }' \
@@ -74,12 +74,14 @@ in
         --replace-fail $'\tif (!wintoclient(ev->window))\n\t\tmanage(ev->window, &wa);' $'\tif ((bg = isbackground(ev->window))) {\n\t\tif (bg == 1)\n\t\t\tXMoveResizeWindow(dpy, ev->window, 0, 0, sw, sh);\n\t\tXMapWindow(dpy, ev->window);\n\t\tXLowerWindow(dpy, ev->window);\n\t\treturn;\n\t}\n\tif (!wintoclient(ev->window))\n\t\tmanage(ev->window, &wa);' \
         --replace-fail '|| wa.override_redirect || XGetTransientForHint(dpy, wins[i], &d1))' '|| wa.override_redirect || XGetTransientForHint(dpy, wins[i], &d1) || isbackground(wins[i]))'
       # Neb's own workspace: his terminal (st -n neb) always lives on tag 9.
-      # Steam's notification toasts and friends list float instead of being
-      # squeezed into the tiling layout (dwm matches titles by substring).
+      # Steam's notification toasts and friends list, and Proton Mail Bridge
+      # (its sign-in link was cut off in a tile), float at their own size
+      # instead of being squeezed into the tiling layout (titles: substring).
       substituteInPlace config.h --replace-fail 'static const Rule rules[] = {' 'static const Rule rules[] = {
         { TERMCLASS, "neb", NULL, 1 << 8, 0, 1, 0, -1 },
         { "steam", NULL, "notificationtoasts", 0, 1, 0, 0, -1 },
-        { "steam", NULL, "Friends List", 0, 1, 0, 0, -1 },'
+        { "steam", NULL, "Friends List", 0, 1, 0, 0, -1 },
+        { NULL, NULL, "Proton Mail Bridge", 0, 1, 0, 0, -1 },'
       # Colours, gaps and border reload by themselves whenever the X
       # resources change (`rice` runs xrdb; stock dwm waits for Super+F5), and
       # windows that are already open get the new border colour and width too.
@@ -277,7 +279,7 @@ in
   # ── small tools (sources in pkgs/scripts/, shellchecked at build) ─────────
   rebuild         = sh "rebuild" (with final; [ nix-output-monitor git jq util-linux gawk gnugrep gnused coreutils ]) ./scripts/rebuild.sh;
   audio           = sh "audio" (with final; [ larbs-dmenu pulseaudio jq libnotify procps gawk gnugrep gnused coreutils util-linux pavucontrol ]) ./scripts/audio.sh;
-  update-mine     = sh "update-mine" (with final; [ git jq coreutils util-linux gnugrep gawk ]) ./scripts/update-mine.sh;
+  update-mine     = sh "update-mine" (with final; [ git jq curl coreutils util-linux gnugrep gnused gawk ]) ./scripts/update-mine.sh;
   apps-menu       = sh "apps" (with final; [ larbs-dmenu gawk coreutils gnused libnotify util-linux ]) ./scripts/apps.sh;
   snow            = sh "snow" (with final; [ xsnow procps util-linux ]) ./scripts/snow.sh;
   neb-space       = sh "neb-space" (with final; [ xdotool util-linux ]) ./scripts/neb-space.sh;
@@ -428,6 +430,53 @@ in
   };
   nixmenu         = final.nix2;
   printer-notify  = final.nix2;
+
+  # Claude (desktop app: Chat, Cowork and Claude Code) — Anthropic's official
+  # Linux build, a .deb from their apt repository (releases.json pins it;
+  # update-mine follows the repository). It runs in a Debian-style view of the
+  # system (buildFHSEnv) because it looks for its helpers at Debian's paths:
+  # QEMU, the OVMF firmware and virtiofsd for Cowork's sandbox VM (which uses
+  # /dev/kvm), bubblewrap/socat/ssh for Claude Code.
+  claude-desktop = let
+    r = (import ./releases.nix).claude-desktop;
+    unpacked = prev.stdenvNoCC.mkDerivation {
+      pname = "claude-desktop-unpacked";
+      inherit (r) version;
+      src = prev.fetchurl { inherit (r) url sha256; };
+      nativeBuildInputs = [ prev.dpkg ];
+      # Not chrome-sandbox: a setuid helper can't live in the Nix store; Electron
+      # sandboxes with user namespaces instead (as Brave and Chromium do here).
+      unpackPhase = "dpkg-deb --fsys-tarfile $src | tar -x --no-same-owner --exclude=./usr/lib/claude-desktop/chrome-sandbox";
+      installPhase = "mkdir -p $out && cp -a usr/. $out/";
+      dontFixup = true;                  # prebuilt: the FHS view supplies its libraries
+    };
+  in prev.buildFHSEnv {
+    pname = "claude-desktop";
+    inherit (r) version;
+    targetPkgs = p: with p; [
+      # Electron's own needs
+      gtk3 glib nss nspr dbus at-spi2-atk at-spi2-core cups expat pango cairo
+      alsa-lib libpulseaudio pipewire libnotify libsecret libuuid systemd
+      libdrm libgbm mesa libGL vulkan-loader libxkbcommon wayland
+      libx11 libxcb libxcomposite libxdamage libxext libxfixes libxrandr
+      libxshmfence libxtst libxscrnsaver libxkbfile
+      libayatana-appindicator xdg-utils trash-cli
+      # Claude Code and Cowork
+      bubblewrap socat openssh git qemu_kvm virtiofsd
+    ];
+    runScript = "${unpacked}/lib/claude-desktop/claude-desktop";
+    # The firmware where a Debian system keeps it.
+    extraBuildCommands = ''
+      mkdir -p $out/usr/share/OVMF
+      for f in OVMF_CODE.fd OVMF_CODE_4M.fd; do ln -sf ${prev.OVMF.fd}/FV/OVMF_CODE.fd $out/usr/share/OVMF/$f; done
+      for f in OVMF_VARS.fd OVMF_VARS_4M.fd; do ln -sf ${prev.OVMF.fd}/FV/OVMF_VARS.fd $out/usr/share/OVMF/$f; done
+    '';
+    extraInstallCommands = ''
+      install -Dm444 ${unpacked}/share/applications/com.anthropic.Claude.desktop -t $out/share/applications
+      cp -r ${unpacked}/share/icons $out/share/
+    '';
+    meta = { description = "Claude desktop app (Chat, Cowork, Claude Code)"; mainProgram = "claude-desktop"; };
+  };
 
   # Apps from any git repo, listed in settings.gitApps (see pkgs/gitapps.nix).
   gitApps = import ./gitapps.nix { inherit final prev tracked fetchPinned; };

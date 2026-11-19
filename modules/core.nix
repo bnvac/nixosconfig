@@ -46,6 +46,8 @@ let
       runs as a user service, data in ~/.local/share/backoffice). With the
       `sync` module its inventory hands off between the two machines as
       consistent snapshots (`backoffice-sync --status`); photos sync live.
+    - `claude-desktop` (ai module) — the Claude desktop app (Anthropic's .deb,
+      pinned in pkgs/releases.json, updated by update-mine).
     - `claude` / `freebuff` (ai module) — AI coding agents; each installs itself on
       first run into ~/.local or ~/.npm-global and keeps itself up to date.
       User-installed commands (~/.local/bin, ~/.npm-global/bin, ~/.cargo/bin,
@@ -106,7 +108,8 @@ let
       into ~/DeviceLink. `devlink send FILE|-t TEXT|-c` from the shell.
       `devlink screen` shares this whole screen over VNC (peer-restricted,
       per-session password); the other machine runs `devlink view`.
-      `devlink tabs` sends the open Firefox window's tabs; they reopen on the
+      `devlink tabs` sends the open Firefox window's tabs (Firefox only — not
+      installed by default now); they reopen in the default browser on the
       other machine by themselves. The window previews and opens tray files.
       Linking also shares ~/Sync (which carries the bookmark exports), Neb's
       shared notes and backoffice.
@@ -249,12 +252,16 @@ let
       git pager, difftastic, direnv + nix-direnv, just, hyperfine, CMake/Ninja/
       clangd/gdb/valgrind, Meld, Zeal, Qalculate, sqlitebrowser); big apps only
       with settings.devExtras. Menu: "Code & engineering".
-    - Browsers: Bitwarden holds the passwords in Firefox and Chromium (sign in
+    - Browsers: Brave is the default (BROWSER, links, Super+w), with its extras
+      (wallet, Rewards, VPN, AI chat, News…) off by policy in
+      /etc/brave/policies; Chromium is the plain second browser. Proton Pass
+      holds the passwords, installed in Brave (sign in
       once per browser). `browser-sync` moves bookmarks between the machines
       with no live sync service: it exports them to an HTML file in ~/Sync (so
       Syncthing carries it over) and merges the other machine's file back in,
       at login and on demand. `browser-sync passwords` pushes each browser's
-      own password export into Bitwarden (which is what syncs them) and shreds
+      own password export into Proton Pass (with pass-cli, or by walking you
+      through the Pass app's import; Pass is what syncs them) and shreds
       the file; it never reads a browser's encrypted password store itself.
     - Files & drives (`desktop` module): Thunar is the GUI file manager
       (Super+Alt+e); `lf` stays the terminal one. Nothing mounts on its own —
@@ -463,7 +470,7 @@ in
   nixpkgs.config.allowUnfree = true;
   # Allow-list only; harmless when the package isn't installed. Kept here in one
   # place because nixpkgs.config doesn't reliably union this list across modules.
-  #   pypdf2 → SpiderFoot (osint)   electron/olm → Bitwarden & nheko (privacy)
+  #   pypdf2 → SpiderFoot (osint)   electron/olm → Electron apps & nheko (privacy)
   nixpkgs.config.permittedInsecurePackages = [
     "python3.13-pypdf2-3.0.1" "electron-39.8.10" "olm-3.2.16"
   ];

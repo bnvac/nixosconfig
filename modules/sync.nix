@@ -72,7 +72,7 @@ in
     wantedBy = [ "graphical-session.target" ];
     partOf = [ "graphical-session.target" ];
     after = [ "syncthing.service" "graphical-session.target" ];
-    path = [ pkgs.libnotify "/run/current-system/sw" ];          # notify-send, firefox, xdg-open
+    path = [ pkgs.libnotify "/run/current-system/sw" ];          # notify-send, the browser, xdg-open
     environment.DEVLINK_FOLDERS = devlinkFolders;
     serviceConfig = { ExecStart = "${pkgs.devlink}/bin/devlink auto"; Restart = "on-failure"; RestartSec = 5; };
   };
@@ -87,7 +87,7 @@ in
   # Bookmarks: no live sync service. At login (before the browsers start)
   # `browser-sync` writes this machine's bookmarks to ~/Sync/browser and merges
   # in whatever the other machine last exported there. Run it by hand too, or
-  # from nixmenu. Passwords are NOT bookmarks — those stay in Bitwarden;
+  # from nixmenu. Passwords are NOT bookmarks — those stay in Proton Pass;
   # `browser-sync passwords` just feeds each browser's own export into it.
   systemd.user.services.browser-sync = {
     description = "Sync browser bookmarks via an export in ~/Sync";
@@ -99,11 +99,10 @@ in
 
   my.menu."Sync & devices" = [
     { label = "DeviceLink (send files)"; run = "devlink-window"; }
-    { label = "Send my browser tabs to the other machine"; run = "devlink tabs"; }
     { label = "Share my screen (VNC)"; run = "devlink screen"; mode = "term"; }
     { label = "View other screen (VNC)"; run = "devlink view"; }
     { label = "Sync bookmarks"; run = "browser-sync"; mode = "term"; }
-    { label = "Browser passwords → Bitwarden"; run = "browser-sync passwords"; mode = "term"; }
+    { label = "Browser passwords → Proton Pass"; run = "browser-sync passwords"; mode = "term"; }
   ];
   my.selfhosted = { "DeviceLink" = "http://127.0.0.1:7010"; "Syncthing" = "http://127.0.0.1:8384"; };
 

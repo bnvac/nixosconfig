@@ -34,7 +34,7 @@ mod on virt       # switch a module on (it rebuilds for you)
   tells you the fix; a weekly check only speaks up when something's wrong.
   Updates are pre-built in the background, and `nix2 rollback` undoes one.
 - **Private by default** — firewall on, SSH off, Tor one command away
-  (`tormode on`), Proton VPN, Bitwarden, encrypted disk from the installer.
+  (`tormode on`), Proton VPN and Proton Pass, encrypted disk from the installer.
 - **Games** — Steam with Proton for every game, controllers, and a game mode
   that pauses notifications and the live wallpaper while you play.
 
@@ -97,9 +97,9 @@ On by default unless it says otherwise. `mod on <name>` / `mod off <name>`.
 | desktop | dwm/st/dmenu/dwmblocks (based on LARBS), picom, snowy live wallpaper, lock screen, Thunar + drives, apps menu, Bluetooth, clipboard history, night light |
 | devtools | coding toolkit: lazygit, gh/glab/tea, delta, difftastic, direnv, just, hyperfine, CMake/Ninja/clangd/gdb/valgrind, Meld, Zeal, Qalculate; sccache/ccache + mold for fast builds; `nix2 new`; shared builds. `devExtras = true` adds VSCodium, Helix, Ghidra, Octave, OBS |
 | ee | hardware & electronics: KiCad, ngspice, PulseView/sigrok, PlatformIO, Arduino IDE, picotool, esptool/espflash, probe-rs, OpenOCD, ST-Link, dfu-util, Thonny/mpremote, QMK + Vial, FreeCAD, OpenSCAD, OrcaSlicer — and the device permissions for all of it |
-| apps | LibreOffice, browsers (+ Bitwarden), Discord/Slack, media, Calibre, torrents + Stremio, Onshape |
+| apps | LibreOffice, browsers — **Brave** is the default (ad/tracker blocking built in, !bangs via Brave Search; wallet, Rewards, VPN, AI chat and News switched off; Proton Pass pre-installed) and plain Chromium — Discord/Slack, media, Calibre, torrents + Stremio, Onshape |
 | gaming | native Steam with Steam Play for every game, Proton-GE, NTSYNC, gamescope/gamemode, Xbox controllers, Prism Launcher. If Steam crashes while starting it fixes the usual cause and tries again by itself (`steam-fix` does it by hand) |
-| privacy | Tor (Tor Browser, per-app, system-wide — off until you turn it on), Proton (VPN, Mail, Mail Bridge, Pass, Authenticator — their own menu section), I2P, Bitwarden, nheko |
+| privacy | Tor (Tor Browser, per-app, system-wide — off until you turn it on), Proton (VPN, Mail, Pass, Authenticator, and Mail Bridge running in the background so Thunderbird gets your Proton mail — their own menu section), I2P, nheko |
 | platform | Docker, Flatpak/Flathub, AppImage, Distrobox, and apps built from any git repo (`gitApps`) |
 | paper | printers and scanners: most work with no driver (network or USB), plus HP/Brother/Canon/Epson/Samsung/Gutenprint drivers for older ones. Menu → Printers & scanners |
 | printing | 3D printers: mDNS + printrun for Klipper printers on the network; a notification when a print ends |
@@ -107,7 +107,7 @@ On by default unless it says otherwise. `mod on <name>` / `mod off <name>`.
 | power | laptop battery/thermal tuning (TLP); does nearly nothing on a desktop. `batteryLimit = 80;` stops charging at 80% (longer battery life), `fingerprint = true;` turns on the fingerprint reader for login and sudo |
 | virt | QEMU/KVM + virt-manager — **off by default** |
 | sync | your machines (two or more): Syncthing, DeviceLink (send files, tabs, screen), bookmarks. Link with `devlink pin <code>`, or list them in `syncDevices` — **off by default** |
-| ai | AI coding agents: Claude Code and Freebuff (free, ad-supported). Each installs itself the first time you run it and keeps itself up to date; menu → Code & engineering opens one in a project |
+| ai | Claude: the official desktop app (Chat, Cowork, Claude Code; Linux beta, kept on its newest version by `update-mine`) and the terminal agents Claude Code and Freebuff (free, ad-supported), which install themselves the first time you run them and keep themselves up to date; menu → Code & engineering opens one in a project |
 | assistant | Neb, a local voice assistant, + Ollama / Open-WebUI on your GPU — **off by default** |
 | backoffice | a parts-inventory web app — **off by default** |
 | intraweb | a local-first neighborhood web on your LAN (no server, no internet) — **off by default** |
@@ -122,7 +122,7 @@ On by default unless it says otherwise. `mod on <name>` / `mod off <name>`.
 | `modtui` | TUI: onboarding, modules, settings, AI model (with download bar), update |
 | `nix2-setup` | this machine's settings (you, hostname, timezone, laptop/desktop, graphics) → `settings.local.nix`; `nix2-setup set KEY VALUE` changes one |
 | `rebuild` (`nrs`) | apply your config + update your own git apps (seconds when nothing is new), live progress bar. `--upgrade` also moves to the newest NixOS packages — normally pre-built for you weekly in the background; `--no-update` just applies config |
-| `update-mine` | move your git-built apps (neb, backoffice, intraweb, slowtyper + `gitApps`) to their latest commit, only if it builds; runs daily too. `--status` to just look |
+| `update-mine` | move your git-built apps (neb, backoffice, intraweb, slowtyper + `gitApps`) to their latest commit, and the Claude desktop app to its newest release, only if it builds; runs daily too. `--status` to just look |
 | `debloat` | what's using space, and clean it; `debloat junk` finds old build folders (target/, node_modules/…) in projects you haven't touched for a month; `debloat remove <app>` drops an app from every module, or uninstalls a Flatpak by id (`org.gimp.GIMP`) and trims runtimes nothing else uses |
 | `nixup` | update /etc/nixos from git + rebuild (`autoUpdate = true` does it weekly). Every 6 hours (on mains power, at idle priority) the update is fetched and built in the background (`nix2-prebuild`), so `nixup` usually just switches. Your own edits there are kept: committed locally first and put back on top of the update; if one clashes, nothing changes and it names the file. `nix2-pull --mine` lists them |
 | `nix2 doctor` | system check: failed services, disk, memory, clock, network, screenshots, audio, Vulkan/Steam libraries, updates, backups, battery health, temperature — each problem with its fix. Menu: System → System check; runs weekly and notifies only if something's wrong |
@@ -156,7 +156,7 @@ On by default unless it says otherwise. `mod on <name>` / `mod off <name>`.
 | `devlink …` | `pin` to pair, `send`, `tabs` (your browser tabs → the other machine), `screen` / `view` |
 | `backoffice-sync` | inventory hand-off between machines (`--status`) |
 | `browser-sync` | export bookmarks to ~/Sync + merge the other machine's back (runs at login too) |
-| `browser-sync passwords` | push each browser's own password export into Bitwarden |
+| `browser-sync passwords` | add each browser's own password export to Proton Pass |
 | `torrun <app>` / `tormode on\|off\|status` | one app / everything through Tor (`status` proves it via check.torproject.org) |
 | `protonvpn-app` / `protonvpn` | Proton VPN (app / CLI) |
 | `backoffice` | parts-inventory web app on :8080 |
@@ -190,14 +190,15 @@ On by default unless it says otherwise. `mod on <name>` / `mod off <name>`.
   back to the CPU), CUDA on NVIDIA; laptops use an API key. Default model
   `qwen3.5:9b` with thinking off; `modtui` → AI model to pick another. He can act
   on the desktop through `desk`; typing, keys and closing windows ask first.
-- **Passwords/bookmarks**: Bitwarden is pre-installed in Firefox and Chromium —
-  sign in once per browser; it's the password vault and syncs itself. Bookmarks
+- **Passwords/bookmarks**: Proton Pass is pre-installed in Brave (and as an
+  app) — sign in once; it's the password vault
+  and syncs itself. Bookmarks
   move with `browser-sync`: no live sync service, it just exports them to an
   HTML file in `~/Sync` (Syncthing carries it over) and merges the other
   machine's file back, at login and whenever you run it. To pull in your
   browser-saved passwords, export them from each browser's own Passwords screen
-  and run `browser-sync passwords` — it imports the CSV into Bitwarden and
-  shreds it. It never touches a browser's encrypted password store itself, and
+  and run `browser-sync passwords` — it adds them to Proton Pass (with
+  `pass-cli`, or walks you through the Pass app's import) and shreds the CSV. It never touches a browser's encrypted password store itself, and
   no password ever lands in the Sync folder.
 - **Neighborhood (intraweb)**: joins the LAN's neighborhood web at login — a
   dashboard on `:8420`, with pages, files, signed mail and channels, no server
