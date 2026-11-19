@@ -175,6 +175,9 @@ in
     { label = "Proton Mail"; run = "proton-mail"; }
     { label = "Mail Bridge: sign in / settings (mail in Thunderbird)"; run = "protonmail-bridge-gui"; }
     { label = "Mail Bridge: is it running?"; run = "systemctl --user status protonmail-bridge --no-pager -n 5"; mode = "term"; }
+    # The same sign-in as text: the verification link is printed whole, to
+    # select (= copied) and paste in the browser. Type login, then info.
+    { label = "Mail Bridge: sign in from a terminal (if a link won't open)"; run = "systemctl --user stop protonmail-bridge 2>/dev/null; pkill -f bridge-gui; echo 'Type: login   (then: info for the Thunderbird password, exit when done)'; protonmail-bridge --cli; systemctl --user start protonmail-bridge"; mode = "tty"; }
     { label = "Thunderbird (mail)"; run = "thunderbird"; }
     { label = "Proton Pass (passwords)"; run = "proton-pass"; }
     { label = "Proton Authenticator (2FA codes)"; run = "proton-authenticator"; needs = "proton-authenticator"; }

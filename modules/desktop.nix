@@ -299,8 +299,11 @@ in
     "x-scheme-handler/http" "x-scheme-handler/https" "text/html" "application/xhtml+xml"
   ] (_: "helium.desktop");
 
+  # Session-wide (PAM + systemd), not just shells: an app started at login or
+  # by a service still knows which browser opens links.
+  environment.sessionVariables.BROWSER = "helium";
   environment.variables = {
-    TERMINAL = "st"; BROWSER = "helium"; READER = "zathura"; FILE = "lfub";
+    TERMINAL = "st"; READER = "zathura"; FILE = "lfub";
     SUDO_ASKPASS = "${pkgs.larbs-scripts}/bin/dmenupass";
   };
 
