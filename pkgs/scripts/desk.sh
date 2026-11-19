@@ -65,11 +65,11 @@ case "$cmd" in
   web)
     url=${1:-}; [ -n "$url" ] || { echo "which site?"; exit 2; }
     case "$url" in http://*|https://*) ;; *) url="https://$url" ;; esac
-    neb_space; run_bg "${BROWSER:-helium}" --new-window "$url"; echo "opened $url" ;;
+    neb_space; run_bg "${BROWSER:-brave}" --new-window "$url"; echo "opened $url" ;;
   search)
     [ "$#" -gt 0 ] || { echo "search for what?"; exit 2; }
     q=$(printf '%s' "$*" | jq -sRr @uri)
-    neb_space; run_bg "${BROWSER:-helium}" --new-window "https://duckduckgo.com/?q=$q"; echo "searched for: $*" ;;
+    neb_space; run_bg "${BROWSER:-brave}" --new-window "https://duckduckgo.com/?q=$q"; echo "searched for: $*" ;;
   workspace)
     neb_space; echo "switched to my workspace (tag $NEB_TAG)" ;;
   windows)

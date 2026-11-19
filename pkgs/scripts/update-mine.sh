@@ -5,8 +5,8 @@
 #   update-mine --switch   …and if anything changed, nixos-rebuild switch (daily timer)
 #   update-mine --status   show what's pinned vs. what's upstream; change nothing
 #
-# Apps released as a file instead (pkgs/releases.json: Helium, the Claude
-# desktop app) move to each new release the same way: checksum, test-build,
+# Apps released as a file instead (pkgs/releases.json: the Claude desktop
+# app) move to each new release the same way: checksum, test-build,
 # or hold back.
 #
 # What it tracks comes from pkgs/tracked.nix: the built-ins (neb, backoffice,
@@ -152,7 +152,7 @@ for n in $(jq -r 'keys[]' <<<"$tracked"); do
   changed+=("$n")
 done
 
-# ── Apps released as a file (pkgs/releases.json — Helium, Claude desktop) ───
+# ── Apps released as a file (pkgs/releases.json — the Claude desktop app) ───
 # Newest version: a GitHub release tag (git ls-remote again: no API, no token)
 # or an apt repository's index → its checksum → test-build. A release that
 # doesn't download or build is held back.

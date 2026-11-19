@@ -109,7 +109,9 @@ def session_file() -> Path:
         for f in (prof / "sessionstore-backups/recovery.jsonlz4", prof / "sessionstore.jsonlz4"):
             if f.exists():
                 return f
-    raise RuntimeError("couldn't find a Firefox session — is Firefox set up on this machine?")
+    raise RuntimeError("sending tabs reads Firefox's open windows, and Firefox isn't set up "
+                       "on this machine (Brave's aren't supported yet). Tabs sent FROM a "
+                       "machine with Firefox still open here.")
 
 
 def _window_tabs(win: dict) -> list[dict]:
@@ -179,16 +181,21 @@ def load(path: Path) -> dict:
 
 
 def reopen(path: Path) -> int:
-    """Open a received tab set in new Firefox window(s). Returns how many tabs."""
+    """Open a received tab set in new browser window(s) — your default browser
+    ($BROWSER; Brave here). Returns how many tabs."""
     data, opened = load(path), 0
     env = _gui_env()
     for urls in data["windows"]:
         urls = urls[:MAX_TABS - opened]
         if not urls:
             break
-        argv = ["firefox", "--new-window", urls[0]]
-        for u in urls[1:]:
-            argv += ["--new-tab", u]
+        browser = os.environ.get("BROWSER") or "brave"
+        if "firefox" in os.path.basename(browser):
+            argv = [browser, "--new-window", urls[0]]
+            for u in urls[1:]:
+                argv += ["--new-tab", u]
+        else:                            # Chromium family: all URLs, one new window
+            argv = [browser, "--new-window", *urls]
         subprocess.Popen(argv, env=env, start_new_session=True, stdin=subprocess.DEVNULL,
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         opened += len(urls)

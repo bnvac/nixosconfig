@@ -49,7 +49,7 @@ in
     nativeBuildInputs = [ prev.pkg-config ];
     buildInputs = with prev; [ libx11 libxinerama libxft libxcb fontconfig freetype ];
     postPatch = ''
-      substituteInPlace config.h --replace-fail '#define BROWSER "librewolf"' '#define BROWSER "helium"'
+      substituteInPlace config.h --replace-fail '#define BROWSER "librewolf"' '#define BROWSER "brave"'
       substituteInPlace config.h --replace-fail "/usr/local/share/dwm/larbs.mom" "$out/share/dwm/larbs.mom"
       substituteInPlace config.h \
         --replace-fail '{ "xbacklight", "-inc", "15", NULL }' '{ "brightnessctl", "set", "10%+", NULL }' \
@@ -431,24 +431,6 @@ in
   nixmenu         = final.nix2;
   printer-notify  = final.nix2;
 
-  # Helium: a Chromium without Google (ungoogled-chromium base), with uBlock
-  # Origin built in and !bangs handled locally. It's released as an AppImage
-  # (not in nixpkgs); releases.json pins the version and update-mine moves it
-  # to each new release once it builds — like the git apps.
-  helium = let r = (import ./releases.nix).helium; in prev.appimageTools.wrapType2 {
-    pname = "helium";
-    inherit (r) version;
-    src = prev.fetchurl { inherit (r) url sha256; };
-    extraInstallCommands = let
-      x = prev.appimageTools.extract { pname = "helium"; inherit (r) version; src = prev.fetchurl { inherit (r) url sha256; }; };
-    in ''
-      install -Dm444 ${x}/helium.desktop $out/share/applications/helium.desktop
-      install -Dm444 ${x}/usr/share/icons/hicolor/256x256/apps/helium.png \
-        $out/share/icons/hicolor/256x256/apps/helium.png
-    '';
-    meta = { description = "Private Chromium-based browser with uBlock Origin and bangs"; mainProgram = "helium"; };
-  };
-
   # Claude (desktop app: Chat, Cowork and Claude Code) — Anthropic's official
   # Linux build, a .deb from their apt repository (releases.json pins it;
   # update-mine follows the repository). It runs in a Debian-style view of the
@@ -463,7 +445,7 @@ in
       src = prev.fetchurl { inherit (r) url sha256; };
       nativeBuildInputs = [ prev.dpkg ];
       # Not chrome-sandbox: a setuid helper can't live in the Nix store; Electron
-      # sandboxes with user namespaces instead (as Helium and Chromium do here).
+      # sandboxes with user namespaces instead (as Brave and Chromium do here).
       unpackPhase = "dpkg-deb --fsys-tarfile $src | tar -x --no-same-owner --exclude=./usr/lib/claude-desktop/chrome-sandbox";
       installPhase = "mkdir -p $out && cp -a usr/. $out/";
       dontFixup = true;                  # prebuilt: the FHS view supplies its libraries

@@ -206,7 +206,6 @@ def read_firefox(profile, tree):
 
 # ── Chromium: read/write Bookmarks JSON ─────────────────────────────────────
 CHROMIUM_DIRS = [
-    HOME / ".config" / "net.imput.helium",          # Helium (the default browser)
     HOME / ".config" / "chromium",
     HOME / ".config" / "google-chrome",
     HOME / ".config" / "BraveSoftware" / "Brave-Browser",
@@ -519,7 +518,7 @@ EXPORT_HELP = """How to export your saved passwords from each browser (do this o
 per machine; it's the browser's own export, which is why it asks for your
 login/OS password):
 
-  Helium /   ⋮ → Settings → Autofill and passwords → Password Manager
+  Brave /    ⋮ → Settings → Autofill and passwords → Password Manager
   Chromium     → Settings → Export passwords
   Firefox    menu ≡ → Passwords → ··· (top-right) → Export Logins…
 

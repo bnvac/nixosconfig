@@ -72,7 +72,7 @@ in
     wantedBy = [ "graphical-session.target" ];
     partOf = [ "graphical-session.target" ];
     after = [ "syncthing.service" "graphical-session.target" ];
-    path = [ pkgs.libnotify "/run/current-system/sw" ];          # notify-send, firefox, xdg-open
+    path = [ pkgs.libnotify "/run/current-system/sw" ];          # notify-send, the browser, xdg-open
     environment.DEVLINK_FOLDERS = devlinkFolders;
     serviceConfig = { ExecStart = "${pkgs.devlink}/bin/devlink auto"; Restart = "on-failure"; RestartSec = 5; };
   };
@@ -99,7 +99,6 @@ in
 
   my.menu."Sync & devices" = [
     { label = "DeviceLink (send files)"; run = "devlink-window"; }
-    { label = "Send my browser tabs to the other machine"; run = "devlink tabs"; }
     { label = "Share my screen (VNC)"; run = "devlink screen"; mode = "term"; }
     { label = "View other screen (VNC)"; run = "devlink view"; }
     { label = "Sync bookmarks"; run = "browser-sync"; mode = "term"; }

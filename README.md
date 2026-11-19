@@ -97,9 +97,9 @@ On by default unless it says otherwise. `mod on <name>` / `mod off <name>`.
 | desktop | dwm/st/dmenu/dwmblocks (based on LARBS), picom, snowy live wallpaper, lock screen, Thunar + drives, apps menu, Bluetooth, clipboard history, night light |
 | devtools | coding toolkit: lazygit, gh/glab/tea, delta, difftastic, direnv, just, hyperfine, CMake/Ninja/clangd/gdb/valgrind, Meld, Zeal, Qalculate; sccache/ccache + mold for fast builds; `nix2 new`; shared builds. `devExtras = true` adds VSCodium, Helix, Ghidra, Octave, OBS |
 | ee | hardware & electronics: KiCad, ngspice, PulseView/sigrok, PlatformIO, Arduino IDE, picotool, esptool/espflash, probe-rs, OpenOCD, ST-Link, dfu-util, Thonny/mpremote, QMK + Vial, FreeCAD, OpenSCAD, OrcaSlicer — and the device permissions for all of it |
-| apps | LibreOffice, browsers — **Helium** is the default (Chromium without Google, uBlock Origin built in, !bangs; kept on its newest release by `update-mine`), plus Firefox and Chromium for streaming sites (+ Proton Pass in all three) — Discord/Slack, media, Calibre, torrents + Stremio, Onshape |
+| apps | LibreOffice, browsers — **Brave** is the default (ad/tracker blocking built in, !bangs via Brave Search; wallet, Rewards, VPN, AI chat and News switched off; Proton Pass pre-installed) and plain Chromium — Discord/Slack, media, Calibre, torrents + Stremio, Onshape |
 | gaming | native Steam with Steam Play for every game, Proton-GE, NTSYNC, gamescope/gamemode, Xbox controllers, Prism Launcher. If Steam crashes while starting it fixes the usual cause and tries again by itself (`steam-fix` does it by hand) |
-| privacy | Tor (Tor Browser, per-app, system-wide — off until you turn it on), Mullvad Browser (anti-fingerprinting without Tor), Proton (VPN, Mail, Pass, Authenticator, and Mail Bridge running in the background so Thunderbird gets your Proton mail — their own menu section), I2P, nheko |
+| privacy | Tor (Tor Browser, per-app, system-wide — off until you turn it on), Proton (VPN, Mail, Pass, Authenticator, and Mail Bridge running in the background so Thunderbird gets your Proton mail — their own menu section), I2P, nheko |
 | platform | Docker, Flatpak/Flathub, AppImage, Distrobox, and apps built from any git repo (`gitApps`) |
 | paper | printers and scanners: most work with no driver (network or USB), plus HP/Brother/Canon/Epson/Samsung/Gutenprint drivers for older ones. Menu → Printers & scanners |
 | printing | 3D printers: mDNS + printrun for Klipper printers on the network; a notification when a print ends |
@@ -122,7 +122,7 @@ On by default unless it says otherwise. `mod on <name>` / `mod off <name>`.
 | `modtui` | TUI: onboarding, modules, settings, AI model (with download bar), update |
 | `nix2-setup` | this machine's settings (you, hostname, timezone, laptop/desktop, graphics) → `settings.local.nix`; `nix2-setup set KEY VALUE` changes one |
 | `rebuild` (`nrs`) | apply your config + update your own git apps (seconds when nothing is new), live progress bar. `--upgrade` also moves to the newest NixOS packages — normally pre-built for you weekly in the background; `--no-update` just applies config |
-| `update-mine` | move your git-built apps (neb, backoffice, intraweb, slowtyper + `gitApps`) to their latest commit, and Helium and the Claude desktop app to their newest release, only if it builds; runs daily too. `--status` to just look |
+| `update-mine` | move your git-built apps (neb, backoffice, intraweb, slowtyper + `gitApps`) to their latest commit, and the Claude desktop app to its newest release, only if it builds; runs daily too. `--status` to just look |
 | `debloat` | what's using space, and clean it; `debloat junk` finds old build folders (target/, node_modules/…) in projects you haven't touched for a month; `debloat remove <app>` drops an app from every module, or uninstalls a Flatpak by id (`org.gimp.GIMP`) and trims runtimes nothing else uses |
 | `nixup` | update /etc/nixos from git + rebuild (`autoUpdate = true` does it weekly). Every 6 hours (on mains power, at idle priority) the update is fetched and built in the background (`nix2-prebuild`), so `nixup` usually just switches. Your own edits there are kept: committed locally first and put back on top of the update; if one clashes, nothing changes and it names the file. `nix2-pull --mine` lists them |
 | `nix2 doctor` | system check: failed services, disk, memory, clock, network, screenshots, audio, Vulkan/Steam libraries, updates, backups, battery health, temperature — each problem with its fix. Menu: System → System check; runs weekly and notifies only if something's wrong |
@@ -190,8 +190,8 @@ On by default unless it says otherwise. `mod on <name>` / `mod off <name>`.
   back to the CPU), CUDA on NVIDIA; laptops use an API key. Default model
   `qwen3.5:9b` with thinking off; `modtui` → AI model to pick another. He can act
   on the desktop through `desk`; typing, keys and closing windows ask first.
-- **Passwords/bookmarks**: Proton Pass is pre-installed in Helium, Firefox and
-  Chromium (and as an app) — sign in once per browser; it's the password vault
+- **Passwords/bookmarks**: Proton Pass is pre-installed in Brave (and as an
+  app) — sign in once; it's the password vault
   and syncs itself. Bookmarks
   move with `browser-sync`: no live sync service, it just exports them to an
   HTML file in `~/Sync` (Syncthing carries it over) and merges the other

@@ -108,7 +108,8 @@ let
       into ~/DeviceLink. `devlink send FILE|-t TEXT|-c` from the shell.
       `devlink screen` shares this whole screen over VNC (peer-restricted,
       per-session password); the other machine runs `devlink view`.
-      `devlink tabs` sends the open Firefox window's tabs; they reopen on the
+      `devlink tabs` sends the open Firefox window's tabs (Firefox only — not
+      installed by default now); they reopen in the default browser on the
       other machine by themselves. The window previews and opens tray files.
       Linking also shares ~/Sync (which carries the bookmark exports), Neb's
       shared notes and backoffice.
@@ -251,9 +252,10 @@ let
       git pager, difftastic, direnv + nix-direnv, just, hyperfine, CMake/Ninja/
       clangd/gdb/valgrind, Meld, Zeal, Qalculate, sqlitebrowser); big apps only
       with settings.devExtras. Menu: "Code & engineering".
-    - Browsers: Helium is the default (pkgs `helium`, an AppImage pinned in
-      pkgs/releases.json; update-mine moves it to new releases). Proton Pass holds
-      the passwords in Helium, Firefox and Chromium (sign in
+    - Browsers: Brave is the default (BROWSER, links, Super+w), with its extras
+      (wallet, Rewards, VPN, AI chat, News…) off by policy in
+      /etc/brave/policies; Chromium is the plain second browser. Proton Pass
+      holds the passwords, installed in Brave (sign in
       once per browser). `browser-sync` moves bookmarks between the machines
       with no live sync service: it exports them to an HTML file in ~/Sync (so
       Syncthing carries it over) and merges the other machine's file back in,
