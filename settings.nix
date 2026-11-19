@@ -151,6 +151,12 @@ let
     #   e.g. [ "http://ender.local:7125" "http://voron.local:7125" ]
     printers = [ ];
 
+    # ── Using a home server from this machine ──────────────────────────────────
+    # The name of the machine running the `homelab` module (its Tailscale name),
+    # e.g. "live". Its services then appear in this machine's menu (Super+Alt+d)
+    # by themselves, refreshed every 30 minutes. "" = none.
+    homelabServer = "";
+
     # ── Home server (`homelab` module, off until `mod on homelab`) ────────────
     # Runs Pi-hole, Gitea, Nextcloud, FreshRSS, Transmission and SearXNG 24/7,
     # reachable from your devices over Tailscale. Each is on unless set false.
@@ -159,9 +165,14 @@ let
       # address = "nix2";      # how other devices reach this machine (MagicDNS name); default: hostName
       # lan = false;           # true: web pages also open to the home network, not just the tailnet
       # dataDir = "/srv";      # where torrents land
+      # proxy = true;          # nice names (http://git.home.arpa …) via Caddy + Pi-hole; ports keep working
+      # domain = "home.arpa";  # the names' suffix (home.arpa is reserved for home networks)
+      # minecraft = true;      # Crafty control panel installed; the server stays OFF until `homelab minecraft on`
       # torrentVpn = true;     # Transmission only through Proton VPN (kill switch); false = home IP
       # vpnPortForward = true; # ask Proton for a forwarded port (P2P servers, NAT-PMP on in the config)
       # dnsUpstreams = [ "9.9.9.9" "149.112.112.112" ];   # Pi-hole's upstream DNS (Quad9)
+      # searchLanguage = "en-US";   # SearXNG's default results language ("auto" = from your browser)
+      # searchEngines = [ { name = "yandex"; disabled = false; } { name = "google"; disabled = true; } ];
       # BenOS dashboard: the agent reports these services to your Lab page.
       # benos.url = "https://your-benos.example";
       # More tiles for the Lab page (anything else this machine runs):

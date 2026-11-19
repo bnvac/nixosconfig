@@ -10,8 +10,10 @@
 //!     hide  | Label                        hide a built-in entry
 //!     order | System, Self-hosted, …       category order
 //! Running Docker containers that publish a port show up under Self-hosted.
+//! Generated menus in ~/.local/state/nixmenu/*.tsv (same format as the system
+//! file) are read too: `homelab-discover` writes your home server's services there.
 
-use crate::util::{config_dir, dmenu, extend_path, ok, output, which, Pick};
+use crate::util::{config_dir, dmenu, extend_path, ok, output, state_dir, which, Pick};
 use std::collections::HashSet;
 use std::env;
 use std::fs;
@@ -68,6 +70,21 @@ pub fn first_port(ports: &str) -> Option<&str> {
     })
 }
 
+/// Lines of a generated menu file: category, label, mode, needs (ignored here), command.
+/// Only the modes the menu knows are accepted; anything malformed is skipped.
+pub fn parse_tsv(text: &str) -> Vec<(&str, &str, &str, &str)> {
+    text.lines()
+        .filter_map(|line| {
+            let f: Vec<&str> = line.splitn(5, '\t').collect();
+            (f.len() == 5
+                && !f[0].is_empty()
+                && !f[1].is_empty()
+                && ["exec", "term", "tty", "url"].contains(&f[2]))
+            .then(|| (f[0], f[1], f[2], f[4]))
+        })
+        .collect()
+}
+
 pub fn run(args: &[String]) -> i32 {
     extend_path();
     let sysmenu = env::var("NIXMENU_FILE").unwrap_or_else(|_| "/etc/nixmenu/menu.tsv".into());
@@ -121,6 +138,23 @@ pub fn run(args: &[String]) -> i32 {
                 continue;
             }
             menu.add(f[0], f[1], f[2], f[4]);
+        }
+    }
+
+    // Generated entries (e.g. another machine's homelab services), same TSV format.
+    if let Ok(dir) = fs::read_dir(state_dir().join("nixmenu")) {
+        let mut files: Vec<_> = dir
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.extension().is_some_and(|x| x == "tsv"))
+            .collect();
+        files.sort();
+        for f in files {
+            if let Ok(text) = fs::read_to_string(&f) {
+                for (c, l, m, r) in parse_tsv(&text) {
+                    menu.add(c, l, m, r);
+                }
+            }
         }
     }
 
@@ -290,7 +324,7 @@ fn launch(mode: &str, run: &str) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use super::{first_port, search, Entry};
+    use super::{first_port, parse_tsv, search, Entry};
 
     fn e(cat: &str, label: &str) -> Entry {
         Entry {
@@ -325,6 +359,27 @@ mod tests {
         assert_eq!(names("timer off"), vec!["Shutdown timer (turn off later)"]);
         assert!(names("banana").is_empty());
         assert_eq!(search(&all, "").len(), 4);
+    }
+
+    #[test]
+    fn generated_menu_files() {
+        let text = "Self-hosted\tGitea (live)\turl\t-\thttp://git.home.arpa\n\
+                    broken line\n\
+                    Self-hosted\tBad mode\tsudo\t-\trm -rf /\n\
+                    \tno category\turl\t-\thttp://x\n\
+                    Games\tMinecraft on\tterm\t-\thomelab minecraft on | tee log";
+        assert_eq!(
+            parse_tsv(text),
+            vec![
+                ("Self-hosted", "Gitea (live)", "url", "http://git.home.arpa"),
+                (
+                    "Games",
+                    "Minecraft on",
+                    "term",
+                    "homelab minecraft on | tee log"
+                ),
+            ]
+        );
     }
 
     #[test]

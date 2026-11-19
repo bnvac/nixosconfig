@@ -25,7 +25,7 @@ jobs:
           - machine: desktop, AMD
             local: '{ device = "desktop"; gpu = "amd"; }'
           - machine: laptop, Intel
-            local: '{ device = "laptop"; gpu = "intel"; }'
+            local: '{ device = "laptop"; gpu = "intel"; homelabServer = "live"; }'
           - machine: desktop, NVIDIA
             local: '{ device = "desktop"; gpu = "nvidia"; }'
           - machine: every module on

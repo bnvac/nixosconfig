@@ -95,7 +95,14 @@ let
       whether it's up), SearXNG (:8888). Web pages
       are open only on tailscale0 (settings.homelab.lan adds the LAN); sleep is
       disabled. Passwords are generated once into /var/lib/homelab/secrets.
-      `homelab status|passwords|git-admin|setup`. With settings.homelab.benos.url
+      Caddy on :80 gives each a name (http://git.home.arpa …; Pi-hole answers
+      *.home.arpa with the tailnet address; http://<host>/ is a start page and
+      /services.json the list). Minecraft: Crafty Controller in Docker (host
+      networking, no VPN), OFF until `homelab minecraft on|off` (no password,
+      polkit); panel :8443 / minecraft.home.arpa. Other nix² machines list the
+      services in their menu with settings.homelabServer = "<host>"
+      (homelab-discover → ~/.local/state/nixmenu/homelab.tsv). Guide: docs/HOMELAB.md.
+      `homelab status|vpn|minecraft|passwords|git-admin|setup`. With settings.homelab.benos.url
       the benos-agent service reports them to BenOS's Lab page (token in
       /etc/benos-agent.env).
     - `modtui` — a TUI for first-run onboarding, toggling modules, editing

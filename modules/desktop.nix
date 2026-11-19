@@ -9,6 +9,33 @@ let
   # `dash` (Super+Alt+d) — straight into the menu's Self-hosted section.
   dash = pkgs.writeShellScriptBin "dash" ''exec ${pkgs.nixmenu}/bin/nixmenu "Self-hosted"'';
 
+  # Your home server's services in this machine's menu (settings.homelabServer).
+  # The server (homelab module) publishes them at http://<server>/services.json;
+  # this fetches that list at login and every 30 minutes and writes the menu's
+  # generated file. Names like git.home.arpa are used when this machine can
+  # resolve them (Tailscale DNS → Pi-hole), otherwise server:port.
+  homelabServer = s.homelabServer or "";
+  homelabDiscover = pkgs.writeShellApplication {
+    name = "homelab-discover";
+    runtimeInputs = with pkgs; [ curl jq coreutils glibc.bin ];
+    text = ''
+      server="''${1:-${homelabServer}}"
+      [ -n "$server" ] || { echo "Set homelabServer in settings.local.nix (e.g. \"live\")."; exit 2; }
+      out="''${XDG_STATE_HOME:-$HOME/.local/state}/nixmenu/homelab.tsv"
+      mkdir -p "$(dirname "$out")"
+      json=$(curl -fsS --max-time 10 "http://$server/services.json") \
+        || { echo "Couldn't reach http://$server/ (Tailscale up? homelab module on there?). Keeping the last list."; exit 0; }
+      tmp=$(mktemp)
+      jq -r '.[] | [.name, .url, .direct] | @tsv' <<<"$json" | while IFS=$'\t' read -r name url direct; do
+        host=''${url#*://}; host=''${host%%[:/]*}
+        getent hosts "$host" >/dev/null 2>&1 || url=$direct
+        printf 'Self-hosted\t%s (%s)\turl\t-\t%s\n' "$name" "$server" "$url"
+      done > "$tmp"
+      mv "$tmp" "$out"
+      echo "$(wc -l < "$out") services from $server → your menu (Super+Alt+d)."
+    '';
+  };
+
   # one app-menu launcher per self-hosted web app (my.selfhosted).
   dashItems = lib.mapAttrsToList (name: url: pkgs.makeDesktopItem {
     name = "web-" + lib.toLower (builtins.replaceStrings [ " " "/" ] [ "-" "-" ] name);
@@ -363,7 +390,17 @@ in
     (menuCfg.extra or { })
   ];
 
-  my.packages = [ dash drives pkgs.nixmenu mykeys nightlight displaysRefresh ] ++ dashItems ++ (with pkgs; [
+  systemd.user.services.homelab-discover = lib.mkIf (homelabServer != "") {
+    description = "Add ${homelabServer}'s services to the menu";
+    after = [ "network-online.target" ];
+    serviceConfig = { Type = "oneshot"; ExecStart = "${homelabDiscover}/bin/homelab-discover"; };
+  };
+  systemd.user.timers.homelab-discover = lib.mkIf (homelabServer != "") {
+    wantedBy = [ "timers.target" ];
+    timerConfig = { OnStartupSec = "1min"; OnUnitActiveSec = "30min"; };
+  };
+
+  my.packages = [ dash drives pkgs.nixmenu mykeys nightlight displaysRefresh homelabDiscover ] ++ dashItems ++ (with pkgs; [
     wallpapers wallpaper-live site-push rice xsettingsd
     (makeDesktopItem {
       name = "rice"; desktopName = "Look & feel"; exec = "rice";
