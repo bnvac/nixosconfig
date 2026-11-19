@@ -74,12 +74,14 @@ in
         --replace-fail $'\tif (!wintoclient(ev->window))\n\t\tmanage(ev->window, &wa);' $'\tif ((bg = isbackground(ev->window))) {\n\t\tif (bg == 1)\n\t\t\tXMoveResizeWindow(dpy, ev->window, 0, 0, sw, sh);\n\t\tXMapWindow(dpy, ev->window);\n\t\tXLowerWindow(dpy, ev->window);\n\t\treturn;\n\t}\n\tif (!wintoclient(ev->window))\n\t\tmanage(ev->window, &wa);' \
         --replace-fail '|| wa.override_redirect || XGetTransientForHint(dpy, wins[i], &d1))' '|| wa.override_redirect || XGetTransientForHint(dpy, wins[i], &d1) || isbackground(wins[i]))'
       # Neb's own workspace: his terminal (st -n neb) always lives on tag 9.
-      # Steam's notification toasts and friends list float instead of being
-      # squeezed into the tiling layout (dwm matches titles by substring).
+      # Steam's notification toasts and friends list, and Proton Mail Bridge
+      # (its sign-in link was cut off in a tile), float at their own size
+      # instead of being squeezed into the tiling layout (titles: substring).
       substituteInPlace config.h --replace-fail 'static const Rule rules[] = {' 'static const Rule rules[] = {
         { TERMCLASS, "neb", NULL, 1 << 8, 0, 1, 0, -1 },
         { "steam", NULL, "notificationtoasts", 0, 1, 0, 0, -1 },
-        { "steam", NULL, "Friends List", 0, 1, 0, 0, -1 },'
+        { "steam", NULL, "Friends List", 0, 1, 0, 0, -1 },
+        { NULL, NULL, "Proton Mail Bridge", 0, 1, 0, 0, -1 },'
       # Colours, gaps and border reload by themselves whenever the X
       # resources change (`rice` runs xrdb; stock dwm waits for Super+F5), and
       # windows that are already open get the new border colour and width too.
