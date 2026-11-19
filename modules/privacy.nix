@@ -197,7 +197,7 @@ in
   my.packages = with pkgs; [
     torrun tormode oniux torsocks tor-browser
     mullvad-browser                         # Tor Browser's anti-fingerprinting, on your normal connection
-    bitwarden-desktop bitwarden-cli nheko
+    proton-pass-cli nheko                   # pass-cli: Proton Pass from a terminal (browser-sync passwords uses it)
     proton-vpn proton-vpn-cli seahorse      # seahorse: see/unlock the keyring
     protonmail-desktop bridgeGui proton-pass proton-authenticator
     thunderbird                             # reads Proton mail through Bridge

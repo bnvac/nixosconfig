@@ -14,13 +14,13 @@ in
   #              !bangs in the address bar handled on this machine (no search
   #              engine sees the query first). First run asks whether to use
   #              Helium's own services (its privacy proxy for extension
-  #              downloads and spellcheck): say yes, or extensions — Bitwarden
+  #              downloads and spellcheck): say yes, or extensions — Proton Pass
   #              included — can't install. No DRM: Netflix & co. play in
   #              Firefox or Chromium, which stay installed.
   #   Mullvad Browser / Tor Browser: privacy module.
   #
   # Passwords + bookmarks across browsers AND machines:
-  #   Bitwarden  — one end-to-end-encrypted vault in Helium, Firefox, Chromium and the
+  #   Proton Pass — one end-to-end-encrypted vault in Helium, Firefox, Chromium and the
   #                desktop app; sign in once per browser. It's also where your
   #                browser-saved passwords go: `browser-sync passwords` pushes
   #                each browser's own password export into it (see sync.nix).
@@ -30,16 +30,16 @@ in
   programs.firefox = {
     enable = true;
     policies.ExtensionSettings = {
-      "{446900e4-71c2-419f-a6a7-df9c091e268b}" = {          # Bitwarden
+      "78272b6fa58f4a1abaac99321d503a20@proton.me" = {      # Proton Pass
         installation_mode = "normal_installed";
-        install_url = "https://addons.mozilla.org/firefox/downloads/latest/bitwarden-password-manager/latest.xpi";
+        install_url = "https://addons.mozilla.org/firefox/downloads/latest/proton-pass/latest.xpi";
       };
     };
   };
   programs.chromium = {    # policies only (/etc/chromium/policies) — Helium reads them too
     enable = true;
     extensions = [
-      "nngceckbapebfimnlniiiahkandclblb"                    # Bitwarden
+      "ghmbeldphafepmbegfdlkpapadhbakde"                    # Proton Pass
     ];
   };
   programs.nix-ld.enable = true;   # lets prebuilt/AppImage binaries run

@@ -7,18 +7,20 @@
 #   browser-sync import [FILE…]  merge bookmark export(s) back into both browsers
 #                                (default: every bookmarks-*.html in ~/Sync/browser
 #                                 that isn't this machine's own)
-#   browser-sync passwords       push browser-exported password CSVs into Bitwarden
+#   browser-sync passwords       add browser-exported password CSVs to Proton Pass
+#   browser-sync passwords --shred   shred them after importing in the Pass app
 #
 # Why it works this way:
 #   Bookmarks  — a plain Netscape HTML export is the one format every browser
 #                reads and writes, so we never touch a live sync service. The
 #                file rides the existing Syncthing ~/Sync folder to the other
 #                machine; `import` unions it into whatever's there now.
-#   Passwords  — Bitwarden is the password sync (its own encrypted vault, shared
-#                by both machines once you sign in). This command only feeds it:
+#   Passwords  — Proton Pass is the password sync (its own encrypted vault, on
+#                every device once you sign in). This command only feeds it:
 #                you export from each browser's own Passwords screen (a
 #                deliberate click, the browser's own code writes the CSV), and
-#                this hands that CSV to `bw import` and then shreds it. No
+#                this adds those logins with `pass-cli` (or tells you how to
+#                import the file in the Pass app) and then shreds it. No
 #                plaintext ever reaches the Sync folder, and this never reads a
 #                browser's encrypted password store itself.
 #
@@ -512,32 +514,48 @@ def set_ff_import_pref(profile):
     os.replace(tmp, prefs)
 
 
-# ── passwords → Bitwarden ────────────────────────────────────────────────────
+# ── passwords → Proton Pass ──────────────────────────────────────────────────
 EXPORT_HELP = """How to export your saved passwords from each browser (do this once
 per machine; it's the browser's own export, which is why it asks for your
 login/OS password):
 
+  Helium /   ⋮ → Settings → Autofill and passwords → Password Manager
+  Chromium     → Settings → Export passwords
   Firefox    menu ≡ → Passwords → ··· (top-right) → Export Logins…
-  Chromium   ⋮ → Settings → Autofill and passwords → Google Password Manager
-             → Settings → Export passwords
 
 Save each CSV into:  {inbox}
 then run:  browser-sync passwords
 
-It imports them into Bitwarden (your vault, synced to both machines) and
-shreds the CSV. The CSV is only ever on this disk, never in the Sync folder.
+It adds the logins to Proton Pass (your vault, on every device) and shreds the
+CSV. The CSV is only ever on this disk, never in the Sync folder.
 """
+
+APP_IMPORT_HELP = """Proton Pass's command line isn't signed in, so import with the app instead
+(it reads browser exports directly):
+
+  1. Open Proton Pass (menu → Proton → Proton Pass)
+  2. Settings → Import → choose the browser → pick the file:
+{files}
+  3. When it says it's done:  browser-sync passwords --shred
+
+(To let this command do it next time: pass-cli login — needs Pass Plus or
+a Proton bundle.)
+"""
+
+STATE = Path(os.environ.get("XDG_STATE_HOME", HOME / ".local" / "state")) / "nix2"
+IMPORTED = STATE / "pass-imported"        # hashes of url+username already added
 
 
 def have(cmd):
     return shutil.which(cmd) is not None
 
 
-def bw_unlocked():
-    """Only an UNLOCKED vault can import ("locked" = logged in, no session key)."""
+def pass_cli_ready():
+    """pass-cli installed and signed in (`pass-cli info` succeeds only then)."""
+    if not have("pass-cli"):
+        return False
     try:
-        out = subprocess.run(["bw", "status"], capture_output=True, text=True, timeout=30).stdout
-        return json.loads(out or "{}").get("status") == "unlocked"
+        return subprocess.run(["pass-cli", "info"], capture_output=True, timeout=60).returncode == 0
     except Exception:
         return False
 
@@ -557,50 +575,93 @@ def shred(path):
         pass
 
 
-def guess_format(path):
+def guess_source(path):
+    """Firefox's export has httpRealm/formActionOrigin/guid; Chromium's (and
+    Helium's) is name,url,username,password[,note]."""
     head = ""
     try:
         head = path.read_text(errors="replace").splitlines()[0].lower()
     except Exception:
         pass
-    # Firefox export header has httpRealm/formActionOrigin/guid; Chromium's is
-    # name,url,username,password[,note].
     if "httprealm" in head or "formactionorigin" in head or "guid" in head:
-        return "firefoxcsv"
-    return "chromecsv"
+        return "Firefox"
+    return "Chrome"
 
 
-def do_passwords():
-    PW_INBOX.mkdir(parents=True, exist_ok=True)
-    help_text = EXPORT_HELP.format(inbox=PW_INBOX)
-    if not have("bw"):
-        print("browser-sync: the Bitwarden CLI (bw) isn't installed.")
-        return 1
-    csvs = sorted(PW_INBOX.glob("*.csv"))
-    if not csvs:
-        print(help_text)
-        return 0
-    if not bw_unlocked():
-        print("browser-sync: Bitwarden is locked or not logged in. Run:")
-        print("    bw login        # first time only")
-        print("    export BW_SESSION=$(bw unlock --raw)")
-        print("then re-run `browser-sync passwords`.")
-        return 1
-    ok = 0
-    for csv in csvs:
-        fmt = guess_format(csv)
-        print(f"browser-sync: importing {csv.name} into Bitwarden as {fmt}…")
-        r = subprocess.run(["bw", "import", fmt, str(csv)], capture_output=True, text=True)
+def read_logins(path):
+    """[(title, url, username, password)] from a browser's CSV export."""
+    import csv
+    from urllib.parse import urlparse
+    out = []
+    with open(path, newline="", encoding="utf-8", errors="replace") as f:
+        for row in csv.DictReader(f):
+            row = {(k or "").strip().lower(): (v or "") for k, v in row.items()}
+            url = row.get("url", "").strip()
+            user = row.get("username", "")
+            pw = row.get("password", "")
+            if not pw and not user:
+                continue
+            title = row.get("name", "").strip() or urlparse(url).hostname or url or "Imported login"
+            out.append((title, url, user, pw))
+    return out
+
+
+def seen_key(url, user):
+    import hashlib
+    return hashlib.sha256(f"{url}\0{user}".encode()).hexdigest()
+
+
+def import_with_cli(csv_path):
+    """Add each login with pass-cli (the JSON goes in on stdin, so no password
+    is ever on a command line). Returns (added, skipped, failed)."""
+    STATE.mkdir(parents=True, exist_ok=True)
+    done = set(IMPORTED.read_text().split()) if IMPORTED.exists() else set()
+    added = skipped = failed = 0
+    for title, url, user, pw in read_logins(csv_path):
+        key = seen_key(url, user)
+        if key in done:
+            skipped += 1
+            continue
+        item = {"title": title, "username": user, "email": None, "password": pw,
+                "totp_uri": None, "urls": [url] if url else [], "extra_fields": []}
+        r = subprocess.run(["pass-cli", "item", "create", "login", "--from-template", "-"],
+                           input=json.dumps(item), capture_output=True, text=True)
         if r.returncode == 0:
-            shred(csv)
-            ok += 1
-            print(f"             done, shredded {csv.name}")
+            added += 1
+            done.add(key)
+            with open(IMPORTED, "a") as f:
+                f.write(key + "\n")
         else:
-            print(f"             FAILED: {r.stderr.strip() or r.stdout.strip()}")
-            print(f"             left {csv.name} in place so you can retry.")
-    if ok:
-        subprocess.run(["bw", "sync"], capture_output=True, text=True)
-        print(f"browser-sync: imported {ok} file(s) and synced your vault.")
+            failed += 1
+            if failed == 1:
+                print(f"             pass-cli said: {(r.stderr or r.stdout).strip()[:300]}")
+    return added, skipped, failed
+
+
+def do_passwords(args):
+    PW_INBOX.mkdir(parents=True, exist_ok=True)
+    csvs = sorted(PW_INBOX.glob("*.csv"))
+    if "--shred" in args:
+        for c in csvs:
+            shred(c)
+        print(f"browser-sync: shredded {len(csvs)} export(s)." if csvs else "browser-sync: nothing to shred.")
+        return 0
+    if not csvs:
+        print(EXPORT_HELP.format(inbox=PW_INBOX))
+        return 0
+    if not pass_cli_ready():
+        files = "\n".join(f"       {c}   (choose {guess_source(c)})" for c in csvs)
+        print(APP_IMPORT_HELP.format(files=files))
+        return 0
+    for c in csvs:
+        print(f"browser-sync: adding the logins in {c.name} to Proton Pass…")
+        added, skipped, failed = import_with_cli(c)
+        print(f"             {added} added, {skipped} already there, {failed} failed")
+        if failed:
+            print(f"             left {c.name} in place so you can retry.")
+        else:
+            shred(c)
+            print(f"             shredded {c.name}")
     return 0
 
 
@@ -621,7 +682,7 @@ def main(argv):
     if cmd == "import":
         return do_import(argv[1:])
     if cmd in ("passwords", "pw"):
-        return do_passwords()
+        return do_passwords(argv[1:])
     if cmd in ("bookmarks", "sync"):
         rc = do_export()
         do_import([])

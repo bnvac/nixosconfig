@@ -34,7 +34,7 @@ mod on virt       # switch a module on (it rebuilds for you)
   tells you the fix; a weekly check only speaks up when something's wrong.
   Updates are pre-built in the background, and `nix2 rollback` undoes one.
 - **Private by default** — firewall on, SSH off, Tor one command away
-  (`tormode on`), Proton VPN, Bitwarden, encrypted disk from the installer.
+  (`tormode on`), Proton VPN and Proton Pass, encrypted disk from the installer.
 - **Games** — Steam with Proton for every game, controllers, and a game mode
   that pauses notifications and the live wallpaper while you play.
 
@@ -97,9 +97,9 @@ On by default unless it says otherwise. `mod on <name>` / `mod off <name>`.
 | desktop | dwm/st/dmenu/dwmblocks (based on LARBS), picom, snowy live wallpaper, lock screen, Thunar + drives, apps menu, Bluetooth, clipboard history, night light |
 | devtools | coding toolkit: lazygit, gh/glab/tea, delta, difftastic, direnv, just, hyperfine, CMake/Ninja/clangd/gdb/valgrind, Meld, Zeal, Qalculate; sccache/ccache + mold for fast builds; `nix2 new`; shared builds. `devExtras = true` adds VSCodium, Helix, Ghidra, Octave, OBS |
 | ee | hardware & electronics: KiCad, ngspice, PulseView/sigrok, PlatformIO, Arduino IDE, picotool, esptool/espflash, probe-rs, OpenOCD, ST-Link, dfu-util, Thonny/mpremote, QMK + Vial, FreeCAD, OpenSCAD, OrcaSlicer — and the device permissions for all of it |
-| apps | LibreOffice, browsers — **Helium** is the default (Chromium without Google, uBlock Origin built in, !bangs; kept on its newest release by `update-mine`), plus Firefox and Chromium for streaming sites (+ Bitwarden in all three) — Discord/Slack, media, Calibre, torrents + Stremio, Onshape |
+| apps | LibreOffice, browsers — **Helium** is the default (Chromium without Google, uBlock Origin built in, !bangs; kept on its newest release by `update-mine`), plus Firefox and Chromium for streaming sites (+ Proton Pass in all three) — Discord/Slack, media, Calibre, torrents + Stremio, Onshape |
 | gaming | native Steam with Steam Play for every game, Proton-GE, NTSYNC, gamescope/gamemode, Xbox controllers, Prism Launcher. If Steam crashes while starting it fixes the usual cause and tries again by itself (`steam-fix` does it by hand) |
-| privacy | Tor (Tor Browser, per-app, system-wide — off until you turn it on), Mullvad Browser (anti-fingerprinting without Tor), Proton (VPN, Mail, Pass, Authenticator, and Mail Bridge running in the background so Thunderbird gets your Proton mail — their own menu section), I2P, Bitwarden, nheko |
+| privacy | Tor (Tor Browser, per-app, system-wide — off until you turn it on), Mullvad Browser (anti-fingerprinting without Tor), Proton (VPN, Mail, Pass, Authenticator, and Mail Bridge running in the background so Thunderbird gets your Proton mail — their own menu section), I2P, nheko |
 | platform | Docker, Flatpak/Flathub, AppImage, Distrobox, and apps built from any git repo (`gitApps`) |
 | paper | printers and scanners: most work with no driver (network or USB), plus HP/Brother/Canon/Epson/Samsung/Gutenprint drivers for older ones. Menu → Printers & scanners |
 | printing | 3D printers: mDNS + printrun for Klipper printers on the network; a notification when a print ends |
@@ -156,7 +156,7 @@ On by default unless it says otherwise. `mod on <name>` / `mod off <name>`.
 | `devlink …` | `pin` to pair, `send`, `tabs` (your browser tabs → the other machine), `screen` / `view` |
 | `backoffice-sync` | inventory hand-off between machines (`--status`) |
 | `browser-sync` | export bookmarks to ~/Sync + merge the other machine's back (runs at login too) |
-| `browser-sync passwords` | push each browser's own password export into Bitwarden |
+| `browser-sync passwords` | add each browser's own password export to Proton Pass |
 | `torrun <app>` / `tormode on\|off\|status` | one app / everything through Tor (`status` proves it via check.torproject.org) |
 | `protonvpn-app` / `protonvpn` | Proton VPN (app / CLI) |
 | `backoffice` | parts-inventory web app on :8080 |
@@ -190,14 +190,15 @@ On by default unless it says otherwise. `mod on <name>` / `mod off <name>`.
   back to the CPU), CUDA on NVIDIA; laptops use an API key. Default model
   `qwen3.5:9b` with thinking off; `modtui` → AI model to pick another. He can act
   on the desktop through `desk`; typing, keys and closing windows ask first.
-- **Passwords/bookmarks**: Bitwarden is pre-installed in Firefox and Chromium —
-  sign in once per browser; it's the password vault and syncs itself. Bookmarks
+- **Passwords/bookmarks**: Proton Pass is pre-installed in Helium, Firefox and
+  Chromium (and as an app) — sign in once per browser; it's the password vault
+  and syncs itself. Bookmarks
   move with `browser-sync`: no live sync service, it just exports them to an
   HTML file in `~/Sync` (Syncthing carries it over) and merges the other
   machine's file back, at login and whenever you run it. To pull in your
   browser-saved passwords, export them from each browser's own Passwords screen
-  and run `browser-sync passwords` — it imports the CSV into Bitwarden and
-  shreds it. It never touches a browser's encrypted password store itself, and
+  and run `browser-sync passwords` — it adds them to Proton Pass (with
+  `pass-cli`, or walks you through the Pass app's import) and shreds the CSV. It never touches a browser's encrypted password store itself, and
   no password ever lands in the Sync folder.
 - **Neighborhood (intraweb)**: joins the LAN's neighborhood web at login — a
   dashboard on `:8420`, with pages, files, signed mail and channels, no server

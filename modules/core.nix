@@ -252,13 +252,14 @@ let
       clangd/gdb/valgrind, Meld, Zeal, Qalculate, sqlitebrowser); big apps only
       with settings.devExtras. Menu: "Code & engineering".
     - Browsers: Helium is the default (pkgs `helium`, an AppImage pinned in
-      pkgs/releases.json; update-mine moves it to new releases). Bitwarden holds
+      pkgs/releases.json; update-mine moves it to new releases). Proton Pass holds
       the passwords in Helium, Firefox and Chromium (sign in
       once per browser). `browser-sync` moves bookmarks between the machines
       with no live sync service: it exports them to an HTML file in ~/Sync (so
       Syncthing carries it over) and merges the other machine's file back in,
       at login and on demand. `browser-sync passwords` pushes each browser's
-      own password export into Bitwarden (which is what syncs them) and shreds
+      own password export into Proton Pass (with pass-cli, or by walking you
+      through the Pass app's import; Pass is what syncs them) and shreds
       the file; it never reads a browser's encrypted password store itself.
     - Files & drives (`desktop` module): Thunar is the GUI file manager
       (Super+Alt+e); `lf` stays the terminal one. Nothing mounts on its own —
@@ -467,7 +468,7 @@ in
   nixpkgs.config.allowUnfree = true;
   # Allow-list only; harmless when the package isn't installed. Kept here in one
   # place because nixpkgs.config doesn't reliably union this list across modules.
-  #   pypdf2 → SpiderFoot (osint)   electron/olm → Bitwarden & nheko (privacy)
+  #   pypdf2 → SpiderFoot (osint)   electron/olm → Electron apps & nheko (privacy)
   nixpkgs.config.permittedInsecurePackages = [
     "python3.13-pypdf2-3.0.1" "electron-39.8.10" "olm-3.2.16"
   ];
