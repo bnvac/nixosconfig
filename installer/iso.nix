@@ -1,9 +1,9 @@
-# The nix² installer USB: a small live system that runs `nix2-install`.
+# The parajynx installer USB: a small live system that runs `nix2-install`.
 #
 # Build it (about 1 GB):
 #   nix-build '<nixpkgs/nixos>' -A config.system.build.isoImage \
 #     -I nixos-config=installer/iso.nix
-# then write result/iso/nix2-installer.iso to a USB stick (Ventoy,
+# then write result/iso/parajynx-installer.iso to a USB stick (Ventoy,
 # balenaEtcher, GNOME Disks, or: sudo dd if=… of=/dev/sdX bs=4M status=progress).
 # GitHub builds it for every release (.github/workflows/iso.yml).
 { config, pkgs, lib, modulesPath, ... }:
@@ -25,9 +25,9 @@ in
 {
   imports = [ "${modulesPath}/installer/cd-dvd/installation-cd-minimal.nix" ];
 
-  image.baseName = lib.mkForce "nix2-installer";
-  isoImage.volumeID = "NIX2";
-  isoImage.appendToMenuLabel = " — nix² installer";
+  image.baseName = lib.mkForce "parajynx-installer";
+  isoImage.volumeID = "PARAJYNX";
+  isoImage.appendToMenuLabel = " — parajynx installer";
 
   environment.etc."nix2-src".source = src;
   environment.systemPackages = [ nix2-install pkgs.git ];
@@ -35,17 +35,17 @@ in
   # Wi-Fi through NetworkManager (nmtui), not the minimal ISO's wpa_supplicant.
   networking.wireless.enable = lib.mkForce false;
   networking.networkmanager.enable = true;
-  networking.hostName = "nix2-installer";
+  networking.hostName = "parajynx-installer";
   boot.zfs.forceImportRoot = false;
 
   services.getty.helpLine = lib.mkForce ''
 
-    Welcome to the nix² installer.  To install, type:   nix2-install
+    Welcome to the parajynx installer.  To install, type:   nix2-install
 
     (Wi-Fi first? It asks. Everything on the disk you pick will be erased.)
   '';
   # Say it once more right at the prompt.
   programs.bash.interactiveShellInit = ''
-    [ "$(tty)" = /dev/tty1 ] && printf '\n  Type \033[1mnix2-install\033[0m and press Enter to install nix².\n\n'
+    [ "$(tty)" = /dev/tty1 ] && printf '\n  Type \033[1mnix2-install\033[0m and press Enter to install parajynx.\n\n'
   '';
 }

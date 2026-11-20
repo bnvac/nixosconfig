@@ -1,26 +1,28 @@
-// nix²'s fastfetch (and `neofetch`). Your own ~/.config/fastfetch/config.jsonc
+// parajynx's fastfetch (and `neofetch`). Your own ~/.config/fastfetch/config.jsonc
 // wins if you make one.
+//
+// One accent, everything else plain: "blue" is the terminal's colour 4, which
+// `rice` sets to the accent it takes from your wallpaper. Change the wallpaper
+// and the logo and labels follow it.
 {
   "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
   "logo": {
-    // $1 / $2 in the logo files. The eye itself is drawn by the wrapper
-    // (pkgs/fastfetch/fastfetch.sh) in its own colours.
-    "color": { "1": "blue", "2": "white" },
-    "padding": { "top": 1, "left": 1, "right": 4 }
+    "color": { "1": "blue" },
+    "padding": { "top": 1, "left": 2, "right": 4 }
   },
   "display": {
     "separator": "  ",
-    "color": { "keys": "blue", "title": "white" },
-    "key": { "width": 11 },
-    "bar": { "char": { "elapsed": "■", "total": "·" }, "width": 12 },
-    "percent": { "type": ["num", "bar"] }
+    "color": { "keys": "blue", "title": "default", "separator": "default", "output": "default" },
+    "key": { "width": 10 },
+    "bar": { "char": { "elapsed": "━", "total": "─" }, "width": 12 },
+    "percent": { "type": ["num"], "color": { "green": "default", "yellow": "yellow", "red": "red" } }
   },
   "modules": [
-    { "type": "title", "format": "{user-name}{at-symbol-colored}{host-name}" },
-    { "type": "custom", "format": "\u001b[90m─────────────────────────────────────" },
-    { "type": "os", "key": "system", "format": "nix² · NixOS {version-id} ({codename})" },
+    { "type": "title", "format": "{user-name}@{host-name}", "color": { "user": "default", "at": "90", "host": "blue" } },
+    { "type": "custom", "format": "\u001b[90m────────────────────────────────────" },
+    { "type": "os", "key": "system", "format": "parajynx · NixOS {version-id}" },
     { "type": "command", "key": "version", "shell": "/bin/sh",
-      "text": "l=$(readlink /nix/var/nix/profiles/system) && n=${l#system-} && echo \"#${n%-link}  (nix2 rollback goes back)\"" },
+      "text": "l=$(readlink /nix/var/nix/profiles/system) && n=${l#system-} && echo \"#${n%-link}\"" },
     { "type": "command", "key": "modules", "shell": "/bin/sh",
       "text": "[ -r /etc/nix2/modules ] && tr '\\n' ' ' < /etc/nix2/modules" },
     { "type": "kernel", "key": "kernel", "format": "{release}" },
@@ -33,8 +35,6 @@
     { "type": "gpu", "key": "gpu", "format": "{name}" },
     { "type": "memory", "key": "memory" },
     { "type": "disk", "key": "disk", "folders": "/" },
-    { "type": "battery", "key": "battery" },
-    { "type": "custom", "format": "" },
-    { "type": "colors", "symbol": "circle", "paddingLeft": 0 }
+    { "type": "battery", "key": "battery" }
   ]
 }

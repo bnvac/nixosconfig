@@ -3,14 +3,20 @@
 #   rice                      the window: pick a theme, move the sliders
 #   rice list                 the themes
 #   rice theme NAME           switch theme (rice theme nord)
-#   rice wallpaper-colours    make a theme from the current wallpaper
+#   rice auto                 the default: calm colours from your wallpaper, following it
+#   rice wallpaper-colours    a bolder theme from the current wallpaper
 #   rice dark | light         dark or light apps (GTK)
 #   rice opacity 0.8          how see-through terminals are (0.3–1.0)
 #   rice corners 10           rounded window corners, in pixels (0 = square)
 #   rice gaps 12              space between windows, in pixels
 #   rice border 2             window border width, in pixels
-#   rice reset                back to nix²'s stock look
+#   rice reset                back to parajynx's default look (auto)
 #   rice apply                re-apply what's saved (the session runs this at login)
+#
+# By default (auto) the colours come from your wallpaper, kept calm: an almost
+# neutral background and text, muted terminal colours, and one accent taken
+# from the picture. Changing the wallpaper changes them; with no wallpaper it's
+# the neutral "graphite" theme. Picking any other theme stops that.
 #
 # A theme is 16 terminal colours plus background and text. Switching one
 # recolours, without logging out: the bar and window borders (dwm), menus
@@ -37,8 +43,10 @@ XSETTINGS = os.path.join(CONF, "xsettingsd", "xsettingsd.conf")
 GTK3 = os.path.join(CONF, "gtk-3.0", "settings.ini")
 BG = os.path.join(HOME, ".local", "share", "bg")
 
+# theme None = auto (the default). auto_palette / auto_src cache the calm
+# palette and which wallpaper it came from.
 DEFAULTS = {"theme": None, "palette": None, "dark": True, "opacity": None,
-            "corners": 0, "gaps": None, "border": None}
+            "corners": 0, "gaps": None, "border": None, "auto_palette": None, "auto_src": None}
 # Stock opacity comes from settings.termOpacity (the session exports it).
 STOCK_OPACITY = float(os.environ.get("NIX2_TERM_OPACITY", "0.72") or 0.72)
 
@@ -51,6 +59,10 @@ def T(bg, fg, colors, light=False, accent=4):
 # cyan white, then the bright row). `accent` is the colour the bar and menus
 # highlight with.
 THEMES = {
+    # Neutral and quiet: the default when there's no wallpaper to take colours from.
+    "graphite": T("#16181c", "#d4d7dd",
+                  "#1f2228 #c26b6b #7fa37f #c4a56b #6f93b8 #9a86ae #6ea2a6 #b9bec7 "
+                  "#4a4f59 #cf8080 #93b693 #d3b680 #87a8ca #ae9bc2 #86b5b9 #e6e8ec"),
     "snowy-night": T("#0b1a2e", "#e8f0f8",
                      "#13263f #ff8a8a #7fe0a8 #ffd98a #5ab4ff #c9a4ff #7fd8e8 #c8d6e6 "
                      "#4a6585 #ffa8a8 #a0f0c0 #ffe6ad #8accff #dcc4ff #a5e8f2 #ffffff"),
@@ -152,7 +164,7 @@ def readable(colour, bg, want=4.0):
     return from_hls(h, l, s)
 
 
-def palette_from_image(path):
+def palette_from_image(path, calm=False):
     """A theme from a picture: background and text tinted with its main
     colour, the highlight is its most vivid colour, and the six terminal
     colours keep their meaning (red stays red) but take the picture's mood."""
@@ -193,6 +205,8 @@ def palette_from_image(path):
     else:
         accent = from_hls(mh, 0.6, 0.5)
     ah, al, a_s = hls(accent)
+    if calm:
+        return calm_palette(mh, ms, ah, a_s, light)
     tint = min(ms, 0.45)
     if light:
         bg = from_hls(mh, 0.95, tint * 0.6)
@@ -220,6 +234,57 @@ def palette_from_image(path):
     return {"bg": bg, "fg": fg, "colors": cols, "light": light, "accent": 4}
 
 
+def calm_palette(mh, ms, ah, a_s, light):
+    """The default look: background and text nearly neutral (a trace of the
+    picture's main colour), terminal colours muted so they inform rather than
+    shout, and one accent: the picture's own highlight, toned down."""
+    tint = min(ms, 0.35)
+    if light:
+        bg, fg = from_hls(mh, 0.965, tint * 0.15), from_hls(mh, 0.17, tint * 0.10)
+    else:
+        bg, fg = from_hls(mh, 0.085, tint * 0.22), from_hls(mh, 0.86, tint * 0.08)
+    base_l = 0.40 if light else 0.64
+    sat = 0.30
+    hues = {1: 0.0, 2: 0.33, 3: 0.12, 4: 0.60, 5: 0.80, 6: 0.50}   # red green yellow blue magenta cyan
+    cols = [None] * 16
+    for i, hue in hues.items():
+        d = ((ah - hue + 0.5) % 1.0) - 0.5
+        hue2 = hue + d * 0.10
+        cols[i] = readable(from_hls(hue2, base_l, sat), bg, 4.5)
+        cols[i + 8] = readable(from_hls(hue2, base_l + (-0.06 if light else 0.08), sat + 0.06), bg, 4.5)
+    # the accent replaces blue: the picture's highlight, never louder than this
+    acc_s = max(0.32, min(0.55, a_s))
+    cols[4] = readable(from_hls(ah, 0.40 if light else 0.64, acc_s), bg, 4.5)
+    cols[12] = readable(mix(cols[4], fg, 0.30), bg, 4.5)
+    cols[0] = mix(bg, fg, 0.07)
+    cols[8] = mix(bg, fg, 0.38)
+    cols[7] = mix(fg, bg, 0.15)
+    cols[15] = fg if not light else mix(fg, "#000000", 0.3)
+    return {"bg": bg, "fg": fg, "colors": cols, "light": light, "accent": 4}
+
+
+def wallpaper_file():
+    path = os.path.realpath(BG)
+    return path if os.path.isfile(path) else None
+
+
+def auto_palette(s):
+    """The default palette for the current wallpaper (cached by path + time),
+    or graphite without one."""
+    path = wallpaper_file()
+    if not path:
+        return THEMES["graphite"]
+    src = f"{path}:{int(os.path.getmtime(path))}"
+    if s.get("auto_src") != src or not s.get("auto_palette"):
+        try:
+            s["auto_palette"] = palette_from_image(path, calm=True)
+        except Exception:                      # unreadable picture: stay quiet
+            return THEMES["graphite"]
+        s["auto_src"] = src
+        save(s)
+    return s["auto_palette"]
+
+
 # ── state ───────────────────────────────────────────────────────────────────
 def load():
     s = dict(DEFAULTS)
@@ -240,6 +305,8 @@ def save(s):
 
 
 def palette_of(s):
+    if s.get("theme") is None:
+        return auto_palette(s)
     if s.get("theme") == "wallpaper" and s.get("palette"):
         return s["palette"]
     return THEMES.get(s.get("theme") or "")
@@ -396,7 +463,7 @@ def apply(s, what=("colours", "gtk", "picom"), startup=False):
                         restart("dunst", "dunst")
             if p and not startup:
                 recolour_terminals(p)
-    if "gtk" in what and s.get("theme") is not None or "gtk-force" in what:
+    if "gtk" in what or "gtk-force" in what:
         dark = bool(s.get("dark", True))
         gtk_files(dark)
         if have_x:
@@ -421,6 +488,13 @@ def apply(s, what=("colours", "gtk", "picom"), startup=False):
 
 
 def set_theme(s, name):
+    if name == "auto":
+        s["theme"] = None
+        s["auto_src"] = None                    # take it fresh from the wallpaper
+        s["dark"] = not palette_of(s)["light"]
+        save(s)
+        apply(s, ("colours", "gtk"))
+        return
     if name == "wallpaper":
         path = os.path.realpath(BG)
         if not os.path.isfile(path):
@@ -437,27 +511,20 @@ def set_theme(s, name):
 
 def reset():
     s = dict(DEFAULTS)
+    s["dark"] = not palette_of(s)["light"]
     save(s)
     remove(XSETTINGS)
-    apply(s, ("colours", "picom"))
-    # back to the stock colours: the session's own Xresources, plus dwm's
-    # built-in gaps and border (it keeps the last values it was given)
-    stock = os.path.join(CONF, "x11", "xresources")
+    apply(s, ("colours", "gtk", "picom"))
+    # dwm keeps the last gaps and border it was given: put its built-in ones back
     if os.environ.get("DISPLAY"):
-        text = ""
-        if os.path.exists(stock):
-            with open(stock, encoding="utf-8", errors="replace") as f:
-                text = f.read()
-        if "color4" not in text:           # no stock colours on this machine: the LARBS look
-            g = THEMES["gruvbox"]
-            text += f"\ndwm.color0: {g['bg']}\ndwm.color4: {g['colors'][3]}\ndwm.color8: {g['colors'][8]}\n"
-        text += "\ndwm.gappih: 20\ndwm.gappiv: 10\ndwm.gappoh: 10\ndwm.gappov: 30\ndwm.borderpx: 3\n"
         try:
-            subprocess.run(["xrdb", "-load", "-"], input=text, text=True, timeout=10,
+            subprocess.run(["xrdb", "-merge", "-"], text=True, timeout=10,
+                           input="dwm.gappih: 20\ndwm.gappiv: 10\ndwm.gappoh: 10\ndwm.gappov: 30\ndwm.borderpx: 3\n",
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except (OSError, subprocess.SubprocessError):
             pass
-    print("rice: back to the stock look (open terminals keep their colours until you reopen them).")
+    print("rice: back to the default look: calm colours from your wallpaper "
+          "(open terminals keep their colours until you reopen them).")
 
 
 def number(text, lo, hi, what):
@@ -544,7 +611,7 @@ def window():
     def mark():
         for name, btn in cards.items():
             ctx = btn.get_style_context()
-            (ctx.add_class if state.get("theme") == name else ctx.remove_class)("current")
+            (ctx.add_class if (state.get("theme") or "auto") == name else ctx.remove_class)("current")
 
     def choose(name):
         try:
@@ -553,8 +620,9 @@ def window():
             note.set_text(str(e))
             return
         dark.set_active(state["dark"])
-        note.set_text(f"Theme: {name.replace('-', ' ')}")
-        if name == "wallpaper":
+        note.set_text("Default: calm colours that follow your wallpaper" if name == "auto"
+                      else f"Theme: {name.replace('-', ' ')}")
+        if name in ("wallpaper", "auto"):
             rebuild_wallpaper_card()
         mark()
 
@@ -566,8 +634,9 @@ def window():
         flow.show_all()
 
     def fill():
+        card("auto", "Default (follows wallpaper)", auto_palette(state))
         if state.get("palette"):
-            card("wallpaper", "From my wallpaper", state["palette"])
+            card("wallpaper", "From my wallpaper (bold)", state["palette"])
         for name, p in THEMES.items():
             card(name, name.replace("-", " ").title(), p)
 
@@ -588,7 +657,10 @@ def window():
     b = Gtk.Button(label="Change wallpaper…")
     b.connect("clicked", lambda _b: subprocess.Popen(["wallpapers"], start_new_session=True))
     side.pack_start(b, False, False, 0)
-    b = Gtk.Button(label="Colours from my wallpaper")
+    b = Gtk.Button(label="Default: calm, follows wallpaper")
+    b.connect("clicked", lambda _b: choose("auto"))
+    side.pack_start(b, False, False, 0)
+    b = Gtk.Button(label="Bolder colours from my wallpaper")
     b.connect("clicked", lambda _b: choose("wallpaper"))
     side.pack_start(b, False, False, 0)
 
@@ -638,12 +710,12 @@ def window():
     note = Gtk.Label(label="Click a theme: it changes straight away.", xalign=0, wrap=True)
     note.get_style_context().add_class("hint")
     side.pack_start(note, False, False, 0)
-    b = Gtk.Button(label="Back to the stock look")
+    b = Gtk.Button(label="Back to the default look")
 
     def on_reset(_b):
         reset()
         state.clear(); state.update(load())
-        note.set_text("Back to the stock look.")
+        note.set_text("Back to the default look.")
         rebuild_wallpaper_card()
         mark()
     b.connect("clicked", on_reset)
@@ -675,15 +747,21 @@ def main(argv):
     elif cmd == "list":
         for name, p in THEMES.items():
             print(f"{'*' if s.get('theme') == name else ' '} {name:<18} {'light' if p['light'] else 'dark'}")
-        print(f"{'*' if s.get('theme') == 'wallpaper' else ' '} {'wallpaper':<18} made from your wallpaper (rice wallpaper-colours)")
+        print(f"{'*' if s.get('theme') == 'wallpaper' else ' '} {'wallpaper':<18} bolder, from your wallpaper (rice wallpaper-colours)")
+        print(f"{'*' if s.get('theme') is None else ' '} {'auto':<18} the default: calm, follows your wallpaper (rice auto)")
     elif cmd == "theme":
         if not args:
             raise SystemExit("usage: rice theme NAME   (rice list shows them)")
         set_theme(s, args[0].lower())
         print(f"rice: theme {args[0].lower()}")
-    elif cmd == "follow-wallpaper":         # the wallpaper changed: only matters for that theme
-        if s.get("theme") == "wallpaper":
+    elif cmd == "follow-wallpaper":         # the wallpaper changed: the default and "wallpaper" follow it
+        if s.get("theme") is None:
+            set_theme(s, "auto")
+        elif s.get("theme") == "wallpaper":
             set_theme(s, "wallpaper")
+    elif cmd == "auto":
+        set_theme(s, "auto")
+        print("rice: default look: calm colours from your wallpaper")
     elif cmd in ("wallpaper-colours", "wallpaper-colors"):
         set_theme(s, "wallpaper")
         print("rice: colours taken from your wallpaper")

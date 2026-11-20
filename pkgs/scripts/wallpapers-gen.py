@@ -1,4 +1,4 @@
-# Draws nix²'s built-in wallpapers (original work, MIT like the rest).
+# Draws parajynx's built-in wallpapers (original work, MIT like the rest).
 # Run at build time: wallpapers-gen.py OUTDIR [WIDTH HEIGHT]
 # Every image comes from a fixed random seed, so builds are reproducible.
 import math

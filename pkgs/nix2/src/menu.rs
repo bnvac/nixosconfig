@@ -213,7 +213,7 @@ pub fn run(args: &[String]) -> i32 {
     let mut cat = args.first().cloned().unwrap_or_default();
     loop {
         if cat.is_empty() {
-            match dmenu("nix:", &top, true) {
+            match dmenu("parajynx:", &top, true) {
                 Pick::Chose(c) => cat = c,
                 Pick::Back => continue, // Backspace at the top: stay
                 Pick::Cancel => return 0,

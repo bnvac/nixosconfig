@@ -832,7 +832,7 @@ pub fn run(args: &[String]) -> i32 {
 
     let mut all = collect();
     if fix {
-        println!("nix² fix-up\n");
+        println!("parajynx fix-up\n");
         if apply_fixes(&all) == 0 {
             println!("  nothing doctor can fix by itself — the report below says what to do.");
         } else {
@@ -885,7 +885,7 @@ pub fn run(args: &[String]) -> i32 {
             s.to_string()
         }
     };
-    println!("{}\n", paint("1", "nix² system check"));
+    println!("{}\n", paint("1", "parajynx system check"));
     for c in &all {
         let (mark, code) = match c.level {
             Level::Good => ("✓", "32"),

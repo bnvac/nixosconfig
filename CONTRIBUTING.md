@@ -1,10 +1,10 @@
-# Contributing to nix²
+# Contributing to parajynx
 
 Thanks for helping! Bug reports, ideas and pull requests are all welcome.
 
 ## Trying a change
 
-On a nix² machine, `/etc/nixos` *is* your clone: edit, then `rebuild`. If it
+On a parajynx machine, `/etc/nixos` *is* your clone: edit, then `rebuild`. If it
 goes wrong, `nix2 rollback` (or pick an older entry at boot) brings the last
 working system back.
 

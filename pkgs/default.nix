@@ -90,7 +90,7 @@ in
                        $'\tif ((ev->window == root) && (ev->atom == XA_WM_NAME)) {\n\t\tupdatestatus();\n\t} else if ((ev->window == root) && (ev->atom == XA_RESOURCE_MANAGER) && ev->state != PropertyDelete) {\n\t\txrdb(NULL);\n\t} else if (ev->state == PropertyDelete) {' \
         --replace-fail $'        scheme[i] = drw_scm_create(drw, colors[i], 3);\n\n    focus(NULL);' \
                        $'        scheme[i] = drw_scm_create(drw, colors[i], 3);\n\n    for (Monitor *m = mons; m; m = m->next)\n        for (Client *c = m->clients; c; c = c->next) {\n            XSetWindowBorder(dpy, c->win, scheme[SchemeNorm][ColBorder].pixel);\n            if (c->bw != borderpx && !c->isfullscreen) {\n                XWindowChanges wc = { .border_width = borderpx };\n                c->bw = borderpx;\n                XConfigureWindow(dpy, c->win, CWBorderWidth, &wc);\n            }\n        }\n\n    focus(NULL);'
-      # Super+F3 (LARBS's displayselect) opens nix²'s display tool instead.
+      # Super+F3 (LARBS's displayselect) opens parajynx's display tool instead.
       substituteInPlace config.h \
         --replace-fail '{.v = (const char*[]){ "displayselect", NULL } }' '{.v = (const char*[]){ "nix2", "displays", NULL } }'
       # Screenshots: Print / Shift+Print run `screenshot` (absolute save path,
@@ -298,7 +298,7 @@ in
     export PATH="$PATH:${prev.lib.makeBinPath (with final; [ git libsecret zenity libnotify larbs-dmenu ])}"
     exec ${raw}/bin/site-push "$@"
   '';
-  # nix²'s built-in wallpapers, drawn at build time (pkgs/scripts/wallpapers-gen.py):
+  # parajynx's built-in wallpapers, drawn at build time (pkgs/scripts/wallpapers-gen.py):
   # the snowy night plus aurora, dusk ridge, blueprint, topography, circuit board.
   nix2-wallpapers = final.runCommand "nix2-wallpapers" {
     nativeBuildInputs = [ (final.python3.withPackages (ps: [ ps.pillow ps.numpy ])) ];
@@ -348,25 +348,22 @@ in
     };
   offtimer        = sh "offtimer" (with final; [ systemd coreutils gnused gawk libnotify larbs-dmenu ]) ./scripts/offtimer.sh;
   backup          = sh "backup" (with final; [ restic coreutils util-linux libnotify ]) ./scripts/backup.sh;
-  # fastfetch (also as `neofetch`) with nix²'s own layout (pkgs/fastfetch/
+  # fastfetch (also as `neofetch`) with parajynx's own layout (pkgs/fastfetch/
   # config.jsonc), unless you have ~/.config/fastfetch/config.jsonc. The logo
-  # is nix²'s blinking eye (fastfetch/eye.py draws it, fastfetch/fastfetch.sh
-  # animates it) — except inside a git repo that has its own logo: drop a
+  # is 并行 (pkgs/fastfetch/logo.txt, drawn by logo.py) in the wallpaper's
+  # accent colour — except inside a git repo that has its own logo: drop a
   # <reponame>.txt in pkgs/fastfetch-logos/ to add one.
   # Replaces the plain `fastfetch` on PATH, so Super+Alt+i and the shell get it.
-  fastfetch-id =
-    let eye = final.runCommand "nix2-eye" { nativeBuildInputs = [ final.python3 ]; }
-      "python3 ${./fastfetch/eye.py} $out";
-    in final.writeShellApplication {
-      name = "fastfetch";
-      runtimeInputs = with final; [ git coreutils gnugrep gawk ];
-      text = ''
-        ff=${final.fastfetch}/bin/fastfetch
-        cfg=${./fastfetch/config.jsonc}
-        logos=${./fastfetch-logos}
-        eye=${eye}
-      '' + builtins.readFile ./fastfetch/fastfetch.sh;
-    };
+  fastfetch-id = final.writeShellApplication {
+    name = "fastfetch";
+    runtimeInputs = with final; [ git coreutils ];
+    text = ''
+      ff=${final.fastfetch}/bin/fastfetch
+      cfg=${./fastfetch/config.jsonc}
+      logos=${./fastfetch-logos}
+      logo=${./fastfetch/logo.txt}
+    '' + builtins.readFile ./fastfetch/fastfetch.sh;
+  };
   neofetch = final.writeShellScriptBin "neofetch" ''exec ${final.fastfetch-id}/bin/fastfetch "$@"'';
 
   # The system's python3, made so `pip install x` just works like on other

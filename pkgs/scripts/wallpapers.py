@@ -1,5 +1,5 @@
 # wallpapers — pick your wallpaper (Super+Alt+w).
-#   Built in          nix²'s own wallpapers (snowy night, aurora, dusk, …)
+#   Built in          parajynx's own wallpapers (snowy night, aurora, dusk, …)
 #   My pictures       your images in ~/Pictures/wallpapers
 #   Live              your Wallpaper Engine wallpapers from the Steam Workshop,
 #                     played on every screen by the wallpaper-live service

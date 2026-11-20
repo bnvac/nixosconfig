@@ -2,7 +2,7 @@
 name = "nix2"
 version = "0.1.0"
 edition = "2021"
-description = "nix²'s own tools in one small binary: menu, system check, rollback, game mode, printer alerts"
+description = "parajynx's own tools in one small binary: menu, system check, rollback, game mode, printer alerts"
 license = "MIT"
 
 [dependencies]
