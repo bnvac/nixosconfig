@@ -25,7 +25,7 @@ let
     (`${s.username}`), timezone ${s.timeZone}.
 
     ## Shape of the config
-    - `/etc/nixos/configuration.nix` — picks modules: nix²'s defaults are the
+    - `/etc/nixos/configuration.nix` — picks modules: parajynx's defaults are the
       marker files in `/etc/nixos/mods/`, overridden by `modules.<name>` in
       settings.local.nix (`mod on|off` writes those).
     - `/etc/nixos/settings.nix` — every setting with its default (in git).
@@ -99,7 +99,7 @@ let
       *.home.arpa with the tailnet address; http://<host>/ is a start page and
       /services.json the list). Minecraft: Crafty Controller in Docker (host
       networking, no VPN), OFF until `homelab minecraft on|off` (no password,
-      polkit); panel :8443 / minecraft.home.arpa. Other nix² machines list the
+      polkit); panel :8443 / minecraft.home.arpa. Other parajynx machines list the
       services in their menu with settings.homelabServer = "<host>"
       (homelab-discover → ~/.local/state/nixmenu/homelab.tsv). Guide: docs/HOMELAB.md.
       `homelab status|vpn|minecraft|passwords|git-admin|setup`. With settings.homelab.benos.url
@@ -160,9 +160,12 @@ let
       which linux-wallpaperengine needs and user services don't get.
     - `neofetch` = fastfetch with pkgs/fastfetch/config.jsonc (unless
       ~/.config/fastfetch/config.jsonc exists); /etc/nix2/modules lists the
-      modules that are on. The logo is an eye (pkgs/fastfetch/eye.py, 24-bit
-      half-blocks) the wrapper draws into a blank logo and blinks twice;
-      NIX2_NO_BLINK=1 skips that. `lock` is xsecurelock: username + password.
+      modules that are on. The logo is 并行 (pkgs/fastfetch/logo.txt) in the
+      terminal's colour 4, which `rice` sets to the wallpaper's accent.
+    - Look: by default `rice` takes calm colours from the wallpaper (near-
+      neutral background, muted terminal colours, one accent) and follows it
+      when it changes (`rice auto`); "graphite" without a wallpaper. Picking a
+      theme stops the following. `lock` is xsecurelock: username + password.
       `steam` is a launcher (pkgs/scripts/steam-launch.sh, hiPrio over the
       real one): if Steam dies within 90 s of starting (steamwebhelper crash,
       CCrossProcessPipe broken pipe — nixpkgs #324875/#521087) it restarts
@@ -394,7 +397,7 @@ let
     }
 
     while true; do
-      a=$(gum choose --header "nix control — $(getset hostName) [$(getset device)]" \
+      a=$(gum choose --header "parajynx — $(getset hostName) [$(getset device)]" \
         "Onboarding (guided setup)" "Modules on/off" "Edit settings" "AI model" \
         "Update system (pull + rebuild)" "Rebuild now" "Open Neb dashboard" "Quit") || exit 0
       case "$a" in
@@ -411,7 +414,7 @@ let
   '';
 
   # `mod` — modules on/off. Your choice goes in settings.local.nix
-  # (modules.<name>), so updates never undo it; mods/ holds nix²'s defaults.
+  # (modules.<name>), so updates never undo it; mods/ holds parajynx's defaults.
   mod = pkgs.writeShellScriptBin "mod" ''
     dir=/etc/nixos
     all() { for f in "$dir"/modules/*.nix; do n=$(basename "$f" .nix); [ "$n" = core ] || echo "$n"; done; }
@@ -500,7 +503,7 @@ in
   # network; the others (from + key) download from it before the internet, so
   # your own apps and anything else it already built never compile twice.
   # Signed with this machine's own key, so the others accept only its builds.
-  # (It shares /nix/store: software only — nix² keeps no secrets there.)
+  # (It shares /nix/store: software only — parajynx keeps no secrets there.)
   services.harmonia.cache = lib.mkIf share.serve {
     enable = true;
     signKeyPaths = [ "/var/lib/nix2/cache-key" ];
@@ -853,5 +856,8 @@ in
     "net.ipv6.conf.all.accept_redirects" = 0;
   };
 
+  # The name the system shows (boot menu, /etc/os-release, fastfetch). The ID
+  # stays "nixos" so everything that checks for NixOS keeps working.
+  system.nixos.distroName = "parajynx";
   system.stateVersion = "26.05";
 }

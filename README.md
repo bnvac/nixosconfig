@@ -1,4 +1,7 @@
-# nix²
+# parajynx · 并行
+
+*并行 (bìngxíng) means "parallel": many things running side by side, which is
+how this system is built: your desktop and your own server, one config.*
 
 **A Linux for people who build things.** Write code, design circuit boards,
 flash microcontrollers, 3D print, game — on a fast, private desktop that
@@ -6,7 +9,7 @@ sets itself up. Built on [NixOS](https://nixos.org), so the whole system is
 a few readable files: nothing breaks for good (every update can be rolled
 back), and every feature is a module you switch on with one command.
 
-![The nix² desktop: tiled terminals over a snowy wallpaper](site/desktop.webp)
+![The parajynx desktop: tiled terminals over a snowy wallpaper](site/desktop.webp)
 
 ```sh
 mod list          # what's on and off
@@ -42,10 +45,10 @@ mod on virt       # switch a module on (it rebuilds for you)
 
 **New computer (or one you're happy to wipe): the installer USB.**
 
-1. Download `nix2-installer.iso` from the
+1. Download `parajynx-installer.iso` from the
    [latest release](https://github.com/bnvac/nixosconfig/releases/latest).
 2. Write it to a USB stick (4 GB+) with [balenaEtcher](https://etcher.balena.io)
-   or Ventoy, or `sudo dd if=nix2-installer.iso of=/dev/sdX bs=4M status=progress`.
+   or Ventoy, or `sudo dd if=parajynx-installer.iso of=/dev/sdX bs=4M status=progress`.
 3. Boot from the stick (UEFI mode; turn off Secure Boot) and type
    `nix2-install`. It asks for your keyboard layout, connects to Wi-Fi, asks
    which disk to use (and erases it), whether to encrypt it, and a few
@@ -86,7 +89,7 @@ writes it, it's not in git, so updates never touch it.
 }
 ```
 
-`rebuild` applies changes. `nixup` pulls the newest nix² and rebuilds.
+`rebuild` applies changes. `nixup` pulls the newest parajynx and rebuilds.
 
 ## Modules
 
@@ -144,7 +147,7 @@ On by default unless it says otherwise. `mod on <name>` / `mod off <name>`.
 | `lock` | lock screen: just your username + password — **Super+Alt+l** (also on suspend / 10 idle min) |
 | `site-push` | publish a folder to its Neocities site — menu: Apps & files → "Publish a folder to Neocities". The site comes from the repo's `.neocities` file; only changed files upload |
 | `wallpapers` | the wallpaper picker — six built-in wallpapers (snowy night, aurora, dusk ridge, blueprint, topography, circuit board), your pictures, or live **Wallpaper Engine** ones from the Steam Workshop; fit, shuffle, snow on/off — **Super+Alt+w** |
-| `neofetch` / `fastfetch` | system summary with nix²'s eye logo, which blinks at you, and layout (version you can roll back from, modules on); your own `~/.config/fastfetch/config.jsonc` takes over — **Super+Alt+i** |
+| `neofetch` / `fastfetch` | system summary with parajynx's eye logo, which blinks at you, and layout (version you can roll back from, modules on); your own `~/.config/fastfetch/config.jsonc` takes over — **Super+Alt+i** |
 | `snow on\|off` | the live falling snow (never piles up) |
 | `clipmenu` | clipboard history — **Super+Alt+c**. Copied text stays pasteable after you close the window it came from. In the terminal: **select = copy, right-click = paste** (Ctrl+Shift+C/V too) |
 | `nightlight` | night light on/off for now (warmer screen after sunset; `nix2-setup` sets where you are from your timezone) |
@@ -278,7 +281,7 @@ Source: GitHub Actions).
 
 ## Credits & license
 
-nix² is MIT-licensed ([LICENSE](LICENSE)). The desktop is built on Luke
+parajynx is MIT-licensed ([LICENSE](LICENSE)). The desktop is built on Luke
 Smith's [LARBS](https://larbs.xyz) builds of the suckless tools
-(dwm, st, dmenu), and on [NixOS](https://nixos.org) and nixpkgs. nix² is an
+(dwm, st, dmenu), and on [NixOS](https://nixos.org) and nixpkgs. parajynx is an
 independent project, not affiliated with the NixOS Foundation.

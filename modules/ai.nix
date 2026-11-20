@@ -2,7 +2,7 @@
 # module.)
 #
 #   Claude (app)  Anthropic's desktop app for Linux (beta): Chat, Cowork and
-#              Claude Code in a window. App menu → Claude, or the nix² menu →
+#              Claude Code in a window. App menu → Claude, or the parajynx menu →
 #              Code & engineering. Packaged from Anthropic's own .deb
 #              (pkgs/default.nix `claude-desktop`); update-mine moves it to
 #              each new version. Claude Code inside it needs a paid plan.

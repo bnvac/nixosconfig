@@ -1,4 +1,4 @@
-# nix²'s settings: every value you can change, with its default.
+# parajynx's settings: every value you can change, with its default.
 #
 # DON'T EDIT THIS FILE for your own machine. Your values live in
 # settings.local.nix next to it (not in git, so updates never clash with
@@ -16,8 +16,8 @@ let
   defaults = {
     # ── You and this machine (nix2-setup asks for these) ────────────────────
     username = "user";
-    fullName = "nix² user";
-    hostName = "nix2";
+    fullName = "parajynx user";
+    hostName = "parajynx";
     timeZone = "UTC";
     # "desktop" or "laptop" — laptops get battery/thermal tuning (`power`).
     device = "desktop";
@@ -61,7 +61,7 @@ let
     screenshotKey = "Print";
 
     # ── Modules ───────────────────────────────────────────────────────────────
-    # Which are on comes from the marker files in mods/ (nix²'s defaults),
+    # Which are on comes from the marker files in mods/ (parajynx's defaults),
     # and here you override any of them: modules.gaming = false;
     modules = { };
 

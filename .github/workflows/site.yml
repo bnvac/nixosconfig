@@ -1,4 +1,4 @@
-# Publishes site/ (the nix² homepage) to GitHub Pages on every push that
+# Publishes site/ (the parajynx homepage) to GitHub Pages on every push that
 # changes it. One-time setup: Settings → Pages → Source: "GitHub Actions".
 name: site
 on:

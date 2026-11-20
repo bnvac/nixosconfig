@@ -127,7 +127,7 @@ pub fn run(args: &[String]) -> i32 {
         .is_err()
     {
         eprintln!("No permission to open {port}. You need to be in the 'dialout' group");
-        eprintln!("(nix² adds you; log out and back in once after installing).");
+        eprintln!("(parajynx adds you; log out and back in once after installing).");
         return 1;
     }
     println!("{port} at {baud} baud — quit with Ctrl+t then q\n");

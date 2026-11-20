@@ -7,7 +7,7 @@
 #                                once on machines set up before settings.local.nix
 #                                existed, carrying your old values over)
 #   nix2-setup set KEY VALUE   one value: F10, 42, true, [ "a" ] (a plain word = text)
-#   nix2-setup unset KEY       back to nix²'s default
+#   nix2-setup unset KEY       back to parajynx's default
 #   nix2-setup get KEY         print a value (yours, else the default)
 #   nix2-setup module NAME on|off|default
 #   nix2-setup modules         which modules are on
@@ -31,7 +31,7 @@ ensure_file() {
   [ -e "$local_file" ] && return 0
   cat > "$local_file" <<'EOF'
 # This machine's settings. Any name from settings.nix can go here and replaces
-# nix²'s default. Not in git, so updates never touch it. Change it with an
+# parajynx's default. Not in git, so updates never touch it. Change it with an
 # editor, `modtui` → Edit settings, `mod on|off`, or `nix2-setup set`.
 {
 }
@@ -186,7 +186,7 @@ usage() {
 nix2-setup                 guided setup of this machine (settings.local.nix)
 nix2-setup --migrate       the same, no questions (rebuild runs it when needed)
 nix2-setup set KEY VALUE   one value: F10, 42, true, [ "a" ] (a plain word = text)
-nix2-setup unset KEY       back to nix²'s default
+nix2-setup unset KEY       back to parajynx's default
 nix2-setup get KEY         print a value
 nix2-setup module NAME on|off|default
 nix2-setup modules         which modules are on
@@ -269,7 +269,7 @@ migrate() {
 
 guided() {
   need_root
-  echo "nix² setup — this machine's settings. Enter keeps the value in [brackets]."
+  echo "parajynx setup — this machine's settings. Enter keeps the value in [brackets]."
   echo
   local user name host tz dev gpu esp grub=true
   # From the installer (--root) the live USB's own user and hostname mean

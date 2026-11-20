@@ -1,6 +1,6 @@
 # Your home server (the `homelab` module)
 
-One nix² desktop that also runs your own services 24/7, reachable from your phone, laptop and other
+One parajynx desktop that also runs your own services 24/7, reachable from your phone, laptop and other
 machines over **Tailscale**, and from nowhere else.
 
 ```
@@ -60,7 +60,7 @@ completely with `homelab.proxy = false;`, and every link goes back to `live:port
 
 ## Your other desktops pick it up by themselves
 
-On every other nix² machine (laptop, second desktop), add to its `settings.local.nix`:
+On every other parajynx machine (laptop, second desktop), add to its `settings.local.nix`:
 
 ```nix
 homelabServer = "live";
@@ -103,7 +103,7 @@ Pick the Minecraft version, give it RAM (4–6 GB is comfortable for a modded se
 1. In the server → **Files** → `mods/`, upload the `.jar` files. Use mods made for the same loader and
    Minecraft version: Modrinth and CurseForge show both.
 2. Restart the server from the panel.
-3. Players need the same mods on their side. Prism Launcher (already on nix²) can install the matching
+3. Players need the same mods on their side. Prism Launcher (already on parajynx) can install the matching
    pack in one click.
 
 For a whole modpack, download its **server pack** zip and use **Import Server** → upload the zip.

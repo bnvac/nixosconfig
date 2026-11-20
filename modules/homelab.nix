@@ -300,7 +300,7 @@ let
       8. Minecraft:               homelab minecraft on   → open the control panel, log in with
          'homelab passwords', create a server (Fabric/Forge/NeoForge for mods, Paper for plugins),
          upload mods under Files → mods/. 'homelab minecraft off' when you're done.
-      9. Other nix² machines:     on each, settings.local.nix: homelabServer = "${addr}";
+      9. Other parajynx machines:     on each, settings.local.nix: homelabServer = "${addr}";
          their menu (Super+Alt+d) then lists this machine's services by itself.
       Full guide: /etc/nixos/docs/HOMELAB.md
       EOF
