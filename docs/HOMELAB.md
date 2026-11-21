@@ -51,6 +51,21 @@ machines over **Tailscale**, and from nowhere else.
 
 `homelab setup` prints these steps (and the BenOS / VPN / Minecraft ones) any time.
 
+## Bridges: your home network and an exit node (optional)
+
+Tailscale already connects your devices to this machine's services. Two more bridges, each one line in
+`settings.local.nix` then `nixup`:
+
+| Setting | What it does | Then |
+|---|---|---|
+| `homelab.lanSubnet = "192.168.1.0/24";` | Devices on your home network that can't run Tailscale (printer, router page, a Pi) become reachable from anywhere on your tailnet | Admin page → Machines → this machine → ⋯ → **Edit route settings** → tick the subnet |
+| `homelab.exitNode = true;` | Your phone or laptop can send all its internet through home, e.g. on public Wi-Fi | Same page → tick **Use as exit node**; then on the phone: Tailscale → Exit node → this machine |
+
+Find your home network's range with `ip -4 route | grep -v tailscale` (the line with `src`, e.g.
+`192.168.1.0/24`). Remove a setting and `nixup` and the bridge is withdrawn: the flags are restated at
+every boot. On Linux clients, accept routes with `sudo tailscale set --accept-routes`; phones do it
+automatically.
+
 ## Names vs ports
 
 The names (`git.home.arpa`) need step 3. Until then, or on a device that doesn't use Tailscale DNS, the

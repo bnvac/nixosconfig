@@ -286,6 +286,10 @@ let
          this machine's 100.x address (tailscale ip -4) → turn on "Override DNS servers".
          Then ${if names then "http://home.${domain}" else "http://${addr}/"} lists everything.
          Pi-hole for devices NOT on Tailscale: set your router's DNS to this machine's LAN address.
+      4b. Optional bridges (settings.local.nix, then nixup):
+         homelab.lanSubnet = "192.168.1.0/24";  reach home devices from anywhere
+         homelab.exitNode = true;               route a device's internet through home
+         then login.tailscale.com/admin/machines → ${addr} → ⋯ → Edit route settings → approve.
       5. Dashboard:               ${if benosUrl == "" then "set homelab.benos.url in settings.local.nix, then see step 6"
                                    else "BenOS Lab → Add a server (address: ${addr}) → copy the agent token, then:"}
       6.   echo 'BENOS_AGENT_TOKEN=benos_agent_...' | sudo tee /etc/benos-agent.env >/dev/null
@@ -347,7 +351,18 @@ in
     useRoutingFeatures = "server";
     # Your devices use this machine's Pi-hole through Tailscale; this machine itself keeps its own
     # resolver, so it never ends up asking itself in a loop.
-    extraSetFlags = lib.optional (on "pihole") "--accept-dns=false";
+    # Bridges, both off unless set — and stated every boot, so removing a
+    # setting really turns it off (`tailscale set` remembers otherwise):
+    #   homelab.lanSubnet = "192.168.1.0/24";  your home network reachable from
+    #     anywhere on the tailnet (printer, router, a Pi: things that can't run
+    #     Tailscale). `ip -4 route | grep -v tailscale` shows yours.
+    #   homelab.exitNode = true;  your phone/laptop can send ALL their traffic
+    #     through home (public Wi-Fi); you pick "Use exit node" on that device.
+    # Either one then needs a one-time Approve in the Tailscale admin page.
+    extraSetFlags = lib.optional (on "pihole") "--accept-dns=false" ++ [
+      "--advertise-routes=${h.lanSubnet or ""}"
+      "--advertise-exit-node=${lib.boolToString (h.exitNode or false)}"
+    ];
   };
   networking.firewall.checkReversePath = lib.mkDefault "loose";
   networking.firewall.interfaces.tailscale0.allowedTCPPorts = webPorts;

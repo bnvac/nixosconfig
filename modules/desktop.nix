@@ -418,6 +418,7 @@ in
     brightnessctl xev lf ueberzugpp zathura nsxiv
     gruvbox-gtk-theme papirus-icon-theme lxappearance
     xarchiver ntfs3g exfatprogs dosfstools   # archives (Thunar plugin) + fs tools for drives
+    file                                     # what kind of file is this? (LARBS scripts: setbg, lf, opout)
     (writeShellScriptBin "zzz" ''exec systemctl suspend "$@"'')
   ]);
   programs.dconf.enable = true;

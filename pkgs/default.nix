@@ -246,6 +246,10 @@ in
         --replace-fail 'slock $ctl hibernate -i' '$ctl hibernate -i' \
         --replace-fail 'slock $ctl suspend -i' '$ctl suspend -i' \
         --replace-fail $'\tslock' $'\tlock'
+      # setbg asks `file` what you picked; without it every picture was "Not a
+      # valid image or directory" (the wallpaper picker's error).
+      substituteInPlace $out/bin/setbg \
+        --replace-fail 'file --mime-type' '${final.file}/bin/file --mime-type'
       find $out/bin -type f -exec sed -i '1s|^#!/usr/bin/sh|#!/bin/sh|' {} +
       patchShebangs $out/bin
       runHook postInstall

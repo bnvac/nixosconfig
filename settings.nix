@@ -165,6 +165,8 @@ let
       # address = "nix2";      # how other devices reach this machine (MagicDNS name); default: hostName
       # lan = false;           # true: web pages also open to the home network, not just the tailnet
       # dataDir = "/srv";      # where torrents land
+      # lanSubnet = "192.168.1.0/24"; # Tailscale bridge: reach your home network from anywhere ("" = off)
+      # exitNode = false;      # let your devices send all their traffic through home (approve in Tailscale admin)
       # proxy = true;          # nice names (http://git.home.arpa …) via Caddy + Pi-hole; ports keep working
       # domain = "home.arpa";  # the names' suffix (home.arpa is reserved for home networks)
       # minecraft = true;      # Crafty control panel installed; the server stays OFF until `homelab minecraft on`
