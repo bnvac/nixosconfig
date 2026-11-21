@@ -147,14 +147,20 @@ class Syncthing:
         return peers[0][0], peers[0][2]
 
     # --- writes --------------------------------------------------------
-    def add_device(self, device_id: str, name: str = "") -> None:
+    def add_device(self, device_id: str, name: str = "", addresses: list[str] | None = None) -> None:
         if any(d["deviceID"] == device_id for d in self.devices()):
+            if addresses:
+                self.set_addresses(device_id, addresses)
             return
         self._req("POST", "/rest/config/devices", {
             "deviceID": device_id,
             "name": name or device_id[:7],
+            "addresses": addresses or ["dynamic"],
             "autoAcceptFolders": True,          # accept folders the peer shares
         })
+
+    def set_addresses(self, device_id: str, addresses: list[str]) -> None:
+        self._req("PATCH", f"/rest/config/devices/{device_id}", {"addresses": addresses})
 
     def ensure_folder(self, fid: str, path: str, share_with: list[str], label: str = "") -> None:
         """Create folder `fid` (or keep it) and make sure it's shared with these devices."""
@@ -183,14 +189,19 @@ class Syncthing:
             return ""
         return str((info.get("global") or {}).get("modifiedBy") or "")
 
-    def link(self, peer_id: str, path: str, name: str = "") -> None:
+    def link(self, peer_id: str, path: str, name: str = "", addresses: list[str] | None = None) -> None:
         """Add the peer; share the tray and every folder in $DEVLINK_FOLDERS with it.
 
         Idempotent. These folders are created here, at runtime, rather than
         declared in NixOS: the NixOS module re-POSTs declared folders on every
         start, which would drop a peer added this way.
         """
-        self.add_device(peer_id, name)
+        from . import tailnet
+        if addresses is None and tailnet.enabled():
+            ip = {n.lower(): i for n, i in tailnet.peers()}.get((name or "").lower())
+            if ip:
+                addresses = tailnet.addresses(ip)
+        self.add_device(peer_id, name, addresses)
         self.ensure_tray_folder(path, [peer_id])
         for fid, fpath in extra_folders():
             self.ensure_folder(fid, fpath, [peer_id])

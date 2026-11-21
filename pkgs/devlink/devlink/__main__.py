@@ -196,10 +196,16 @@ def main(argv: list[str] | None = None) -> int:
                 print("devlink: no peer found with that code. Run `devlink pin <CODE>` on the "
                       "other machine at the same time.", file=sys.stderr)
                 return 1
-            peer_id, peer_name = peer[0], _safe(peer[1])
-            st.link(peer_id, path, peer_name)
-            _notify("Linked", f"with {peer_name} ({peer_id[:7]})")
-            print(f"linked with {peer_name} ({peer_id[:7]})")
+            peer_id, peer_name, peer_ts = peer[0], _safe(peer[1]), peer[2]
+            from . import tailnet
+            if tailnet.enabled() and not peer_ts:
+                print("devlink: found it, but it has no Tailscale address. Sign both machines in to "
+                      "Tailscale (menu → Network & privacy), then pair again.", file=sys.stderr)
+                return 1
+            st.link(peer_id, path, peer_name, tailnet.addresses(peer_ts) if peer_ts else None)
+            via = f" over Tailscale ({peer_ts})" if peer_ts else ""
+            _notify("Linked", f"with {peer_name} ({peer_id[:7]}){via}")
+            print(f"linked with {peer_name} ({peer_id[:7]}){via}")
             return 0
         if args.cmd == "link":
             st.link(args.peer_id, path, args.name)
@@ -219,6 +225,14 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"  {_safe(info.get('name')):<12} {'WANTS TO LINK':<10} {dev[:7]}   → devlink accept {dev[:7]}")
             return 0
         if args.cmd == "auto":
+            from . import tailnet
+            if tailnet.enabled():
+                try:
+                    moved = tailnet.retarget(st)
+                    if moved:
+                        _notify("DeviceLink", f"Now syncing over Tailscale with {', '.join(moved)}")
+                except (SyncthingError, OSError) as e:
+                    print(f"devlink: couldn't move links to Tailscale yet: {e}", file=sys.stderr)
             threading.Thread(target=_watch_requests, args=(st,), daemon=True).start()
             _watch_tray(st)
             return 0

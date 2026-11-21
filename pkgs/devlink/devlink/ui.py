@@ -157,7 +157,8 @@ class H(BaseHTTPRequestHandler):
                 peer = pairing.pair(code, st.my_id(), socket.gethostname(), float(data.get("timeout", 45)))
                 if peer is None:
                     return self._json(200, {"ok": False, "error": "no peer found — use the same code on the other machine at the same time"})
-                st.link(peer[0], str(tray.tray_dir()), peer[1])
+                from . import tailnet
+                st.link(peer[0], str(tray.tray_dir()), peer[1], tailnet.addresses(peer[2]) if peer[2] else None)
                 return self._json(200, {"ok": True, "peer": peer[1]})
         except (SyncthingError, KeyError, RuntimeError, OSError, ValueError) as e:
             return self._json(400, {"error": str(e)})

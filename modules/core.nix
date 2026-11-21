@@ -668,6 +668,22 @@ in
   networking.hostName = s.hostName;
   networking.networkmanager.enable = true;
   networking.firewall.enable = true;
+
+  # Tailscale on every parajynx machine (desktop or laptop), so your devices
+  # always find each other and the home server (homelab module) from anywhere.
+  # Sign in once: menu → Network → "Tailscale: sign in" (or sudo tailscale up).
+  # "client" lets a laptop use the server's home-network bridge and exit node;
+  # the homelab module raises it to "server". The open port lets devices
+  # connect directly instead of through a relay.
+  services.tailscale = {
+    enable = true;
+    useRoutingFeatures = lib.mkDefault "client";
+    openFirewall = true;
+  };
+  my.menu."Network & privacy" = [
+    { label = "Tailscale: sign in (once per machine)"; run = "/run/wrappers/bin/sudo tailscale up --accept-routes && tailscale ip -4"; mode = "term"; }
+    { label = "Tailscale: who's online"; run = "tailscale status"; mode = "term"; }
+  ];
   hardware.enableRedistributableFirmware = true;          # laptop wifi blobs
   systemd.services.NetworkManager-wait-online.enable = false;
   hardware.bluetooth = {

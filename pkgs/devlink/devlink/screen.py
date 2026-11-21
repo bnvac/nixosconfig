@@ -54,10 +54,14 @@ def _mkpass() -> str:
 
 
 def _allow(ip: str) -> str | None:
-    """Restrict to the peer's /24 (forgiving if the exact IP/port shifts).
+    """Restrict to the peer: its exact Tailscale address (stable per machine),
+    else its LAN /24 (forgiving if a home IP shifts).
 
     Only for IPv4; for anything else we fall back to password-only.
     """
+    from . import tailnet
+    if tailnet.is_tailnet_ip(ip):
+        return ip
     parts = ip.split(".")
     if len(parts) == 4 and all(p.isdigit() for p in parts):
         return ".".join(parts[:3]) + "."

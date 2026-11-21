@@ -11,9 +11,18 @@
 # Without IDs the folders are deliberately NOT declared to NixOS: its module
 # re-applies declared folders on every start, which would drop a peer added
 # at runtime.)
+#
+# Over Tailscale only (settings.syncOverTailscale, on by default): Syncthing,
+# pairing and screen sharing are reachable on the Tailscale interface and
+# nowhere else; Syncthing's public discovery and relay servers are off, so
+# your files only ever travel inside your tailnet, encrypted, from anywhere.
+# Machines are reached at their Tailscale address (pairing records it; links
+# made before are moved over by `devlink auto`). Sign every machine in to
+# Tailscale once (menu → Network & privacy).
 { config, pkgs, lib, ... }:
 let
   s = import ../settings.nix;
+  tailnetOnly = s.syncOverTailscale or true;
   home = "/home/${s.username}";
   # Every other machine with an ID: settings.syncDevices (any number, by host
   # name) plus the older two-machine settings.syncIds (by device type).
@@ -38,27 +47,46 @@ in
     user = s.username;
     dataDir = home;
     configDir = "${home}/.config/syncthing";
-    openDefaultPorts = true;
+    openDefaultPorts = !tailnetOnly;
     overrideDevices = false;        # don't fight pairing done at runtime
     overrideFolders = false;
-    settings = lib.mkIf havePeer {
-      devices = lib.mapAttrs (_: id: { inherit id; }) peers;
-      folders = lib.mapAttrs (_: path: { inherit path; devices = lib.attrNames peers; }) folders;
-    };
+    settings = lib.mkMerge [
+      (lib.mkIf havePeer {
+        # Declared machines are reached by their Tailscale (MagicDNS) name.
+        devices = lib.mapAttrs (name: id: {
+          inherit id;
+          addresses = if tailnetOnly then [ "tcp://${name}:22000" "quic://${name}:22000" ] else [ "dynamic" ];
+        }) peers;
+        folders = lib.mapAttrs (_: path: { inherit path; devices = lib.attrNames peers; }) folders;
+      })
+      (lib.mkIf tailnetOnly {
+        # No one else's servers: no global discovery, no relays, no LAN broadcasts, no port mapping.
+        options = {
+          globalAnnounceEnabled = false;
+          localAnnounceEnabled = false;
+          relaysEnabled = false;
+          natEnabled = false;
+          urAccepted = -1;               # no usage reporting
+        };
+      })
+    ];
   };
 
   systemd.tmpfiles.rules =
     map (p: "d ${p} 0755 ${s.username} users -") (lib.attrValues folders)
     ++ [ "d ${home}/DeviceLink 0755 ${s.username} users -" ];
 
-  # devlink PIN pairing shouts its device ID over link-local multicast
-  # (239.255.77.77:58846, TTL 1) so `devlink pin <code>` on both machines can
-  # find each other. Only this UDP port; the shout never leaves the LAN.
-  networking.firewall.allowedUDPPorts = [ 58846 ];
-  # VNC for `devlink screen` / `devlink view`. Nothing listens here until you
-  # actually share; while sharing, x11vnc is restricted to the linked peer's
-  # subnet and a fresh per-session password (handed over via the sync folder).
-  networking.firewall.allowedTCPPorts = [ 5900 ];
+  # Ports: Syncthing 22000 (TCP + QUIC), devlink PIN pairing 58846/udp, VNC
+  # 5900 for `devlink screen` (nothing listens until you share; then x11vnc
+  # takes only the linked machine, with a fresh per-session password).
+  # Tailnet-only: open on the Tailscale interface alone. Otherwise the LAN too
+  # (pairing then uses link-local multicast that never leaves the LAN).
+  networking.firewall.interfaces.tailscale0 = lib.mkIf tailnetOnly {
+    allowedTCPPorts = [ 22000 5900 ];
+    allowedUDPPorts = [ 22000 58846 ];
+  };
+  networking.firewall.allowedUDPPorts = lib.optional (!tailnetOnly) 58846;
+  networking.firewall.allowedTCPPorts = lib.optional (!tailnetOnly) 5900;
 
   # ── devlink: link the two machines with a code, send anything between them ──
   # `devlink pin <code>` (or the window) on BOTH machines with the same code
@@ -66,14 +94,17 @@ in
   # from the window or `devlink send|tabs` appear on the other side; tab sets
   # reopen by themselves. `devlink screen` / `view` share a whole screen (VNC).
   # Both services ride the desktop session: they open windows and files there.
-  environment.sessionVariables.DEVLINK_FOLDERS = devlinkFolders;
+  environment.sessionVariables = {
+    DEVLINK_FOLDERS = devlinkFolders;
+    DEVLINK_TAILNET = if tailnetOnly then "1" else "0";
+  };
   systemd.user.services.devlink = {
     description = "DeviceLink: notify on link requests + arrivals, reopen tab sets";
     wantedBy = [ "graphical-session.target" ];
     partOf = [ "graphical-session.target" ];
     after = [ "syncthing.service" "graphical-session.target" ];
-    path = [ pkgs.libnotify "/run/current-system/sw" ];          # notify-send, the browser, xdg-open
-    environment.DEVLINK_FOLDERS = devlinkFolders;
+    path = [ pkgs.libnotify config.services.tailscale.package "/run/current-system/sw" ];   # notify-send, tailscale, the browser
+    environment = { DEVLINK_FOLDERS = devlinkFolders; DEVLINK_TAILNET = if tailnetOnly then "1" else "0"; };
     serviceConfig = { ExecStart = "${pkgs.devlink}/bin/devlink auto"; Restart = "on-failure"; RestartSec = 5; };
   };
   systemd.user.services.devlink-ui = {
@@ -81,7 +112,7 @@ in
     wantedBy = [ "graphical-session.target" ];
     partOf = [ "graphical-session.target" ];
     path = [ "/run/current-system/sw" ];
-    environment.DEVLINK_FOLDERS = devlinkFolders;
+    environment = { DEVLINK_FOLDERS = devlinkFolders; DEVLINK_TAILNET = if tailnetOnly then "1" else "0"; };
     serviceConfig = { ExecStart = "${pkgs.devlink}/bin/devlink ui --port 7010"; Restart = "on-failure"; RestartSec = 5; };
   };
   # Bookmarks: no live sync service. At login (before the browsers start)

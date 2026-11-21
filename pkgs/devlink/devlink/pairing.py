@@ -3,7 +3,10 @@ with no long IDs to copy.
 
 How it works: each machine shouts its Syncthing device ID onto the local
 network over link-local multicast (239.255.77.77, TTL 1 — it never leaves
-the LAN). The shout carries an HMAC of (device-id, nonce) keyed by the PIN.
+the LAN), and sends the same shout straight to each of your other machines
+on Tailscale, so pairing works from anywhere, not only on the same Wi-Fi.
+Each shout also says the sender's Tailscale address, which is what the link
+then uses. The shout carries an HMAC of (device-id, nonce) keyed by the PIN.
 A peer only accepts a shout whose HMAC verifies under the same PIN, so only
 a machine that knows the code can be linked, and the HMAC is bound to the
 sender's own ID — replaying someone else's shout can't get an attacker's
@@ -19,6 +22,8 @@ import os
 import socket
 import struct
 import time
+
+from . import tailnet
 
 MCAST_GRP = "239.255.77.77"     # admin-scoped, link-local
 MCAST_PORT = 58846
@@ -58,16 +63,19 @@ def _receiver() -> socket.socket:
 def pair(pin: str, my_id: str, my_name: str, timeout: float = 120.0):
     """Broadcast under `pin` and listen for a peer doing the same.
 
-    Returns (peer_id, peer_name) once a peer that proves the same PIN is
+    Returns (peer_id, peer_name, tailnet_ip or "") once a peer that proves the same PIN is
     heard, or None on timeout. Keeps shouting a few seconds after a match so
     the peer is sure to hear us too.
     """
     key = _key(pin)
     nonce = os.urandom(8).hex()
+    my_ts = tailnet.my_ip()
     hello = json.dumps({
-        "v": 1, "id": my_id, "name": my_name,
+        "v": 1, "id": my_id, "name": my_name, "ts": my_ts,
         "nonce": nonce, "mac": _mac(key, my_id, nonce),
     }).encode()
+    targets: list[str] = []
+    next_peers = 0.0
 
     snd, rcv = _sender(), _receiver()
     found = None
@@ -81,15 +89,19 @@ def pair(pin: str, my_id: str, my_name: str, timeout: float = 120.0):
                 return None
             if grace_until is not None and now > grace_until:
                 return found
+            if now >= next_peers:                       # machines come online while we wait
+                targets = [ip for _, ip in tailnet.peers()]
+                next_peers = now + 10
             if now >= next_send:
-                try:
-                    snd.sendto(hello, (MCAST_GRP, MCAST_PORT))
-                except OSError:
-                    pass
+                for dest in ([] if tailnet.enabled() else [MCAST_GRP]) + targets:
+                    try:
+                        snd.sendto(hello, (dest, MCAST_PORT))
+                    except OSError:
+                        pass
                 next_send = now + 1.5
 
             try:
-                raw, _addr = rcv.recvfrom(4096)
+                raw, addr = rcv.recvfrom(4096)
             except socket.timeout:
                 continue
             except OSError:
@@ -104,7 +116,10 @@ def pair(pin: str, my_id: str, my_name: str, timeout: float = 120.0):
             if not hmac.compare_digest(pmac, _mac(key, pid, pnonce)):
                 continue                      # wrong PIN (or forged) — ignore
             if found is None:
-                found = (pid, str(msg.get("name", pid[:7])))
+                # Where to reach it: the Tailscale address it announced, else the one it came from.
+                ts = str(msg.get("ts") or "")
+                via = ts if tailnet.is_tailnet_ip(ts) else (addr[0] if tailnet.is_tailnet_ip(addr[0]) else "")
+                found = (pid, str(msg.get("name", pid[:7])), via)
                 grace_until = time.monotonic() + 4.0   # keep shouting so peer hears us
     finally:
         snd.close()
