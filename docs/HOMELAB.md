@@ -51,6 +51,12 @@ machines over **Tailscale**, and from nowhere else.
 
 `homelab setup` prints these steps (and the BenOS / VPN / Minecraft ones) any time.
 
+## Keep it locked down
+
+Your tailnet is the only way in, so secure it: two-factor on your sign-in, approve new devices yourself,
+and an access policy that gives friends Minecraft and nothing else. Step by step, with a policy to paste:
+[TAILSCALE.md](TAILSCALE.md).
+
 ## Bridges: your home network and an exit node (optional)
 
 Tailscale already connects your devices to this machine's services. Two more bridges, each one line in

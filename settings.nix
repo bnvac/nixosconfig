@@ -188,6 +188,9 @@ let
     # leaves itself out:
     #   syncDevices = { live = "ABC1234-…"; desktop = "XYZ9876-…"; den-pc = "…"; };
     syncDevices = { };
+    # Sync, DeviceLink and screen sharing only over Tailscale (encrypted, from
+    # anywhere, no public discovery or relay servers). false = also on the LAN.
+    syncOverTailscale = true;
     syncIds = { desktop = ""; laptop = ""; };   # older two-machine form, still works
   };
 
