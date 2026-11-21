@@ -75,7 +75,8 @@ completely with `homelab.proxy = false;`, and every link goes back to `live:port
 
 ## Your other desktops pick it up by themselves
 
-On every other parajynx machine (laptop, second desktop), add to its `settings.local.nix`:
+Tailscale is on every parajynx machine already; sign each one in once (menu → Network & privacy →
+"Tailscale: sign in", or `sudo tailscale up --accept-routes`). Then add to its `settings.local.nix`:
 
 ```nix
 homelabServer = "live";
