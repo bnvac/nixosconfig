@@ -93,16 +93,19 @@ let
   services = map (x: x // { url = canon x.sub x.port + (x.path or ""); direct = url x.port + (x.path or ""); })
     (lib.filter (x: x.enable) [
       { key = "pihole"; enable = on "pihole"; name = "Pi-hole"; sub = "pihole"; port = ports.pihole;
-        path = "/admin/"; check = "tcp://127.0.0.1:53"; }
+        check = "tcp://127.0.0.1:53"; }   # NixOS serves the dashboard at /, not /admin/
       { key = "gitea"; enable = on "git"; name = "Gitea"; sub = "git"; port = ports.git;
         check = "http://127.0.0.1:${toString ports.git}/api/healthz"; }
       { key = "nextcloud"; enable = on "cloud"; name = "Nextcloud"; sub = "cloud"; port = ports.cloud;
         check = "http://127.0.0.1:${toString ports.cloud}/status.php"; }
       { key = "freshrss"; enable = on "rss"; name = "FreshRSS"; sub = "rss"; port = ports.rss;
         check = "http://127.0.0.1:${toString ports.rss}/"; }
-      # The web UI asks for a password (401), so probe the port instead.
+      # The web UI asks for a password (401), so probe the port instead. With the VPN, probe
+      # Transmission itself inside its namespace: this machine's :9091 is a forwarder that
+      # answers even when Transmission isn't running.
       { key = "transmission"; enable = torrent; name = "Transmission"; sub = "torrent"; port = ports.torrent;
-        path = "/transmission/web/"; check = "tcp://127.0.0.1:${toString ports.torrent}"; }
+        path = "/transmission/web/";
+        check = "tcp://${if vpnOn then vethNs else "127.0.0.1"}:${toString ports.torrent}"; }
       { key = "searxng"; enable = on "search"; name = "SearXNG"; sub = "search"; port = ports.search;
         check = "http://127.0.0.1:${toString ports.search}/healthz"; }
     ]);
@@ -335,7 +338,8 @@ in
     { label = "Minecraft control panel (worlds, mods, players)"; run = "https://127.0.0.1:${toString ports.crafty}"; mode = "url"; }
     { label = "Minecraft: is it on?"; run = "homelab minecraft status"; mode = "term"; }
   ];
-  my.selfhosted = lib.listToAttrs (map (x: lib.nameValuePair x.name "http://127.0.0.1:${toString x.port}${x.path or ""}") services)
+  # This machine resolves the names too (it asks its own Pi-hole), so its menu uses them.
+  my.selfhosted = lib.listToAttrs (map (x: lib.nameValuePair x.name (if names then x.url else "http://127.0.0.1:${toString x.port}${x.path or ""}")) services)
     // lib.optionalAttrs proxyOn { "Homelab start page" = "http://127.0.0.1/"; }
     // lib.optionalAttrs mc { "Minecraft control panel" = "https://127.0.0.1:${toString ports.crafty}"; };
 
@@ -365,6 +369,10 @@ in
     ];
   };
   networking.firewall.checkReversePath = lib.mkDefault "loose";
+  # This machine asks its own Pi-hole first, so the *.home.arpa names (and the
+  # ad-blocking) work here too, not only on your other devices. If Pi-hole is
+  # down, lookups fall back to the network's own DNS after a short delay.
+  networking.networkmanager.insertNameservers = lib.optional (on "pihole") "127.0.0.1";
   networking.firewall.interfaces.tailscale0.allowedTCPPorts = webPorts;
   networking.firewall.allowedTCPPorts = lib.optionals lan webPorts ++ lib.optional (on "pihole") 53;
   networking.firewall.allowedUDPPorts = lib.optional (on "pihole") 53;
@@ -400,7 +408,8 @@ in
   };
   services.pihole-web = lib.mkIf (on "pihole") {
     enable = true;
-    hostName = addr;
+    # The name you open it by: Pi-hole refuses requests for any other host name.
+    hostName = if names then "pihole.${domain}" else addr;
     ports = [ ports.pihole ];
   };
 
