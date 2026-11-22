@@ -100,9 +100,12 @@ let
         check = "http://127.0.0.1:${toString ports.cloud}/status.php"; }
       { key = "freshrss"; enable = on "rss"; name = "FreshRSS"; sub = "rss"; port = ports.rss;
         check = "http://127.0.0.1:${toString ports.rss}/"; }
-      # The web UI asks for a password (401), so probe the port instead.
+      # The web UI asks for a password (401), so probe the port instead. With the VPN, probe
+      # Transmission itself inside its namespace: this machine's :9091 is a forwarder that
+      # answers even when Transmission isn't running.
       { key = "transmission"; enable = torrent; name = "Transmission"; sub = "torrent"; port = ports.torrent;
-        path = "/transmission/web/"; check = "tcp://127.0.0.1:${toString ports.torrent}"; }
+        path = "/transmission/web/";
+        check = "tcp://${if vpnOn then vethNs else "127.0.0.1"}:${toString ports.torrent}"; }
       { key = "searxng"; enable = on "search"; name = "SearXNG"; sub = "search"; port = ports.search;
         check = "http://127.0.0.1:${toString ports.search}/healthz"; }
     ]);
