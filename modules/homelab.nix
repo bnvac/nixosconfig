@@ -384,6 +384,10 @@ in
   # resolvconf itself, so every rewrite of resolv.conf (DHCP renewals, Wi-Fi
   # changes) keeps it first. If Pi-hole is down, the network's DNS answers.
   networking.resolvconf.extraConfig = lib.mkIf (on "pihole") "name_servers='127.0.0.1'";
+  # And the names themselves never depend on DNS here: they point straight at
+  # this machine (Caddy answers on every address, so 127.0.0.1 works).
+  networking.hosts."127.0.0.1" = lib.mkIf names
+    (map (n: "${n}.${domain}") ([ "home" ] ++ map (x: x.sub) services ++ lib.optional mc "minecraft"));
   networking.firewall.interfaces.tailscale0.allowedTCPPorts = webPorts;
   networking.firewall.allowedTCPPorts = lib.optionals lan webPorts ++ lib.optional (on "pihole") 53;
   networking.firewall.allowedUDPPorts = lib.optional (on "pihole") 53;
@@ -690,8 +694,11 @@ in
       };
       plugins."searx.plugins.infinite_scroll.SXNGPlugin".active = true;
       engines = map (name: { inherit name; disabled = false; }) [
-        # more general web results, so one blocked engine never leaves you empty
-        "mojeek" "qwant" "presearch" "yep"
+        # more general web results, so one blocked engine never leaves you empty.
+        # Newer SearXNG ships Google, Bing and Yahoo switched off; at home they're
+        # the ones that answer most reliably (DuckDuckGo/Brave/Startpage often
+        # CAPTCHA a home IP).
+        "google" "bing" "yahoo" "mojeek" "qwant" "presearch" "yep"
         # things you'd actually search for
         "reddit" "hackernews" "nixos wiki" "crates.io" "npm" "lib.rs" "pkg.go.dev"
         "codeberg" "gitlab" "imdb" "duckduckgo weather"
