@@ -28,8 +28,8 @@ machines over **Tailscale**, and from nowhere else.
 `live` stands for this machine's Tailscale name (its host name). Every one of these can be switched off in
 `settings.local.nix`, e.g. `homelab.rss = false;` removes FreshRSS (its tile, name and menu entry go too).
 
-The names work on the server itself as well: it asks its own Pi-hole first (and falls back to your
-network's DNS if Pi-hole is down).
+The names work on the server itself as well: they're in its hosts file, pointing at itself, so they
+never depend on DNS there. It still asks its own Pi-hole first for everything else (ad-blocking).
 
 **Who can reach what:**
 - **Web pages** are open only on the Tailscale interface. Add `homelab.lan = true;` to also open them to your home Wi-Fi.
@@ -161,7 +161,7 @@ step 7 (download a WireGuard config from Proton with **NAT-PMP** on, from a P2P 
 | Minecraft panel doesn't load | `homelab minecraft status`; the first start takes a few minutes; `journalctl -u docker-crafty -e` |
 | Friends can't join Minecraft | Same version and mods? On your tailnet? Port 25565 in the server's settings? |
 | Search returns little | `homelab search-test` lists which engines fail and why. Big engines block home IPs now and then; it usually clears within a day |
-| Names don't open on the server itself | `head -3 /etc/resolv.conf` should start with `nameserver 127.0.0.1`; if not, `sudo nmcli networking off && sudo nmcli networking on`. In Brave, turn off Settings → Privacy → **Use secure DNS** |
+| Names don't open on the server itself | `getent hosts git.home.arpa` should print `127.0.0.1`. If it does but the browser fails, turn off Brave's Settings → Privacy → **Use secure DNS** |
 | Torrents stuck | `homelab vpn`: if OFFLINE, check `/etc/homelab/protonvpn.conf` and `systemctl status torrent-netns` |
 
 Everything is plain NixOS underneath: `modules/homelab.nix` is the whole server, one section per service.
