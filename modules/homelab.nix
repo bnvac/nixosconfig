@@ -68,6 +68,16 @@ let
            BindReadOnlyPaths = [ "/etc/netns/${ns}/resolv.conf:/etc/resolv.conf" ];
            InaccessiblePaths = [ "-/run/nscd" ]; };   # nscd would resolve names OUTSIDE the tunnel
 
+  # SearXNG from a pinned NixOS-unstable snapshot: search sites change their
+  # pages constantly and an old SearXNG stops getting results (blocked, CAPTCHA).
+  # The stable release's copy is months older. Bump: point url at the current
+  # https://channels.nixos.org/nixos-unstable/nixexprs.tar.xz release and
+  # update sha256 (nix-prefetch-url --unpack <url>).
+  unstable = import (builtins.fetchTarball {
+    url = "https://releases.nixos.org/nixos/unstable/nixos-26.11pre1125864.2786a2a72088/nixexprs.tar.xz";
+    sha256 = "0m3pwjx19c3zq3cjk403aj43d1363lhp25wz9gs8ghis2x4000d4";
+  }) { system = pkgs.stdenv.hostPlatform.system; };
+
   ports = {
     pihole = 8053; git = 3002; gitSsh = 2222; cloud = 8091;
     rss = 8090; torrent = 9091; search = 8888; crafty = 8443;
@@ -370,9 +380,10 @@ in
   };
   networking.firewall.checkReversePath = lib.mkDefault "loose";
   # This machine asks its own Pi-hole first, so the *.home.arpa names (and the
-  # ad-blocking) work here too, not only on your other devices. If Pi-hole is
-  # down, lookups fall back to the network's own DNS after a short delay.
-  networking.networkmanager.insertNameservers = lib.optional (on "pihole") "127.0.0.1";
+  # ad-blocking) work here too, not only on your other devices. Set in
+  # resolvconf itself, so every rewrite of resolv.conf (DHCP renewals, Wi-Fi
+  # changes) keeps it first. If Pi-hole is down, the network's DNS answers.
+  networking.resolvconf.extraConfig = lib.mkIf (on "pihole") "name_servers='127.0.0.1'";
   networking.firewall.interfaces.tailscale0.allowedTCPPorts = webPorts;
   networking.firewall.allowedTCPPorts = lib.optionals lan webPorts ++ lib.optional (on "pihole") 53;
   networking.firewall.allowedUDPPorts = lib.optional (on "pihole") 53;
@@ -648,6 +659,7 @@ in
   # Your own changes: homelab.searchEngines = [ { name = "yandex"; disabled = false; } ];
   services.searx = lib.mkIf (on "search") {
     enable = true;
+    package = unstable.searxng;                 # newer engines than the stable release (see `unstable`)
     redisCreateLocally = true;
     environmentFile = "${secrets}/searx.env";
     settings = {

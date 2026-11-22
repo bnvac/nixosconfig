@@ -17,7 +17,7 @@ machines over **Tailscale**, and from nowhere else.
 | Service | Name (via the proxy) | Direct | Notes |
 |---|---|---|---|
 | Start page | `http://home.home.arpa` or `http://live/` | | Lists everything below |
-| Pi-hole | `http://pihole.home.arpa/admin/` | `live:8053` | Ad-blocking DNS; no password (tailnet only) |
+| Pi-hole | `http://pihole.home.arpa` | `live:8053` | Ad-blocking DNS; no password (tailnet only) |
 | Gitea | `http://git.home.arpa` | `live:3002`, ssh `live:2222` | Your git server |
 | Nextcloud | `http://cloud.home.arpa` | `live:8091` | Calendar, contacts, files |
 | FreshRSS | `http://rss.home.arpa` | `live:8090` | Works with phone RSS apps (API on) |
@@ -26,7 +26,10 @@ machines over **Tailscale**, and from nowhere else.
 | Minecraft panel | `http://minecraft.home.arpa` | `https://live:8443` | Crafty; **off by default** |
 
 `live` stands for this machine's Tailscale name (its host name). Every one of these can be switched off in
-`settings.local.nix`, e.g. `homelab.cloud = false;`.
+`settings.local.nix`, e.g. `homelab.rss = false;` removes FreshRSS (its tile, name and menu entry go too).
+
+The names work on the server itself as well: it asks its own Pi-hole first (and falls back to your
+network's DNS if Pi-hole is down).
 
 **Who can reach what:**
 - **Web pages** are open only on the Tailscale interface. Add `homelab.lan = true;` to also open them to your home Wi-Fi.
@@ -157,7 +160,8 @@ step 7 (download a WireGuard config from Proton with **NAT-PMP** on, from a P2P 
 | A service is down | `homelab status`, then `journalctl -u <name> -e` |
 | Minecraft panel doesn't load | `homelab minecraft status`; the first start takes a few minutes; `journalctl -u docker-crafty -e` |
 | Friends can't join Minecraft | Same version and mods? On your tailnet? Port 25565 in the server's settings? |
-| Search returns little | `homelab search-test` lists which engines fail and why |
+| Search returns little | `homelab search-test` lists which engines fail and why. Big engines block home IPs now and then; it usually clears within a day |
+| Names don't open on the server itself | `head -3 /etc/resolv.conf` should start with `nameserver 127.0.0.1`; if not, `sudo nmcli networking off && sudo nmcli networking on`. In Brave, turn off Settings → Privacy → **Use secure DNS** |
 | Torrents stuck | `homelab vpn`: if OFFLINE, check `/etc/homelab/protonvpn.conf` and `systemctl status torrent-netns` |
 
 Everything is plain NixOS underneath: `modules/homelab.nix` is the whole server, one section per service.
