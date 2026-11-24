@@ -151,11 +151,15 @@ let
     # other Linux installs, but scans every disk on each rebuild (slower).
     osProber = false;
 
-    # ── Backups (`backups` module): restic to an external drive ────────────────
-    # The restic repository on your backup drive. Default: a drive labelled
-    # BACKUP, /run/media/<username>/BACKUP/restic. Backups run only while it's
-    # mounted — unplugged, you get a reminder, not a failure.
+    # ── Backups (`backups` module, on): encrypted, daily ──────────────────────
+    # With homelabServer set: to your home server over Tailscale, from anywhere.
+    # Otherwise: a drive labelled BACKUP (/run/media/<username>/BACKUP/restic)
+    # whenever it's plugged in. `backup setup` once (the passphrase). Set this
+    # only to back up somewhere else (any restic repository).
     # backupRepo = "/run/media/ada/BACKUP/restic";
+
+    # ── Boot screen (branding/): the splash while it starts, and the boot menu ──
+    bootSplash = true;         # false: plain scrolling text at boot
 
     # ── 3D printers (`printing` module): Moonraker URLs to watch ───────────────
     # A desktop notification when a print finishes or fails. Empty = none.
@@ -169,10 +173,16 @@ let
     homelabServer = "";
 
     # ── Home server (`homelab` module, off until `mod on homelab`) ────────────
-    # Runs Pi-hole, Gitea, Nextcloud, FreshRSS, Transmission and SearXNG 24/7,
+    # Runs Pi-hole, Gitea, Nextcloud, FreshRSS, Transmission, SearXNG, Jellyfin,
+    # Immich and the backup server 24/7,
     # reachable from your devices over Tailscale. Each is on unless set false.
     homelab = {
       # pihole = true; git = true; cloud = true; rss = true; torrent = true; search = true;
+      # media = true;          # Jellyfin: films, shows, music (put them in <dataDir>/media)
+      # photos = true;         # Immich: your own Google Photos (phone app backs up automatically)
+      # photosAI = true;       # Immich's faces + "search by what's in it" (~1 GB RAM)
+      # backups = true;        # receives your other machines' daily backups (Tailscale only)
+      # backupsAppendOnly = false;  # true: machines can add backups but never delete them
       # address = "nix2";      # how other devices reach this machine (MagicDNS name); default: hostName
       # lan = false;           # true: web pages also open to the home network, not just the tailnet
       # dataDir = "/srv";      # where torrents land

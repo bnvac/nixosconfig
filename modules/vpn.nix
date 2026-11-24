@@ -43,7 +43,7 @@ let
 
   vpn = pkgs.writeShellApplication {
     name = "vpn";
-    runtimeInputs = with pkgs; [ networkmanager curl coreutils gnugrep systemd ];
+    runtimeInputs = with pkgs; [ networkmanager curl coreutils gnugrep systemd procps ];
     text = ''
       have() { nmcli -g connection.uuid connection show id ${id} >/dev/null 2>&1; }
       net() { nmcli -t -f UUID,TYPE,STATE connection show --active \
@@ -68,10 +68,12 @@ let
           ;;
         on)
           rm -f ${state}/paused ${state}/blocked/* 2>/dev/null || true
+          pkill -RTMIN+13 dwmblocks 2>/dev/null || true
           echo "Automatic: connects within a few seconds (blocked networks get another try)." ;;
         off)
           touch ${state}/paused
           nmcli connection down id ${id} >/dev/null 2>&1 || true
+          pkill -RTMIN+13 dwmblocks 2>/dev/null || true
           echo "Off until you turn it back on." ;;
         retry)
           rm -f ${state}/blocked/* 2>/dev/null || true
@@ -101,7 +103,7 @@ let
 
   auto = pkgs.writeShellApplication {
     name = "vpn-auto";
-    runtimeInputs = with pkgs; [ networkmanager curl coreutils gnugrep util-linux libnotify systemd ];
+    runtimeInputs = with pkgs; [ networkmanager curl coreutils gnugrep util-linux libnotify systemd procps ];
     text = ''
       user=${s.username}
       notify() {
@@ -112,7 +114,8 @@ let
       }
       through_vpn() { curl -s -o /dev/null --max-time 3 --interface ${dev} ${probe}; }
       direct() { curl -s -o /dev/null --max-time 4 ${probe}; }
-      down() { nmcli connection down id ${id} >/dev/null 2>&1 || true; }
+      bar() { pkill -RTMIN+13 dwmblocks 2>/dev/null || true; }   # refresh the status bar's 🔒
+      down() { nmcli connection down id ${id} >/dev/null 2>&1 || true; bar; }
 
       last_net="" fail_since="" waiting="" tries=0 last_ok=0 worked=0
       while sleep 3; do
@@ -145,7 +148,7 @@ let
         fi
 
         if ! $up; then
-          nmcli --wait 15 connection up uuid "$vpn_uuid" >/dev/null 2>&1 || true
+          nmcli --wait 15 connection up uuid "$vpn_uuid" >/dev/null 2>&1 || true; bar
           tries=$((tries + 1)) fail_since=$now last_ok=0
           continue
         fi

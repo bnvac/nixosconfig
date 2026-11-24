@@ -480,7 +480,7 @@ let
   '';
 in
 {
-  imports = [ ../options.nix ];
+  imports = [ ../options.nix ../branding/boot.nix ];
   nixpkgs.overlays = [ (import ../pkgs) ];
   nixpkgs.config.allowUnfree = true;
   # Allow-list only; harmless when the package isn't installed. Kept here in one
@@ -606,7 +606,7 @@ in
     (lib.mkIf s.useGrub { grub = {
       enable = true; efiSupport = true; device = "nodev"; configurationLimit = 10;
       useOSProber = s.osProber or false;       # Windows has its own entry, below
-      theme = pkgs.xp-bliss-grub-theme; gfxmodeEfi = "auto";
+      gfxmodeEfi = "auto";                     # theme: branding/boot.nix
       # GRUB: Windows (if there is one) gets a menu entry that finds it when you
       # boot. os-prober did the same by scanning every disk on EVERY rebuild —
       # 10-30 s each time. settings.osProber = true brings it back (other Linuxes).
@@ -684,6 +684,8 @@ in
     enable = true;
     useRoutingFeatures = lib.mkDefault "client";
     openFirewall = true;
+    # You can sign in and switch it without sudo (the welcome window does).
+    extraSetFlags = [ "--operator=${s.username}" ];
   };
   my.menu."Network & privacy" = [
     # Signed in: who's online. Not yet: sign in.

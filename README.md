@@ -91,9 +91,15 @@ writes it, it's not in git, so updates never touch it.
 
 `rebuild` applies changes. `nixup` pulls the newest parajynx and rebuilds.
 
+## First login
+
+A welcome window opens: pick what you'll use the machine for, sign in to Tailscale, drop in a VPN
+config, set up backups, and (on a new computer) bring your files over from another machine's backup.
+Menu → System → Welcome / setup opens it again. The boot splash and boot menu come from `branding/`.
+
 ## Modules
 
-Only the essentials are on by default (desktop, apps, power, vpn), so a fresh install stays small and light on RAM. Turn on what you use: `mod on <name>` / `mod off <name>`.
+Only the essentials are on by default (desktop, apps, power, vpn, backups), so a fresh install stays small and light on RAM. Turn on what you use: `mod on <name>` / `mod off <name>`.
 
 | module | what |
 |---|---|
@@ -108,7 +114,7 @@ Only the essentials are on by default (desktop, apps, power, vpn), so a fresh in
 | platform | Docker, Flatpak/Flathub, AppImage, Distrobox, and apps built from any git repo (`gitApps`) — **off by default** |
 | paper | printers and scanners: most work with no driver (network or USB), plus HP/Brother/Canon/Epson/Samsung/Gutenprint drivers for older ones. Menu → Printers & scanners — **off by default** |
 | printing | 3D printers: mDNS + printrun for Klipper printers on the network; a notification when a print ends — **off by default** |
-| backups | daily restic snapshots of home + config to an external drive — **off by default** |
+| backups | daily encrypted restic backups of your home folder + this machine's own settings (not what your config or the internet gives back): to your home server over Tailscale, or an external drive. `backup setup`, `backup bring <machine>` for a new computer |
 | power | laptop battery/thermal tuning (TLP); does nearly nothing on a desktop. `batteryLimit = 80;` stops charging at 80% (longer battery life), `fingerprint = true;` turns on the fingerprint reader for login and sudo |
 | virt | QEMU/KVM + virt-manager — **off by default** |
 | sync | your machines (two or more): Syncthing, DeviceLink (send files, tabs, screen), bookmarks. Link with `devlink pin <code>`, or list them in `syncDevices` — **off by default** |

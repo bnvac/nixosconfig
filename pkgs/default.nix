@@ -197,6 +197,46 @@ in
     meta.mainProgram = "dmenu";
   };
 
+  # Status bar: privacy at a glance. Click opens that menu folder; right-click
+  # says what the icons mean. 🔒 VPN connected · 🔓 VPN set up but off (or
+  # this network blocks it) · 🧅 everything through Tor · 🔗 Tailscale up.
+  # `pkill -RTMIN+13 dwmblocks` refreshes it at once (vpn does that).
+  sb-privacy = final.writeShellApplication {
+    name = "sb-privacy";
+    runtimeInputs = with final; [ networkmanager tailscale jq systemd libnotify util-linux ];
+    text = ''
+      case "''${BLOCK_BUTTON:-}" in
+        1) setsid -f nix2 menu "Network & privacy" >/dev/null 2>&1 ;;
+        3) notify-send "Status bar" "🔒 VPN on · 🔓 VPN off here · 🧅 Tor for everything · 🔗 Tailscale connected. Click: Network & privacy." ;;
+      esac
+      out=""
+      if nmcli -t -f NAME connection show --active 2>/dev/null | grep -qx parajynx-vpn; then out="🔒"
+      elif nmcli -g connection.uuid connection show id parajynx-vpn >/dev/null 2>&1; then out="🔓"; fi
+      if systemctl is-active --quiet tor-transparent 2>/dev/null; then out="$out🧅"; fi
+      if tailscale status --json 2>/dev/null | jq -e '.BackendState == "Running"' >/dev/null 2>&1; then
+        out="''${out:+$out }🔗"
+      fi
+      printf '%s\n' "$out"
+    '';
+  };
+  # 🏠 your home server answers · 🏠✗ it doesn't (on the server itself: its
+  # own start page). Nothing when there's no home server. Click: Self-hosted.
+  sb-homelab = final.writeShellApplication {
+    name = "sb-homelab";
+    runtimeInputs = with final; [ curl libnotify util-linux ];
+    text = let
+      server = if settings.modules.homelab or false then "127.0.0.1" else settings.homelabServer or "";
+    in ''
+      server="${server}"
+      [ -n "$server" ] || exit 0
+      case "''${BLOCK_BUTTON:-}" in
+        1) setsid -f nix2 menu "Self-hosted" >/dev/null 2>&1 ;;
+        3) notify-send "Status bar" "🏠 your home server is reachable · 🏠✗ it isn't (off, or you're off Tailscale). Click: Self-hosted." ;;
+      esac
+      if curl -s -o /dev/null --max-time 3 "http://$server/services.json"; then echo "🏠"; else echo "🏠✗"; fi
+    '';
+  };
+
   larbs-dwmblocks = prev.stdenv.mkDerivation {
     pname = "larbs-dwmblocks"; version = "0-unstable";
     src = gh { owner = "LukeSmithxyz"; repo = "dwmblocks";
@@ -209,6 +249,8 @@ in
     postPatch = ''
       cat > config.h <<'CFG'
       static const Block blocks[] = {
+        {"", "sb-privacy 2>/dev/null",             10, 13},
+        {"", "sb-homelab 2>/dev/null",             60, 14},
         {"", "sb-internet 2>/dev/null",            10, 4},
         {"", "sb-volume 2>/dev/null",               0, 10},
         {"", "sb-battery 2>/dev/null",              5, 3},
@@ -351,7 +393,7 @@ in
       meta.mainProgram = "rice";
     };
   offtimer        = sh "offtimer" (with final; [ systemd coreutils gnused gawk libnotify larbs-dmenu ]) ./scripts/offtimer.sh;
-  backup          = sh "backup" (with final; [ restic coreutils util-linux libnotify ]) ./scripts/backup.sh;
+  backup          = sh "backup" (with final; [ restic coreutils util-linux libnotify curl git jq ]) ./scripts/backup.sh;
   # fastfetch (also as `neofetch`) with parajynx's own layout (pkgs/fastfetch/
   # config.jsonc), unless you have ~/.config/fastfetch/config.jsonc. The logo
   # is 并行 (pkgs/fastfetch/logo.txt, drawn by logo.py) in the wallpaper's

@@ -63,6 +63,33 @@ let
       "${oneLine c}\t${oneLine i.label}\t${mode i}\t${if i.needs == null then "-" else i.needs}\t${oneLine (runOf i)}\n"
   ) allMenu.${c}) catOrder;
 
+  # `welcome` — first-run setup in a window (pkgs/scripts/welcome.py): modules,
+  # Tailscale, the VPN, backups, bringing files over. Opens at the first login.
+  welcomeData = pkgs.writeText "welcome.json" (builtins.toJSON {
+    inherit (import ../branding/branding.nix) name colors;
+    hostname = s.hostName;
+    homelabServer = s.homelabServer or "";
+    modules = lib.filter (m: builtins.pathExists (../modules + "/${m.id}.nix")) [
+      { id = "gaming"; title = "Gaming"; desc = "Steam (Windows games too), Minecraft, controllers"; }
+      { id = "devtools"; title = "Code"; desc = "Git, editors, debuggers, fast builds, new-project templates"; }
+      { id = "ai"; title = "AI"; desc = "Claude: the desktop app and Claude Code"; }
+      { id = "ee"; title = "Electronics & CAD"; desc = "KiCad, Arduino/ESP32/Pico, FreeCAD, slicers"; }
+      { id = "extras"; title = "More apps"; desc = "Discord, Slack, music, ebooks, torrents, Chromium"; }
+      { id = "privacy"; title = "Proton & Tor"; desc = "Proton Mail/Pass, Tor Browser, Tor for everything"; }
+      { id = "platform"; title = "Containers & Flatpak"; desc = "Docker, Flathub apps, AppImages, Distrobox"; }
+      { id = "paper"; title = "Printers & scanners"; desc = "Paper printers and scanners, mostly driverless"; }
+      { id = "printing"; title = "3D printers"; desc = "Klipper printers on your network, print-done alerts"; }
+      { id = "sync"; title = "Sync my machines"; desc = "Syncthing folders, send files and tabs, screen sharing"; }
+      { id = "virt"; title = "Virtual machines"; desc = "QEMU/KVM with virt-manager"; }
+      { id = "assistant"; title = "Local AI assistant"; desc = "Neb + Ollama on your GPU (big downloads)"; }
+      { id = "homelab"; title = "This is my home server"; desc = "Pi-hole, Nextcloud, Gitea, Jellyfin, Immich, backups… 24/7"; }
+    ];
+  });
+  welcome = pkgs.writeShellScriptBin "welcome" ''
+    export WELCOME_DATA=${welcomeData}
+    exec ${pkgs.python3}/bin/python3 -I ${../pkgs/scripts/welcome.py} "$@"
+  '';
+
   # `drives` — mount / unlock / unmount from dmenu (Super+Alt+m, Super+F9/F10).
   # Nothing ever mounts on its own: you pick the drive. udisks2 does the work as
   # your user (no sudo) under /run/media/<you>/<label>; LUKS drives ask for the
@@ -217,7 +244,9 @@ in
         ${pkgs.dunst}/bin/dunst &
         ${pkgs.blueman}/bin/blueman-applet &
         ${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1 &   # password prompts (drives, etc.)
-        ${pkgs.mpd}/bin/mpd &
+        command -v mpd >/dev/null && mpd &        # music daemon: only with the extras module
+        # First login: the welcome window (once; menu → System → Welcome / setup any time).
+        (sleep 4; ${welcome}/bin/welcome --if-new) &
         # Brave is the default browser: say so once in your own defaults (a
         # browser may have claimed links there before). Change it later and it
         # stays changed.
@@ -401,6 +430,7 @@ in
   my.menu = lib.mkMerge [
     {
       "System" = [
+        { label = "Welcome / setup (modules, Tailscale, VPN, backups)"; run = "welcome"; }
         { label = "Lock screen"; run = "lock"; }
         { label = "Suspend"; run = "zzz"; }
         { label = "Shutdown timer (turn off later)"; run = "offtimer"; }
@@ -452,7 +482,7 @@ in
   };
 
   my.packages = [ dash drives pkgs.nixmenu mykeys nightlight displaysRefresh homelabDiscover ] ++ dashItems ++ (with pkgs; [
-    wallpapers wallpaper-live site-push rice xsettingsd
+    wallpapers wallpaper-live site-push rice xsettingsd sb-privacy sb-homelab welcome
     (makeDesktopItem {
       name = "rice"; desktopName = "Look & feel"; exec = "rice";
       icon = "preferences-desktop-theme"; categories = [ "Settings" "DesktopSettings" ];
