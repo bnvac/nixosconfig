@@ -14,6 +14,20 @@ let
           the output · tty: run a full-screen terminal program · url: open as an app window.
         '';
       };
+      state = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        description = ''
+          Makes this a toggle: one entry that shows "on ●" / "off ○" and switches.
+          A command that exits 0 while it's on; `run` turns it on, `off` turns it off.
+          mode = "term" runs the switch in a terminal (for ones that ask for a password).
+        '';
+      };
+      off = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        description = "A toggle's command to turn it off (see state).";
+      };
       needs = mkOption {
         type = types.nullOr types.str;
         default = null;
@@ -34,7 +48,8 @@ in
     '';
   };
 
-  # nixmenu (Super+Alt+Space): category → entries. Every module adds its own;
+  # nixmenu (Super+Alt+Space): category → entries. A category can be a folder
+  # path ("System/Updates" = the Updates folder in System). Every module adds its own;
   # settings.nix → menu can add/hide/reorder, and ~/.config/nixmenu/menu can
   # too without a rebuild.
   options.my.menu = mkOption {

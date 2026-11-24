@@ -532,7 +532,7 @@ CSV. The CSV is only ever on this disk, never in the Sync folder.
 APP_IMPORT_HELP = """Proton Pass's command line isn't signed in, so import with the app instead
 (it reads browser exports directly):
 
-  1. Open Proton Pass (menu → Proton → Proton Pass)
+  1. Open Proton Pass (menu → Network & privacy → Proton → Proton Pass)
   2. Settings → Import → choose the browser → pick the file:
 {files}
   3. When it says it's done:  browser-sync passwords --shred

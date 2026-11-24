@@ -6,9 +6,9 @@
 # that on, plus the common drivers for older ones (HP, Brother, Canon, Epson,
 # Samsung/Xerox and Gutenprint's long list).
 #
-#   Add a printer        menu → Printers & scanners → Add a printer
+#   Add a printer        menu → Devices → Printers & scanners → Add a printer
 #                        (most network printers show up on their own)
-#   Scan                 menu → Scan a document (Document Scanner)
+#   Scan                 menu → Devices → Printers & scanners → Scan (Document Scanner)
 #   Print queue          http://localhost:631
 #
 # Nothing runs until it's needed: CUPS starts the first time something prints.
@@ -35,7 +35,7 @@ in
 
   programs.system-config-printer.enable = true;
 
-  my.menu."Printers & scanners" = [
+  my.menu."Devices/Printers & scanners" = [
     { label = "Add a printer"; run = "system-config-printer"; }
     { label = "Scan a document"; run = "simple-scan"; }
     { label = "What's printing (the queue)"; run = "http://localhost:631/jobs"; mode = "url"; }

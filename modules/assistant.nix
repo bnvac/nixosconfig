@@ -113,7 +113,7 @@ in
     };
   };
 
-  my.menu."Neb (AI)" = [
+  my.menu."AI" = lib.mkAfter [
     { label = "Talk to Neb"; run = "neb-voice"; }
     { label = "Neb's workspace"; run = "xdotool key super+9; exec neb-space"; }
   ];

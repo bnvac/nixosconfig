@@ -50,7 +50,7 @@ in
   '';
 
   # In the menu next to the coding tools (each shows only if installed).
-  my.menu."Code & engineering" = [
+  my.menu."Code & engineering/Electronics" = [
     { label = "Serial monitor (pick a board)"; run = "nix2 serial"; mode = "tty"; }
     { label = "New board project (Pico, ESP32, Arduino…)"; run = "nix2 new board"; mode = "term"; }
     (app "KiCad (circuit boards)" "kicad")

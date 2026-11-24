@@ -96,7 +96,7 @@ services. A timer refreshes the list at login and every 30 minutes, so services 
 without touching that machine. It uses the nice names when that machine can resolve them, otherwise
 `live:port`. Refresh by hand with `homelab-discover`.
 
-On the server itself the services are already in its own menu, plus a **Homelab** and a **Minecraft** menu.
+On the server itself the services are already in its own menu, plus **Self-hosted → Homelab tools** and a **Minecraft server** switch in Games.
 
 ## Your BenOS dashboard
 
@@ -109,7 +109,7 @@ it's off most of the time and would always show red.
 
 | Do this | How |
 |---|---|
-| Turn on | `homelab minecraft on`, or menu → Minecraft → turn ON |
+| Turn on | `homelab minecraft on`, or menu → Games → Minecraft server (one switch) |
 | Turn off | `homelab minecraft off` (saves worlds, up to 2 minutes) |
 | Is it on? | `homelab minecraft status` |
 | Control panel | `http://minecraft.home.arpa` (or `https://live:8443`, accept the certificate warning once) |

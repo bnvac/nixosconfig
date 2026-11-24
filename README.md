@@ -112,7 +112,7 @@ Only the essentials are on by default (desktop, apps, power, vpn), so a fresh in
 | power | laptop battery/thermal tuning (TLP); does nearly nothing on a desktop. `batteryLimit = 80;` stops charging at 80% (longer battery life), `fingerprint = true;` turns on the fingerprint reader for login and sudo |
 | virt | QEMU/KVM + virt-manager — **off by default** |
 | sync | your machines (two or more): Syncthing, DeviceLink (send files, tabs, screen), bookmarks. Link with `devlink pin <code>`, or list them in `syncDevices` — **off by default** |
-| ai | Claude: the official desktop app (Chat, Cowork, Claude Code; Linux beta, kept on its newest version by `update-mine`) and the terminal agents Claude Code and Freebuff (free, ad-supported), which install themselves the first time you run them and keep themselves up to date; menu → Code & engineering opens one in a project — **off by default** |
+| ai | Claude: the official desktop app (Chat, Cowork, Claude Code; Linux beta, kept on its newest version by `update-mine`) and the terminal agents Claude Code and Freebuff (free, ad-supported), which install themselves the first time you run them and keep themselves up to date; menu → AI opens one in a project — **off by default** |
 | assistant | Neb, a local voice assistant, + Ollama / Open-WebUI on your GPU — **off by default** |
 | backoffice | a parts-inventory web app — **off by default** |
 | intraweb | a local-first neighborhood web on your LAN (no server, no internet) — **off by default** |
@@ -208,7 +208,7 @@ Only the essentials are on by default (desktop, apps, power, vpn), so a fresh in
 - **Neighborhood (intraweb)**: joins the LAN's neighborhood web at login — a
   dashboard on `:8420`, with pages, files, signed mail and channels, no server
   and no internet. Your identity is a key in `~/.intraweb`; copy that folder to
-  stay yourself on another machine. nixmenu → **Neighborhood** opens it. To host
+  stay yourself on another machine. nixmenu → Network & privacy → **Neighborhood** opens it. To host
   a hub (claims `intranet.local`), run `sudo intraweb up --hub` by hand.
 - **Backups**: the `backups` module takes daily restic snapshots of `~` and
   `/etc/nixos` to the drive at `backupRepo` (settings). Set it up once — plug in

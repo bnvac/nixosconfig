@@ -89,7 +89,7 @@ in
   my.packages = [ pkgs.claude-desktop claude freebuff agentHere pkgs.nodejs ];
   users.users.${s.username}.extraGroups = [ "kvm" ];    # Cowork's VM
 
-  my.menu."Code & engineering" = [
+  my.menu."AI" = [
     { label = "Claude (desktop app: Chat, Cowork, Code)"; run = "claude-desktop"; }
     { label = "Claude Code in a terminal (pick a project)"; run = "agent-here claude"; }
     { label = "Freebuff — free coding agent (pick a project)"; run = "agent-here freebuff"; }
