@@ -533,6 +533,13 @@ in
       ip link add wg-proton type wireguard
       grep -viE '^[[:space:]]*(Address|DNS|MTU|Table|PreUp|PostUp|PreDown|PostDown|SaveConfig)[[:space:]]*=' "$conf" \
         | wg setconf wg-proton /dev/stdin
+      # The tunnel's own (encrypted) packets go out the real network, never
+      # through this machine's everyday VPN (the vpn module): no VPN-in-a-VPN.
+      wg set wg-proton fwmark 0x5170
+      for f in -4 -6; do
+        ip "$f" rule del pref 5300 2>/dev/null || true
+        ip "$f" rule add pref 5300 fwmark 0x5170 lookup main
+      done
       ip link set wg-proton netns ${ns}
       for a in ''${addrs//,/ }; do ip -n ${ns} addr add "$a" dev wg-proton; done
       ip -n ${ns} link set wg-proton mtu 1420 up
@@ -542,7 +549,7 @@ in
       mkdir -p /etc/netns/${ns}
       echo "nameserver ''${dns%%,*}" > /etc/netns/${ns}/resolv.conf
     '';
-    preStop = "ip netns del ${ns} || true; ip link del vpn-host 2>/dev/null || true";
+    preStop = "ip netns del ${ns} || true; ip link del vpn-host 2>/dev/null || true; ip -4 rule del pref 5300 2>/dev/null || true; ip -6 rule del pref 5300 2>/dev/null || true";
   };
 
   systemd.services.transmission = lib.mkIf vpnOn {

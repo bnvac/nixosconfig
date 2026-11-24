@@ -41,7 +41,7 @@ let
   dashItems = lib.mapAttrsToList (name: url: pkgs.makeDesktopItem {
     name = "web-" + lib.toLower (builtins.replaceStrings [ " " "/" ] [ "-" "-" ] name);
     desktopName = name;
-    exec = "${pkgs.chromium}/bin/chromium --app=${url}";
+    exec = "${pkgs.brave}/bin/brave --app=${url}";
     icon = "web-browser"; categories = [ "Network" ];
   }) config.my.selfhosted;
 
@@ -228,7 +228,7 @@ in
         [ -e "$bg" ] || { mkdir -p "$HOME/.local/share"; ln -sfn ${wallpaper} "$bg"; }
         fit=$(cat "$HOME/.config/wallpapers/fit" 2>/dev/null) || fit=zoom   # set in `wallpapers`
         ${pkgs.xwallpaper}/bin/xwallpaper "--''${fit:-zoom}" "$bg" &
-        ${lib.optionalString (s.liveSnow or true) "${pkgs.snow}/bin/snow on"}
+        ${lib.optionalString (s.liveSnow or false) "${pkgs.snow}/bin/snow on"}
         ${pkgs.larbs-scripts}/bin/remaps &
         ${pkgs.xset}/bin/xset s 600 600          # 10 idle minutes → xss-lock locks the screen
         # for user services that started before X (Neb's desktop actions, tab sets)

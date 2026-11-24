@@ -85,6 +85,14 @@ codes, and losing all your signing devices *and* those codes locks you out of ad
 Admin page → **Machines**: remove anything you don't recognise or don't use any more.
 **Logs → Configuration** shows who changed what.
 
+## Tailscale and the VPN together
+
+The `vpn` module (on by default) and Tailscale run at the same time: your tailnet (home server, sync,
+DeviceLink, Minecraft) goes straight to your devices, Tailscale's own connections use your real network,
+and everything else goes through the VPN. Use `vpn` rather than the Proton app's kill switch, which
+blocks Tailscale. On a network that blocks VPNs, the VPN switches itself off there and Tailscale keeps
+working (it gets through almost any network).
+
 ## What parajynx does on its side
 
 - Every service, sync, DeviceLink pairing and screen sharing listen only on the Tailscale interface.

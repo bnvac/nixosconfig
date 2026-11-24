@@ -49,7 +49,7 @@ let
     # Terminal opacity, 0.0–1.0 (1.0 = fully opaque). The compositor (picom)
     # applies it; a FULLSCREEN terminal (Super+f) is always forced fully opaque.
     termOpacity = "0.72";
-    liveSnow = true;           # falling snow over the wallpaper (`snow off` for now)
+    liveSnow = false;          # falling snow over the wallpaper (uses CPU/RAM; `snow on` to try it)
     # Night light: warmer screen colours after sunset (`nightlight` toggles it).
     # Sunset is worked out from where you are — rough is fine (city level).
     nightLight = true;
@@ -62,6 +62,14 @@ let
     # else. Find out with: nix-shell -p xorg.xev --run "xev -event keyboard"
     # (press it; the name after "keysym 0x…," is what goes here, e.g. "F10").
     screenshotKey = "Print";
+
+    # ── VPN (`vpn` module): connects by itself, steps aside where it's blocked ──
+    # Set up once with `vpn add <wireguard-config.conf>` (Proton: account →
+    # Downloads → WireGuard configuration).
+    vpn = {
+      giveUpSeconds = 10;      # nothing through the VPN this long → off on that network
+      retryBlockedHours = 12;  # then try that network again after this long (or `vpn retry`)
+    };
 
     # ── Modules ───────────────────────────────────────────────────────────────
     # Which are on comes from the marker files in mods/ (parajynx's defaults),

@@ -1,23 +1,16 @@
-# Everyday apps: browsers, comms, media, torrents, device tooling, Onshape.
+# Everyday apps, kept lean: Brave, LibreOffice, a video player, sound and
+# network controls. Chat apps, Chromium, music, ebooks, torrents and Onshape
+# are the `extras` module (off by default: `mod on extras`).
 { pkgs, ... }:
-let
-  onshape = pkgs.makeDesktopItem {
-    name = "onshape"; desktopName = "Onshape";
-    exec = "${pkgs.chromium}/bin/chromium --app=https://cad.onshape.com/documents";
-    icon = "applications-engineering"; categories = [ "Engineering" ];
-  };
-in
 {
-  # Browsers: Brave (the default — Super+w, links, BROWSER) and Chromium.
+  # Browser: Brave (the default — Super+w, links, BROWSER, web-app windows).
   #   Brave      Chromium with ad and tracker blocking built in (Shields), and
   #              Brave Search, which does !bangs. Its extras are switched off
   #              below: no crypto wallet, Rewards, VPN upsell, AI chat, News,
   #              Talk, Playlist or usage pings. "New Private Window with Tor"
   #              stays. Proton Pass is installed in it, and Brave's own password
   #              saving is off so everything goes to Pass.
-  #   Chromium   plain, nothing added: a second browser for sites that need a
-  #              clean profile, and the engine behind web-app windows (Onshape,
-  #              self-hosted pages).
+  #   Chromium   (extras module) a plain second browser.
   #   Tor Browser: privacy module.
   #
   # Passwords + bookmarks across machines:
@@ -44,7 +37,6 @@ in
   };
   programs.nix-ld.enable = true;   # lets prebuilt/AppImage binaries run
   programs.nix-ld.libraries = with pkgs; [ webkitgtk_4_1 libappindicator-gtk3 librsvg gtk3 openssl ];
-  services.usbmuxd.enable = true;  # iPhone/iPad over USB
 
   # Office: LibreOffice (Writer, Calc, Impress, Draw, Base, Math) with English
   # spellcheck. The fonts make Word/Excel/PowerPoint files lay out like they
@@ -54,20 +46,9 @@ in
 
   my.packages = with pkgs; [
     libreoffice-fresh hunspell hunspellDicts.en_US
-    onshape
-    brave chromium discord slack
-    mpv ani-cli yt-dlp ffmpeg mpd mpc ncmpcpp pulsemixer pavucontrol playerctl mediainfo
-    cider-2                                  # Apple Music desktop client
-    newsboat abook calcurse sc-im
-    calibre                                  # ebook library / reader / converter
-    qbittorrent                              # FOSS torrent client
-    stremio-linux-shell                      # "Netflix for torrents": browse a
-                                             # poster grid, click to stream via
-                                             # addons (install Torrentio in-app).
-                                             # Simpler classic alternative: popcorntime
-    libimobiledevice balena-cli appimage-run flatpak   # (usbmuxd comes with its service)
-    nodejs
+    brave
+    mpv yt-dlp ffmpeg pulsemixer pavucontrol playerctl mediainfo
     networkmanagerapplet lm_sensors
-    poppler-utils man-pages xdg-utils trash-cli lynx
+    poppler-utils man-pages xdg-utils trash-cli
   ];
 }
