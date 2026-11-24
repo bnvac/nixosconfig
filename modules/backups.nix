@@ -1,39 +1,50 @@
-# Backups — restic snapshots to an external drive, on a daily timer.
+# Backups — encrypted restic snapshots, every day, of what's yours.
 #
-# Syncthing mirrors files between the machines, but it mirrors mistakes just as
-# fast: a deletion or a bad edit lands everywhere. restic is the actual safety
-# net — append-only, encrypted, deduplicated snapshots with history you can
-# restore from. It backs up $HOME and /etc/nixos (minus caches, Steam, VMs,
-# node_modules…) to the drive named in settings.nix → backupRepo.
+# Where to: your home server, over Tailscale (settings.homelabServer is set:
+# the `homelab` module there runs the backup server), from anywhere you are.
+# Otherwise an external drive (settings.backupRepo). Syncthing mirrors your
+# mistakes as fast as your files; these snapshots keep history you can go
+# back to (7 daily, 4 weekly, 6 monthly).
 #
-# Setup, once:
-#   1. Plug in the drive (it mounts under /run/media/<you>/<label>).
-#   2. Put a strong passphrase in ~/.config/restic/password (chmod 600) — or
-#      manage it with the `secrets` module, which drops it at
-#      /run/secrets/restic-password. Keep a copy of this passphrase somewhere
-#      safe: without it the backup cannot be restored, by design.
-#   3. `backup now` — it creates the repo and takes the first snapshot.
-# After that the daily timer runs on its own and quietly skips when the drive
-# isn't plugged in. `backup snapshots`, `backup restore latest --target DIR`.
-{ pkgs, ... }:
+# Only what your config can't give back: your home folder and this machine's
+# own settings (settings.local.nix, hardware-configuration.nix, uncommitted
+# edits). Not the rest of /etc/nixos (git), the Nix store, caches, compilers'
+# downloads, Steam games, Flatpak apps, VM disks or AI models.
+#
+#   backup setup          once: the passphrase (same on all machines), first backup
+#   backup                back up now · backup snapshots · backup restore …
+#   backup machines       what's on the server
+#   backup bring NAME     a new machine gets NAME's home folder and modules
+#
+# Nothing set up yet → the daily run just reminds you. Away from home without
+# Tailscale, or the drive unplugged → it skips quietly and catches up later.
+{ pkgs, lib, ... }:
 let
   s = import ../settings.nix;
-  repo = s.backupRepo or "/run/media/${s.username}/BACKUP/restic";
+  server = s.homelabServer or "";
+  # The home server itself backs up to a drive (backing up to itself would
+  # lose both copies at once).
+  toServer = server != "" && !(s.modules.homelab or false);
+  repo = s.backupRepo or (if toServer then "rest:http://${server}:8010/${s.hostName}/"
+                          else "/run/media/${s.username}/BACKUP/restic");
 in
 {
   my.packages = [ pkgs.restic pkgs.backup ];
-  environment.sessionVariables.BACKUP_REPO = repo;   # so `backup …` works in your shell
+  environment.sessionVariables = { BACKUP_REPO = repo; BACKUP_SERVER = server; };
 
   systemd.user.services.backup = {
-    description = "restic backup to the external drive";
+    description = "Daily backup (restic)";
+    environment = { BACKUP_REPO = repo; BACKUP_SERVER = server; };
+    path = [ "/run/current-system/sw" ];
     serviceConfig = {
       Type = "oneshot";
-      Environment = [ "BACKUP_REPO=${repo}" ];
       ExecStart = "${pkgs.backup}/bin/backup auto";
+      Nice = 15;
+      IOSchedulingClass = "idle";
     };
   };
   systemd.user.timers.backup = {
-    description = "daily restic backup";
+    description = "Daily backup";
     wantedBy = [ "timers.target" ];
     timerConfig = {
       OnCalendar = "daily";
@@ -41,4 +52,12 @@ in
       RandomizedDelaySec = "30m";
     };
   };
+
+  my.menu."System/Backups" = [
+    { label = "Back up now"; run = "backup now"; mode = "term"; }
+    { label = "Set up backups (passphrase)"; run = "backup setup"; mode = "term"; }
+    { label = "My backups (snapshots)"; run = "backup snapshots"; mode = "term"; }
+    { label = "Browse a backup (opens a folder)"; mode = "term";
+      run = "mkdir -p ~/backup-browse && echo 'Opening… close this window to stop.' && (sleep 4; thunar ~/backup-browse) & backup mount ~/backup-browse"; }
+  ];
 }

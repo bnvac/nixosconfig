@@ -8,6 +8,7 @@ machines over **Tailscale**, and from nowhere else.
                                                            ├─ Caddy :80  → git.home.arpa, cloud.home.arpa, …
                                                            ├─ Pi-hole :53 → answers those names, blocks ads
                                                            ├─ Gitea · Nextcloud · FreshRSS · SearXNG
+                                                           ├─ Jellyfin · Immich · backups of your machines
                                                            ├─ Transmission ──only through──▶ Proton VPN
                                                            └─ Minecraft (Crafty), off until you turn it on
 ```
@@ -23,6 +24,9 @@ machines over **Tailscale**, and from nowhere else.
 | FreshRSS | `http://rss.home.arpa` | `live:8090` | Works with phone RSS apps (API on) |
 | Transmission | `http://torrent.home.arpa` | `live:9091` | Only through Proton VPN (kill switch) |
 | SearXNG | `http://search.home.arpa` | `live:8888` | Private search |
+| Jellyfin | `http://media.home.arpa` | `live:8096` | Films, shows, music: put them in `/srv/media`; Jellyfin apps on phone/TV |
+| Immich | `http://photos.home.arpa` | `live:2283` | Your own Google Photos: the Immich phone app backs up your camera roll |
+| Backups | | `live:8010` | Your other machines back up here every day (`backup`); not a web page |
 | Minecraft panel | `http://minecraft.home.arpa` | `https://live:8443` | Crafty; **off by default** |
 
 `live` stands for this machine's Tailscale name (its host name). Every one of these can be switched off in
@@ -59,6 +63,33 @@ never depend on DNS there. It still asks its own Pi-hole first for everything el
 Your tailnet is the only way in, so secure it: two-factor on your sign-in, approve new devices yourself,
 and an access policy that gives friends Minecraft and nothing else. Step by step, with a policy to paste:
 [TAILSCALE.md](TAILSCALE.md).
+
+## Backups of your other machines
+
+Every parajynx machine with `homelabServer = "live";` backs up to this server every day, from anywhere
+on your tailnet: its home folder and its own settings, encrypted with your backup passphrase (this server
+can't read them). Not the parts your config or the internet gives back (the rest of /etc/nixos, Steam
+games, caches, compilers' downloads, VM disks…).
+
+| Do this | How |
+|---|---|
+| Set up a machine | `backup setup` on it (or the welcome window): the passphrase, use the same one everywhere, keep it in Proton Pass |
+| Back up now / see snapshots | `backup now` · `backup snapshots` (menu → System → Backups) |
+| Get a file back | menu → System → Backups → Browse a backup, or `backup restore latest --target ~/restored --include ~/notes` |
+| New or reinstalled computer | `backup machines`, then `backup bring <old machine>`: its home folder and modules |
+
+The backups live in `/srv/backups/<machine>`. This server itself backs up to a drive labelled BACKUP when
+one is plugged in (backing up to itself would lose both copies at once).
+
+## Photos and media
+
+- **Immich:** open `http://photos.home.arpa`, make your account (the first one is the admin), then
+  install the Immich app on your phone. Server URL `http://photos.home.arpa`, and turn on backup. With
+  Tailscale on the phone it backs up from anywhere. `homelab.photosAI = false;` saves about 1 GB of
+  RAM (no face grouping or "search by what's in it").
+- **Jellyfin:** open `http://media.home.arpa`, make your account, and add libraries from `/srv/media`
+  (e.g. `/srv/media/Films`, `/srv/media/Shows`). Finished torrents are in `/srv/torrents`. Apps for
+  phones, TVs and consoles: server `http://media.home.arpa`.
 
 ## Bridges: your home network and an exit node (optional)
 

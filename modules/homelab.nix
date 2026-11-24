@@ -53,6 +53,9 @@ let
   lan = h.lan or false;
   dataDir = h.dataDir or "/srv";
   secrets = "/var/lib/homelab/secrets";
+  public = "/var/lib/homelab/public";          # small files the start page serves (backups.json)
+  backupsOn = on "backups";
+  photosAI = h.photosAI or true;                 # Immich's face + "dog on a beach" search (~1 GB RAM)
   benosUrl = h.benos.url or "";
 
   # ── Torrent VPN (Proton WireGuard in a network namespace) ──
@@ -73,14 +76,18 @@ let
   # The stable release's copy is months older. Bump: point url at the current
   # https://channels.nixos.org/nixos-unstable/nixexprs.tar.xz release and
   # update sha256 (nix-prefetch-url --unpack <url>).
-  unstable = import (builtins.fetchTarball {
+  # Immich comes from it too: the stable release's Immich 2 is end-of-life (and
+  # flagged insecure), and Immich 3 needs its matching NixOS service (imported below).
+  unstableSrc = builtins.fetchTarball {
     url = "https://releases.nixos.org/nixos/unstable/nixos-26.11pre1125864.2786a2a72088/nixexprs.tar.xz";
     sha256 = "0m3pwjx19c3zq3cjk403aj43d1363lhp25wz9gs8ghis2x4000d4";
-  }) { system = pkgs.stdenv.hostPlatform.system; };
+  };
+  unstable = import unstableSrc { system = pkgs.stdenv.hostPlatform.system; };
 
   ports = {
     pihole = 8053; git = 3002; gitSsh = 2222; cloud = 8091;
     rss = 8090; torrent = 9091; search = 8888; crafty = 8443;
+    backup = 8010; media = 8096; photos = 2283;
   };
   url = p: "http://${addr}:${toString p}";
 
@@ -118,6 +125,10 @@ let
         check = "tcp://${if vpnOn then vethNs else "127.0.0.1"}:${toString ports.torrent}"; }
       { key = "searxng"; enable = on "search"; name = "SearXNG"; sub = "search"; port = ports.search;
         check = "http://127.0.0.1:${toString ports.search}/healthz"; }
+      { key = "jellyfin"; enable = on "media"; name = "Jellyfin"; sub = "media"; port = ports.media;
+        check = "http://127.0.0.1:${toString ports.media}/health"; }
+      { key = "immich"; enable = on "photos"; name = "Immich"; sub = "photos"; port = ports.photos;
+        check = "http://127.0.0.1:${toString ports.photos}/api/server/ping"; }
     ]);
   # Minecraft's panel is listed and proxied but not health-checked: it's off on purpose most of the time.
   minecraftEntry = { name = "Minecraft (Crafty)"; url = if names then "http://minecraft.${domain}" else "https://${addr}:${toString ports.crafty}";
@@ -192,6 +203,9 @@ let
         ++ lib.optional torrent "transmission"
         ++ lib.optional (vpnOn && portForward) "torrent-portforward"
         ++ lib.optional (on "search") "searx"
+        ++ lib.optional backupsOn "restic-rest-server.socket"
+        ++ lib.optional (on "media") "jellyfin"
+        ++ lib.optionals (on "photos") ([ "immich-server" ] ++ lib.optional photosAI "immich-machine-learning")
         ++ [ "tailscaled" ]
         ++ lib.optional (benosUrl != "") "benos-agent"
       )})
@@ -328,6 +342,8 @@ let
   };
 in
 {
+  disabledModules = [ "services/web-apps/immich.nix" ];
+  imports = [ "${unstableSrc}/nixos/modules/services/web-apps/immich.nix" ];
   assertions = [{
     assertion = s.device == "desktop";
     message = "The homelab module keeps the machine awake 24/7; it's meant for a desktop (settings.device = \"desktop\").";
@@ -387,7 +403,7 @@ in
   # this machine (Caddy answers on every address, so 127.0.0.1 works).
   networking.hosts."127.0.0.1" = lib.mkIf names
     (map (n: "${n}.${domain}") ([ "home" ] ++ map (x: x.sub) services ++ lib.optional mc "minecraft"));
-  networking.firewall.interfaces.tailscale0.allowedTCPPorts = webPorts;
+  networking.firewall.interfaces.tailscale0.allowedTCPPorts = webPorts ++ lib.optional backupsOn ports.backup;
   networking.firewall.allowedTCPPorts = lib.optionals lan webPorts ++ lib.optional (on "pihole") 53;
   networking.firewall.allowedUDPPorts = lib.optional (on "pihole") 53;
 
@@ -498,7 +514,9 @@ in
     };
   };
   users.users.${s.username}.extraGroups = lib.optional torrent "transmission";
-  systemd.tmpfiles.rules = lib.optional torrent "d ${dataDir}/torrents 0775 transmission transmission -";
+  systemd.tmpfiles.rules = lib.optional torrent "d ${dataDir}/torrents 0775 transmission transmission -"
+    ++ lib.optional (on "media") "d ${dataDir}/media 2775 ${s.username} jellyfin -"     # Jellyfin's library
+    ++ lib.optional (on "photos") "d ${dataDir}/photos 0750 immich immich -";          # Immich's photos
 
   # ── Torrent VPN ───────────────────────────────────────────────────────────
   # The namespace: loopback, a WireGuard link to Proton (its encrypted UDP
@@ -659,6 +677,73 @@ in
     };
   };
 
+  # ── Jellyfin: your films, shows and music, streamed to any device ────────
+  # Put files in <dataDir>/media (Films, Shows, Music…), then on first visit
+  # make your account and add those folders as libraries. Phones/TVs: the
+  # Jellyfin app, server http://media.home.arpa (or http://<this machine>:8096).
+  # The GPU transcodes when a device can't play a format.
+  services.jellyfin = lib.mkIf (on "media") { enable = true; };
+  users.users.jellyfin.extraGroups = lib.mkIf (on "media") [ "video" "render" ];
+
+  # ── Immich: your own Google Photos ───────────────────────────────────────
+  # The Immich phone app backs up your camera roll here automatically
+  # (server http://photos.home.arpa, over Tailscale, from anywhere). Faces,
+  # places, and search by what's in the picture (homelab.photosAI = false
+  # saves ~1 GB of RAM and drops those). Photos live in <dataDir>/photos.
+  services.immich = lib.mkIf (on "photos") {
+    enable = true;
+    package = unstable.immich;
+    host = "0.0.0.0";                       # firewall: Tailscale only (+ LAN with homelab.lan)
+    port = ports.photos;
+    mediaLocation = "${dataDir}/photos";
+    machine-learning.enable = photosAI;
+    accelerationDevices = null;             # let it use the GPU for video thumbnails
+  };
+  users.users.immich.extraGroups = lib.mkIf (on "photos") [ "video" "render" ];
+
+  # ── Backups of your other machines ───────────────────────────────────────
+  # restic's REST server, Tailscale only: every parajynx machine with
+  # homelabServer set backs up here each day (the `backups` module), one
+  # repository per machine under <dataDir>/backups/<machine>. Each is
+  # encrypted with your backup passphrase, so this server can't read them.
+  # Who can reach it: your own devices (the tailnet policy in TAILSCALE.md);
+  # no login on top, because a machine's passphrase already guards its data.
+  # homelab.backupsAppendOnly = true: machines can add but never delete
+  # snapshots (ransomware-proof; old ones then pile up until you prune here).
+  services.restic.server = lib.mkIf backupsOn {
+    enable = true;
+    listenAddress = toString ports.backup;
+    dataDir = "${dataDir}/backups";
+    appendOnly = h.backupsAppendOnly or false;
+    extraFlags = [ "--no-auth" ];
+  };
+  # backups.json: which machines have backups and when the last one landed
+  # (`backup machines`, `backup bring`, the welcome app read it).
+  systemd.services.homelab-backup-index = lib.mkIf backupsOn {
+    description = "List the machines that back up here";
+    serviceConfig.Type = "oneshot";
+    path = with pkgs; [ coreutils findutils ];
+    script = ''
+      mkdir -p ${public}
+      out=${public}/backups.json.tmp
+      first=1; printf '[' > "$out"
+      for d in ${dataDir}/backups/*/; do
+        [ -e "$d/config" ] || continue
+        name=$(basename "$d")
+        t=$(find "$d/snapshots" -type f -printf '%T@\n' 2>/dev/null | sort -n | tail -1)
+        when=$([ -n "$t" ] && date -d "@''${t%.*}" '+%Y-%m-%d %H:%M' || echo never)
+        [ $first = 1 ] || printf ',' >> "$out"; first=0
+        printf '{"name":"%s","updated":"%s"}' "$name" "$when" >> "$out"
+      done
+      printf ']\n' >> "$out"
+      chmod 644 "$out"; mv "$out" ${public}/backups.json
+    '';
+  };
+  systemd.timers.homelab-backup-index = lib.mkIf backupsOn {
+    wantedBy = [ "timers.target" ];
+    timerConfig = { OnBootSec = "2min"; OnUnitActiveSec = "15min"; };
+  };
+
   # ── SearXNG ───────────────────────────────────────────────────────────────
   # SearXNG's own defaults (about 90 engines) stay on; this adds dependable
   # web engines, drops ones that only ever error here (.onion search needs Tor,
@@ -727,13 +812,25 @@ in
     virtualHosts = {
       # Any name that reaches port 80 without a service name (http://live/, its 100.x address) → start page.
       ":80".extraConfig = ''
-        root * ${startPage}
-        file_server
+        handle /backups.json {
+          root * ${public}
+          file_server
+        }
+        handle {
+          root * ${startPage}
+          file_server
+        }
       '';
     } // lib.optionalAttrs names ({
       "http://home.${domain}".extraConfig = ''
-        root * ${startPage}
-        file_server
+        handle /backups.json {
+          root * ${public}
+          file_server
+        }
+        handle {
+          root * ${startPage}
+          file_server
+        }
       '';
     } // lib.listToAttrs (map (x: lib.nameValuePair "http://${x.sub}.${domain}" {
       extraConfig = "reverse_proxy 127.0.0.1:${toString x.port}";
