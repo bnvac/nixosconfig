@@ -1,4 +1,4 @@
-# rice — change how the desktop looks, live. (Super+Alt+r, or menu → System.)
+# rice — change how the desktop looks, live. (Super+Alt+r, or menu → System → Look.)
 #
 #   rice                      the window: pick a theme, move the sliders
 #   rice list                 the themes

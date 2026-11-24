@@ -1,4 +1,4 @@
-# wifi — pick a Wi-Fi network from a menu (Super+Alt+y, or menu → System).
+# wifi — pick a Wi-Fi network from a menu (Super+Alt+y, or menu → Network & privacy).
 # Networks you've used before connect straight away; a new one asks for its
 # password (hidden as you type). Also: Wi-Fi off/on, forget a network, join a
 # hidden one. NetworkManager does the work, so `nmtui` and the network icon

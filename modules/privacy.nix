@@ -135,7 +135,7 @@ in
   };
 
   # I2P runs on Java (hundreds of MB of RAM), so it only starts when you ask:
-  # menu → Network & privacy → "I2P: start" (console http://127.0.0.1:7657).
+  # menu → Network & privacy → I2P (a switch) (console http://127.0.0.1:7657).
   services.i2p.enable = true;
   systemd.services.i2p.wantedBy = lib.mkForce [ ];
 
@@ -164,7 +164,7 @@ in
   # dwm alone doesn't.
   #
   # Proton Mail Bridge (paid plans) lets Thunderbird — or any mail app — read
-  # and send Proton mail. Once: menu → Proton → "Mail Bridge: sign in /
+  # and send Proton mail. Once: menu → Network & privacy → Proton → "Mail Bridge: sign in /
   # settings", sign in, then "Configure email client" shows the address and
   # password to give Thunderbird (IMAP 127.0.0.1:1143, SMTP 127.0.0.1:1025,
   # STARTTLS). Quit the app (its menu → Quit Bridge): from then on Bridge runs
@@ -173,32 +173,25 @@ in
   services.protonmail-bridge.enable = true;
   # Only once it has been set up (it makes this folder on first run).
   systemd.user.services.protonmail-bridge.unitConfig.ConditionPathExists = "%h/.config/protonmail/bridge-v3";
-  my.menu."Proton" = [
-    { label = "Proton VPN"; run = "protonvpn-app"; }
-    { label = "VPN: connect to the fastest server"; run = "protonvpn connect"; mode = "term"; }
-    { label = "VPN: disconnect"; run = "protonvpn disconnect"; mode = "term"; }
-    { label = "VPN: status"; run = "protonvpn status"; mode = "term"; }
-    { label = "VPN: sign in (terminal, first time)"; run = "protonvpn signin"; mode = "tty"; }
+  my.menu."Network & privacy/Proton" = [
     { label = "Proton Mail"; run = "proton-mail"; }
+    { label = "Proton Pass (passwords)"; run = "proton-pass"; }
+    { label = "Proton Authenticator (2FA codes)"; run = "proton-authenticator"; needs = "proton-authenticator"; }
+    { label = "Thunderbird (mail)"; run = "thunderbird"; }
     { label = "Mail Bridge: sign in / settings (mail in Thunderbird)"; run = "protonmail-bridge-gui"; }
-    { label = "Mail Bridge: is it running?"; run = "systemctl --user status protonmail-bridge --no-pager -n 5"; mode = "term"; }
     # The same sign-in as text: the verification link is printed whole, to
     # select (= copied) and paste in the browser. Type login, then info.
     { label = "Mail Bridge: sign in from a terminal (if a link won't open)"; run = "systemctl --user stop protonmail-bridge 2>/dev/null; pkill -f bridge-gui; echo 'Type: login   (then: info for the Thunderbird password, exit when done)'; protonmail-bridge --cli; systemctl --user start protonmail-bridge"; mode = "tty"; }
-    { label = "Thunderbird (mail)"; run = "thunderbird"; }
-    { label = "Proton Pass (passwords)"; run = "proton-pass"; }
-    { label = "Proton Authenticator (2FA codes)"; run = "proton-authenticator"; needs = "proton-authenticator"; }
+    { label = "Proton VPN app (instead of the built-in VPN)"; run = "protonvpn-app"; }
   ];
 
   my.menu."Network & privacy" = [
-    { label = "Proton VPN"; run = "protonvpn-app"; }
-    { label = "VPN: what's connected"; run = "nmcli -f NAME,TYPE,DEVICE connection show --active"; mode = "term"; }
     { label = "Tor Browser"; run = "tor-browser"; }
-    { label = "Tor: route everything ON"; run = "tormode on"; mode = "term"; }
-    { label = "Tor: stop routing"; run = "tormode off"; mode = "term"; }
-    { label = "Tor: am I on Tor?"; run = "tormode status"; mode = "term"; }
-    { label = "I2P: start"; run = "/run/wrappers/bin/sudo systemctl start i2p && echo 'I2P console: http://127.0.0.1:7657'"; mode = "term"; }
-    { label = "I2P: stop"; run = "/run/wrappers/bin/sudo systemctl stop i2p"; mode = "term"; }
+    { label = "Tor for everything (tormode)"; mode = "term"; state = "systemctl is-active --quiet tor-transparent";
+      run = "tormode on"; off = "tormode off"; }
+    { label = "I2P"; mode = "term"; state = "systemctl is-active --quiet i2p";
+      run = "/run/wrappers/bin/sudo systemctl start i2p && echo 'I2P console: http://127.0.0.1:7657 (also in Self-hosted)'";
+      off = "/run/wrappers/bin/sudo systemctl stop i2p"; }
   ];
   my.selfhosted."I2P router" = "http://127.0.0.1:7657";
 

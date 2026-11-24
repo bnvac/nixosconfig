@@ -49,15 +49,18 @@ let
   # my.menu + settings.nix → menu. pkgs/scripts/nixmenu.sh reads it (plus
   # ~/.config/nixmenu/menu) and shows it as category → action.
   menuCfg = s.menu or { };
-  defaultOrder = [ "System" "Apps & files" "Code & engineering" "Games" "Self-hosted" "Neb (AI)" "Sync & devices" "Printers & scanners"
-                   "Containers & apps" "Neighborhood" "Proton" "Network & privacy" ];
+  # Top-level folders, in this order (sub-folders show inside them).
+  defaultOrder = [ "System" "Apps & files" "AI" "Code & engineering" "Games" "Self-hosted" "Network & privacy" "Devices" ];
   allMenu = config.my.menu;
   catOrder = lib.unique (lib.filter (c: (allMenu.${c} or [ ]) != [ ])
     ((menuCfg.order or [ ]) ++ defaultOrder ++ lib.attrNames allMenu));
   oneLine = builtins.replaceStrings [ "\t" "\n" ] [ " " " " ];
+  us = builtins.fromJSON ''"\u001f"'';        # separates a toggle's state / on / off commands
+  mode = i: if i.state == null then i.mode else if i.mode == "term" then "toggleterm" else "toggle";
+  runOf = i: if i.state == null then i.run else "${i.state}${us}${i.run}${us}${i.off}";
   menuTsv = lib.concatMapStrings (c: lib.concatMapStrings (i:
     lib.optionalString (!(lib.elem i.label (menuCfg.hide or [ ])))
-      "${oneLine c}\t${oneLine i.label}\t${i.mode}\t${if i.needs == null then "-" else i.needs}\t${oneLine i.run}\n"
+      "${oneLine c}\t${oneLine i.label}\t${mode i}\t${if i.needs == null then "-" else i.needs}\t${oneLine (runOf i)}\n"
   ) allMenu.${c}) catOrder;
 
   # `drives` — mount / unlock / unmount from dmenu (Super+Alt+m, Super+F9/F10).
@@ -398,32 +401,39 @@ in
   my.menu = lib.mkMerge [
     {
       "System" = [
-        { label = "My keybinds"; run = "mykeys"; mode = "term"; }
         { label = "Lock screen"; run = "lock"; }
-        { label = "Displays (mirror, extend, resolution, rotate)"; run = "nix2 displays"; }
-        { label = "Wallpapers (pictures + Wallpaper Engine)"; run = "wallpapers"; }
-        { label = "Look & feel (themes, colours, see-through, gaps)"; run = "rice"; }
-        { label = "Toggle live snow"; run = "snow toggle"; }
-        { label = "Night light on/off"; run = "nightlight"; }
-        { label = "Clipboard history"; run = "clipmenu -i -l 20 -p clipboard:"; }
-        { label = "Screenshot (area, window, text…)"; run = "screenshot"; }
         { label = "Suspend"; run = "zzz"; }
         { label = "Shutdown timer (turn off later)"; run = "offtimer"; }
-        { label = "Wi-Fi (pick a network)"; run = "wifi"; }
-        { label = "Record the screen (video)"; run = "screenshot record"; }
-        { label = "Stop the screen recording"; run = "screenshot record-stop"; }
+        { label = "Screenshot (area, window, text…)"; run = "screenshot"; }
+        { label = "Screen recording"; state = ''p="''${XDG_RUNTIME_DIR:-/tmp}/screen-recording.pid"; [ -s "$p" ] && kill -0 "$(cat "$p")"'';
+          run = "screenshot record"; off = "screenshot record-stop"; }
+        { label = "Clipboard history"; run = "clipmenu -i -l 20 -p clipboard:"; }
+        { label = "My keybinds"; run = "mykeys"; mode = "term"; }
+      ];
+      "System/Look" = [
+        { label = "Wallpapers (pictures + Wallpaper Engine)"; run = "wallpapers"; }
+        { label = "Look & feel (themes, colours, see-through, gaps)"; run = "rice"; }
+        { label = "Live snow"; state = "pgrep -f '(^|/)xsnow( |$)'"; run = "snow on"; off = "snow off"; }
+        { label = "Night light"; state = "systemctl --user is-active --quiet redshift";
+          run = "systemctl --user start redshift"; off = "systemctl --user stop redshift"; }
       ];
       "Apps & files" = [
         { label = "Apps"; run = "apps"; }
         { label = "Files"; run = "thunar"; }
         { label = "Drives: mount / unmount"; run = "drives"; }
-        { label = "Tidy up home + Downloads (sort + find duplicates)"; run = "tidy"; mode = "term"; }
-        { label = "Undo the last tidy"; run = "tidy --undo"; mode = "term"; }
         { label = "Publish a folder to Neocities"; run = "SITE_PUSH_GUI=1 site-push"; mode = "term"; }
       ];
-      "Sync & devices" = [
+      "Apps & files/Tidy up" = [
+        { label = "Tidy up home + Downloads (sort + find duplicates)"; run = "tidy"; mode = "term"; }
+        { label = "Undo the last tidy"; run = "tidy --undo"; mode = "term"; }
+      ];
+      "Devices" = [
         { label = "Audio (output, mic, volume)"; run = "audio"; }
-        { label = "Bluetooth devices"; run = "blueman-manager"; needs = "blueman-manager"; }
+        { label = "Bluetooth"; run = "blueman-manager"; needs = "blueman-manager"; }
+        { label = "Displays (mirror, extend, resolution, rotate)"; run = "nix2 displays"; }
+      ];
+      "Network & privacy" = [
+        { label = "Wi-Fi (pick a network)"; run = "wifi"; }
       ];
       "Self-hosted" = lib.mapAttrsToList (name: url: { label = name; run = url; mode = "url"; })
         config.my.selfhosted;

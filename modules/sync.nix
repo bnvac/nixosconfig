@@ -128,7 +128,7 @@ in
     serviceConfig = { Type = "oneshot"; ExecStart = "${pkgs.browser-sync}/bin/browser-sync"; };
   };
 
-  my.menu."Sync & devices" = [
+  my.menu."Devices/Sync" = [
     { label = "DeviceLink (send files)"; run = "devlink-window"; }
     { label = "Share my screen (VNC)"; run = "devlink screen"; mode = "term"; }
     { label = "View other screen (VNC)"; run = "devlink view"; }

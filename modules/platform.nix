@@ -83,14 +83,13 @@ in
 
   my.selfhosted = lib.mapAttrs (_: a: a.url) (lib.filterAttrs (n: a: a ? url && built ? ${n}) apps);
 
-  my.menu."Containers & apps" = [
+  my.menu."Code & engineering/Containers & Flatpak" = [
     { label = "Docker dashboard (lazydocker)"; run = "lazydocker"; mode = "tty"; }
     { label = "Running containers"; run = "docker ps --format 'table {{.Names}}\\t{{.Status}}\\t{{.Ports}}'"; mode = "term"; }
     { label = "Flathub: browse apps"; run = "https://flathub.org"; mode = "url"; }
     { label = "Flatpak: installed apps"; run = "flatpak list --app"; mode = "term"; }
     { label = "Flatpak: update all"; run = "flatpak update -y"; mode = "term"; }
     { label = "Distrobox: my boxes"; run = "distrobox list"; mode = "term"; }
-    { label = "Git apps: what's new upstream"; run = "update-mine --status"; mode = "term"; }
   ];
 
   my.packages = (with pkgs; [ lazydocker dive distrobox ]) ++ lib.attrValues (lib.mapAttrs (n: _: built.${n}) binApps);

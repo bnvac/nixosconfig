@@ -71,9 +71,11 @@ in
 
   my.menu."Games" = [
     { label = "Steam"; run = "steam"; }
+    { label = "Minecraft (Prism Launcher)"; run = "prismlauncher"; }
+  ];
+  my.menu."Games/Fix & setup" = [
     { label = "Steam won't start? Fix it"; run = "steam-fix"; mode = "term"; }
     { label = "Steam: play Windows games (Steam Play setup)"; run = "steam-setup"; mode = "term"; }
-    { label = "Minecraft (Prism Launcher)"; run = "prismlauncher"; }
     { label = "Proton versions (ProtonUp-Qt)"; run = "protonup-qt"; }
   ];
 

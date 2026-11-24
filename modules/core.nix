@@ -676,7 +676,7 @@ in
 
   # Tailscale on every parajynx machine (desktop or laptop), so your devices
   # always find each other and the home server (homelab module) from anywhere.
-  # Sign in once: menu → Network → "Tailscale: sign in" (or sudo tailscale up).
+  # Sign in once: menu → Network & privacy → Tailscale (or sudo tailscale up).
   # "client" lets a laptop use the server's home-network bridge and exit node;
   # the homelab module raises it to "server". The open port lets devices
   # connect directly instead of through a relay.
@@ -686,8 +686,9 @@ in
     openFirewall = true;
   };
   my.menu."Network & privacy" = [
-    { label = "Tailscale: sign in (once per machine)"; run = "/run/wrappers/bin/sudo tailscale up --accept-routes && tailscale ip -4"; mode = "term"; }
-    { label = "Tailscale: who's online"; run = "tailscale status"; mode = "term"; }
+    # Signed in: who's online. Not yet: sign in.
+    { label = "Tailscale (your devices)"; mode = "term";
+      run = "if tailscale status >/dev/null 2>&1; then tailscale status; else /run/wrappers/bin/sudo tailscale up --accept-routes && tailscale ip -4; fi"; }
   ];
   hardware.enableRedistributableFirmware = true;          # laptop wifi blobs
   systemd.services.NetworkManager-wait-online.enable = false;
@@ -772,13 +773,17 @@ in
 
   my.menu."System" = lib.mkBefore [
     { label = "Setup / modules (TUI)"; run = "modtui"; mode = "term"; }
+  ];
+  my.menu."System/Updates" = [
     { label = "Update system (pull + rebuild)"; run = "nixup"; mode = "term"; }
     { label = "Full upgrade (newest NixOS packages)"; run = "rebuild --upgrade"; mode = "term"; }
     { label = "Update my git apps"; run = "update-mine --switch"; mode = "term"; }
-    { label = "Free up space (debloat)"; run = "debloat"; mode = "term"; }
+    { label = "Roll back to an earlier version"; run = "nix2 rollback"; mode = "term"; }
+  ];
+  my.menu."System/Fix & clean" = [
     { label = "System check (what's broken + how to fix it)"; run = "nix2 doctor"; mode = "term"; }
     { label = "Fix problems (restart what's stuck, then check again)"; run = "nix2 doctor --fix"; mode = "term"; }
-    { label = "Roll back to an earlier version"; run = "nix2 rollback"; mode = "term"; }
+    { label = "Free up space (debloat)"; run = "debloat"; mode = "term"; }
   ];
 
   # Weekly system check: a notification only if something needs a look

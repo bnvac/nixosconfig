@@ -1,5 +1,12 @@
-//! The menu (Super+Alt+Space): pick a category, then an action. Backspace
-//! with nothing typed goes back to the main list; Escape closes.
+//! The menu (Super+Alt+Space): folders of actions. A category can hold
+//! sub-folders ("System/Updates" is the Updates folder inside System); they
+//! show first, marked ›. Backspace with nothing typed goes up a folder;
+//! Escape closes. Typing anything that isn't on the list searches everything.
+//!
+//! Toggles are one line for one thing ("VPN: on ●"): picking it switches it
+//! the other way. Their run field is "state-command␟on-command␟off-command"
+//! (state exits 0 when it's on), mode toggle (quiet, with a notification) or
+//! toggleterm (in a terminal: for ones that ask for your password).
 //!
 //! Entries come from /etc/nixmenu/menu.tsv (built from the modules and
 //! settings.nix → menu) and ~/.config/nixmenu/menu (yours, no rebuild):
@@ -7,6 +14,7 @@
 //!     Category | Label | term: command    in a terminal, wait for Enter
 //!     Category | Label | tty: command     a full-screen terminal program
 //!     Category | Label | url: https://…   open as an app window
+//!     Folder/Sub | Label | …               an entry inside a sub-folder
 //!     hide  | Label                        hide a built-in entry
 //!     order | System, Self-hosted, …       category order
 //! Running Docker containers that publish a port show up under Self-hosted.
@@ -26,6 +34,7 @@ const STARTER: &str = "\
 #   Category | Label | term: command    run in a terminal, wait for Enter
 #   Category | Label | tty: command     a full-screen terminal program
 #   Category | Label | url: https://…   open as an app window
+#   Folder/Sub | Label | command        inside a sub-folder (made as needed)
 #   hide  | Label                        hide a built-in entry
 #   order | System, Self-hosted, …       category order (listed ones first)
 # Examples (remove the # to use):
@@ -79,7 +88,7 @@ pub fn parse_tsv(text: &str) -> Vec<(&str, &str, &str, &str)> {
             (f.len() == 5
                 && !f[0].is_empty()
                 && !f[1].is_empty()
-                && ["exec", "term", "tty", "url"].contains(&f[2]))
+                && ["exec", "term", "tty", "url", "toggle", "toggleterm"].contains(&f[2]))
             .then(|| (f[0], f[1], f[2], f[4]))
         })
         .collect()
@@ -197,80 +206,144 @@ pub fn run(args: &[String]) -> i32 {
         return 1;
     }
 
-    // Categories: your `order` first, then the rest as they appeared.
-    let mut cats: Vec<String> = Vec::new();
-    for c in order.iter().chain(menu.entries.iter().map(|e| &e.cat)) {
-        if !cats.contains(c) && menu.entries.iter().any(|e| &e.cat == c) {
-            cats.push(c.clone());
+    // Top-level folders: your `order` first, then the rest as they appeared.
+    let mut order_top: Vec<String> = Vec::new();
+    for c in order
+        .iter()
+        .cloned()
+        .chain(menu.entries.iter().map(|e| top_of(&e.cat).to_string()))
+    {
+        if !order_top.contains(&c) && menu.entries.iter().any(|e| top_of(&e.cat) == c) {
+            order_top.push(c);
         }
     }
 
-    // The top level: the categories, then "Search everything". Typing the
-    // name of any entry there (not a category) finds it too.
-    let mut top = cats.clone();
-    top.push(EVERYTHING.to_string());
-
-    let mut cat = args.first().cloned().unwrap_or_default();
+    let mut path = args.first().cloned().unwrap_or_default();
     loop {
-        if cat.is_empty() {
-            match dmenu("parajynx:", &top, true) {
-                Pick::Chose(c) => cat = c,
-                Pick::Back => continue, // Backspace at the top: stay
-                Pick::Cancel => return 0,
-            }
-        }
-        if !cats.contains(&cat) {
-            // "Search everything", or words typed at the top: every entry
-            // whose name matches, wherever it lives.
-            let words = if cat == EVERYTHING {
-                String::new()
-            } else {
-                cat.clone()
-            };
-            let found = search(&menu.entries, &words);
-            cat.clear();
-            if found.is_empty() {
-                continue;
-            }
-            let rows: Vec<String> = found.iter().map(|e| row(e)).collect();
-            let prompt = if words.is_empty() {
-                "Everything:".to_string()
-            } else {
-                format!("\"{words}\":")
-            };
-            match dmenu(&prompt, &rows, true) {
-                Pick::Chose(sel) => {
-                    if let Some(e) = found.iter().find(|e| row(e) == sel) {
-                        return launch(&e.mode, &e.run);
-                    }
-                }
-                Pick::Back => {}
-                Pick::Cancel => return 0,
-            }
+        let (folders, items) = if path.is_empty() {
+            (order_top.clone(), Vec::new())
+        } else {
+            children(&menu.entries, &path)
+        };
+        if !path.is_empty() && folders.is_empty() && items.is_empty() {
+            path.clear(); // a folder that doesn't exist (any more)
             continue;
         }
-        let shown: Vec<String> = menu
-            .entries
-            .iter()
-            .filter(|e| e.cat == cat)
-            .map(|e| e.label.clone())
-            .collect();
-        if shown.is_empty() {
-            cat.clear();
-            continue;
+        let mut rows: Vec<String> = folders.iter().map(|f| folder_row(f)).collect();
+        rows.extend(items.iter().map(|e| item_row(e)));
+        if path.is_empty() {
+            rows.push(EVERYTHING.to_string());
         }
-        let sel = match dmenu(&format!("{cat}:"), &shown, true) {
+        let prompt = if path.is_empty() {
+            "parajynx:".to_string()
+        } else {
+            format!("{}:", path.replace('/', " › "))
+        };
+        let sel = match dmenu(&prompt, &rows, true) {
             Pick::Chose(s) => s,
             Pick::Back => {
-                cat.clear();
+                path = up(&path);
                 continue;
             }
             Pick::Cancel => return 0,
         };
-        if let Some(e) = menu.entries.iter().find(|e| e.cat == cat && e.label == sel) {
-            return launch(&e.mode, &e.run);
+        if let Some(f) = folders.iter().find(|f| folder_row(f) == sel) {
+            path = if path.is_empty() {
+                f.clone()
+            } else {
+                format!("{path}/{f}")
+            };
+            continue;
         }
-        // typed something that isn't an entry: show the same section again
+        if let Some(e) = items.iter().find(|e| item_row(e) == sel) {
+            return launch(e);
+        }
+        // "Search everything", or words typed that aren't on the list: every
+        // entry whose name (or folder) matches, wherever it lives.
+        let words = if sel == EVERYTHING {
+            String::new()
+        } else {
+            sel
+        };
+        let found = search(&menu.entries, &words);
+        if found.is_empty() {
+            continue;
+        }
+        let rows: Vec<String> = found.iter().map(|e| row(e)).collect();
+        let prompt = if words.is_empty() {
+            "Everything:".to_string()
+        } else {
+            format!("\"{words}\":")
+        };
+        match dmenu(&prompt, &rows, true) {
+            Pick::Chose(sel) => {
+                if let Some(e) = found.iter().find(|e| row(e) == sel) {
+                    return launch(e);
+                }
+            }
+            Pick::Back => {}
+            Pick::Cancel => return 0,
+        }
+    }
+}
+
+fn top_of(cat: &str) -> &str {
+    cat.split('/').next().unwrap_or(cat)
+}
+
+fn up(path: &str) -> String {
+    path.rsplit_once('/')
+        .map(|(a, _)| a.to_string())
+        .unwrap_or_default()
+}
+
+/// What's directly inside a folder: its sub-folders (in the order they first
+/// appear) and its own entries.
+fn children<'a>(entries: &'a [Entry], path: &str) -> (Vec<String>, Vec<&'a Entry>) {
+    let prefix = format!("{path}/");
+    let mut folders: Vec<String> = Vec::new();
+    let mut items = Vec::new();
+    for e in entries {
+        if e.cat == path {
+            items.push(e);
+        } else if let Some(rest) = e.cat.strip_prefix(&prefix) {
+            let f = rest.split('/').next().unwrap_or(rest).to_string();
+            if !f.is_empty() && !folders.contains(&f) {
+                folders.push(f);
+            }
+        }
+    }
+    (folders, items)
+}
+
+fn folder_row(name: &str) -> String {
+    format!("{name}  ›")
+}
+
+/// A toggle's (state, on, off) commands.
+fn toggle_parts(e: &Entry) -> Option<(&str, &str, &str)> {
+    if !e.mode.starts_with("toggle") {
+        return None;
+    }
+    let mut p = e.run.split('\u{1f}');
+    Some((p.next()?, p.next()?, p.next()?))
+}
+
+fn is_on(state: &str) -> bool {
+    ok("sh", ["-c", &format!("{state} >/dev/null 2>&1")])
+}
+
+/// How an entry shows inside its folder: toggles say whether they're on.
+fn item_row(e: &Entry) -> String {
+    match toggle_parts(e) {
+        Some((state, _, _)) => {
+            if is_on(state) {
+                format!("{}: on ●", e.label)
+            } else {
+                format!("{}: off ○", e.label)
+            }
+        }
+        None => e.label.clone(),
     }
 }
 
@@ -278,7 +351,7 @@ const EVERYTHING: &str = "🔍 Search everything";
 
 /// How an entry shows in a search: its name, then where it lives.
 fn row(e: &Entry) -> String {
-    format!("{}   ·  {}", e.label, e.cat)
+    format!("{}   ·  {}", e.label, e.cat.replace('/', " › "))
 }
 
 /// Entries whose name (or category) holds every typed word, in any order and
@@ -298,9 +371,40 @@ fn search<'a>(entries: &'a [Entry], words: &str) -> Vec<&'a Entry> {
     hits
 }
 
-fn launch(mode: &str, run: &str) -> i32 {
-    let err = match mode {
-        "term" => Command::new("st")
+fn launch(e: &Entry) -> i32 {
+    let (mode, run) = (e.mode.as_str(), e.run.as_str());
+    let err = match (mode, toggle_parts(e)) {
+        (_, Some((state, on, off))) => {
+            let (cmd, now) = if is_on(state) {
+                (off, "off")
+            } else {
+                (on, "on")
+            };
+            if mode == "toggleterm" {
+                Command::new("st")
+                    .args([
+                        "-e",
+                        "sh",
+                        "-c",
+                        &format!("{cmd}; echo; printf '[enter] '; read -r _"),
+                    ])
+                    .exec()
+            } else {
+                // Quietly, then say how it went.
+                Command::new("sh")
+                    .args([
+                        "-c",
+                        "out=$(sh -c \"$1\" 2>&1) && t=\"$2: $3\" || t=\"$2: didn't work\"; \
+                         notify-send -a Menu \"$t\" \"$(printf '%s' \"$out\" | tail -n 3)\" 2>/dev/null",
+                        "sh",
+                        cmd,
+                        &e.label,
+                        now,
+                    ])
+                    .exec()
+            }
+        }
+        ("term", _) => Command::new("st")
             .args([
                 "-e",
                 "sh",
@@ -308,10 +412,13 @@ fn launch(mode: &str, run: &str) -> i32 {
                 &format!("{run}; echo; printf '[enter] '; read -r _"),
             ])
             .exec(),
-        "tty" => Command::new("st").args(["-e", "sh", "-c", run]).exec(),
-        "url" => {
-            if which("chromium").is_some() {
-                Command::new("chromium").arg(format!("--app={run}")).exec()
+        ("tty", _) => Command::new("st").args(["-e", "sh", "-c", run]).exec(),
+        ("url", _) => {
+            if let Some(b) = ["brave", "chromium"]
+                .into_iter()
+                .find(|b| which(b).is_some())
+            {
+                Command::new(b).arg(format!("--app={run}")).exec()
             } else {
                 Command::new("xdg-open").arg(run).exec()
             }
@@ -324,7 +431,7 @@ fn launch(mode: &str, run: &str) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use super::{first_port, parse_tsv, search, Entry};
+    use super::{children, first_port, parse_tsv, search, toggle_parts, up, Entry};
 
     fn e(cat: &str, label: &str) -> Entry {
         Entry {
@@ -379,6 +486,49 @@ mod tests {
                     "homelab minecraft on | tee log"
                 ),
             ]
+        );
+    }
+
+    #[test]
+    fn folders() {
+        let all = vec![
+            e("System", "Lock screen"),
+            e("System/Updates", "Update system"),
+            e("System/Updates", "Roll back"),
+            e("System/Look/Fonts", "Pick a font"),
+            e("System", "Suspend"),
+            e("Games", "Steam"),
+        ];
+        let (f, i) = children(&all, "System");
+        assert_eq!(f, vec!["Updates", "Look"]);
+        assert_eq!(
+            i.iter().map(|x| x.label.as_str()).collect::<Vec<_>>(),
+            vec!["Lock screen", "Suspend"]
+        );
+        let (f, i) = children(&all, "System/Look");
+        assert_eq!(f, vec!["Fonts"]);
+        assert!(i.is_empty());
+        let (f, i) = children(&all, "Nope");
+        assert!(f.is_empty() && i.is_empty());
+        assert_eq!(up("System/Look/Fonts"), "System/Look");
+        assert_eq!(up("System"), "");
+        // search finds things in sub-folders by the folder's name too
+        assert_eq!(search(&all, "updates").len(), 2);
+    }
+
+    #[test]
+    fn toggles() {
+        let t = Entry {
+            cat: "Network".into(),
+            label: "VPN".into(),
+            mode: "toggle".into(),
+            run: "vpn state\u{1f}vpn on\u{1f}vpn off".into(),
+        };
+        assert_eq!(toggle_parts(&t), Some(("vpn state", "vpn on", "vpn off")));
+        assert_eq!(toggle_parts(&e("System", "Lock")), None);
+        assert_eq!(
+            parse_tsv("Network\tVPN\ttoggle\t-\ta\u{1f}b\u{1f}c"),
+            vec![("Network", "VPN", "toggle", "a\u{1f}b\u{1f}c")]
         );
     }
 

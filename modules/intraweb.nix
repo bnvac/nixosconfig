@@ -19,7 +19,7 @@ let
 in
 {
   my.packages = [ pkgs.intraweb ];
-  my.menu."Neighborhood" = [
+  my.menu."Network & privacy/Neighborhood" = [
     { label = "Open the neighborhood (dashboard)"; run = "http://127.0.0.1:8420"; mode = "url"; }
     { label = "Surf the neighborhood"; run = "intraweb surf"; mode = "term"; }
     { label = "Neighborhood (terminal)"; run = "intraweb up --tui"; mode = "tty"; }

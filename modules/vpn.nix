@@ -4,6 +4,7 @@
 #                                     page → Downloads → WireGuard configuration)
 #   vpn            what's going on (on/off, this network, your public IP)
 #   vpn off        stop it and keep it off · vpn on: back to automatic
+#                  (and another try on networks it gave up on)
 #   vpn retry      try again on networks it gave up on
 #
 # How it behaves (vpn-auto, a small root service):
@@ -66,13 +67,12 @@ let
           echo "The config holds your private key: you can delete $f now (it's stored safely)."
           ;;
         on)
-          rm -f ${state}/paused
-          n=$(net); [ -n "$n" ] && rm -f "${state}/blocked/$n"
-          echo "VPN: automatic (connects within a few seconds)." ;;
+          rm -f ${state}/paused ${state}/blocked/* 2>/dev/null || true
+          echo "Automatic: connects within a few seconds (blocked networks get another try)." ;;
         off)
           touch ${state}/paused
           nmcli connection down id ${id} >/dev/null 2>&1 || true
-          echo "VPN: off until 'vpn on'." ;;
+          echo "Off until you turn it back on." ;;
         retry)
           rm -f ${state}/blocked/* 2>/dev/null || true
           echo "Trying the VPN again on every network." ;;
@@ -92,7 +92,7 @@ let
           fi
           ip=$(curl -s --max-time 5 ${probe} | grep -E '^(ip|loc)=' | tr '\n' ' ')
           echo "Public IP: ''${ip:-no internet}"
-          systemctl is-active --quiet tailscaled && echo "Tailscale: $(tailscale ip -4 2>/dev/null || echo 'signed out (menu → Tailscale: sign in)')"
+          systemctl is-active --quiet tailscaled && echo "Tailscale: $(tailscale ip -4 2>/dev/null || echo 'signed out (menu → Network & privacy → Tailscale)')"
           ;;
         *) echo "usage: vpn [status|on|off|retry|add <file.conf>]"; exit 2 ;;
       esac
@@ -199,10 +199,8 @@ in
     "d ${state}/blocked 2775 root networkmanager -"
   ];
 
-  my.menu."Network & privacy" = [
-    { label = "VPN: status"; run = "vpn"; mode = "term"; }
-    { label = "VPN: turn off"; run = "vpn off"; mode = "term"; }
-    { label = "VPN: back to automatic"; run = "vpn on"; mode = "term"; }
-    { label = "VPN: try again on blocked networks"; run = "vpn retry"; mode = "term"; }
+  my.menu."Network & privacy" = lib.mkBefore [
+    { label = "VPN"; state = "[ ! -e ${state}/paused ]"; run = "vpn on"; off = "vpn off"; }
+    { label = "Network status (VPN, IP, Tailscale)"; run = "vpn"; mode = "term"; }
   ];
 }

@@ -2,7 +2,7 @@
 # (bnvac/slowtyper, its command-line half): uneven key timing, bursts,
 # pauses after sentences, the odd typo fixed with backspace.
 #
-# From the menu (Super+Alt+Space → Apps & files): it asks how long the typing
+# From the menu (Super+Alt+Space → Apps & files → SlowTyper): it asks how long the typing
 # should take (a list, or type 7 / 1h30 / 60wpm), then counts down 8 s so you
 # can click where the text should go (pkgs/scripts/slowtype.sh). In a terminal:
 #   slowtyper -f essay.txt --minutes 20
@@ -19,7 +19,7 @@ let
 in
 {
   my.packages = [ pkgs.slowtyper slowtype ];
-  my.menu."Apps & files" = lib.mkAfter [
+  my.menu."Apps & files/SlowTyper" = [
     { label = "SlowTyper: type the clipboard (choose how long)"; run = "slowtype"; }
     { label = "SlowTyper: paste text, then type it (choose how long)"; run = "slowtype paste"; }
   ];

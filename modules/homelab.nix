@@ -336,18 +336,17 @@ in
     "homelab.torrentVpn = false: Transmission torrents from your home IP.";
 
   my.packages = [ homelab ];
-  my.menu."Homelab" = [
+  my.menu."Self-hosted/Homelab tools" = [
     { label = "What's running + links"; run = "homelab status"; mode = "term"; }
     { label = "Passwords"; run = "homelab passwords"; mode = "term"; }
     { label = "Search: which engines work?"; run = "homelab search-test"; mode = "term"; }
     { label = "Setup steps"; run = "homelab setup"; mode = "term"; }
   ] ++ lib.optional torrent { label = "Torrent VPN: online?"; run = "homelab vpn"; mode = "term"; };
-  my.menu."Minecraft" = lib.mkIf mc [
-    { label = "Minecraft server: turn ON"; run = "homelab minecraft on"; mode = "term"; }
-    { label = "Minecraft server: turn OFF"; run = "homelab minecraft off"; mode = "term"; }
-    { label = "Minecraft control panel (worlds, mods, players)"; run = "https://127.0.0.1:${toString ports.crafty}"; mode = "url"; }
-    { label = "Minecraft: is it on?"; run = "homelab minecraft status"; mode = "term"; }
-  ];
+  # One switch; the control panel is in Self-hosted.
+  my.menu."Games" = lib.mkIf mc (lib.mkAfter [
+    { label = "Minecraft server"; mode = "term"; state = "systemctl is-active --quiet docker-crafty";
+      run = "homelab minecraft on"; off = "homelab minecraft off"; }
+  ]);
   # This machine resolves the names too (it asks its own Pi-hole), so its menu uses them.
   my.selfhosted = lib.listToAttrs (map (x: lib.nameValuePair x.name (if names then x.url else "http://127.0.0.1:${toString x.port}${x.path or ""}")) services)
     // lib.optionalAttrs proxyOn { "Homelab start page" = "http://127.0.0.1/"; }
@@ -755,7 +754,7 @@ in
   # Forge / NeoForge servers, upload mods and plugins (Files → mods/), import a
   # modpack, schedule backups, see the console, manage players.
   #
-  #   homelab minecraft on | off | status | panel     (or the Minecraft menu)
+  #   homelab minecraft on | off | status | panel     (or menu → Games → Minecraft server)
   #
   # Turning it on starts the panel and every server you've marked "start with
   # Crafty"; off stops them cleanly (worlds saved). It never starts at boot.
