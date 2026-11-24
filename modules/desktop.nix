@@ -250,9 +250,12 @@ in
 
   # Clipboard history (Super+Alt+c): remembers what you copy, pick it back with dmenu.
   services.clipmenu.enable = true;
-  # Copied text stays pasteable after you close the window you copied it from
-  # (on X the clipboard normally dies with that window). Only text: a copied
-  # image is left alone. Password managers' windows aren't recorded at all.
+  # Password managers' windows aren't recorded at all.
+  #
+  # It only watches: the app you copied from keeps owning the clipboard. (It
+  # used to take the clipboard over right after every copy so text outlived its
+  # window, but that stripped formatting and made docs apps (LibreOffice,
+  # browsers) freeze when pasting. Closed the window? Super+Alt+c still has it.)
   #
   # Kept small so it never lags: only what you actually copy (not every mouse
   # highlight, which st also copies), at most 50 entries, and each one is
@@ -260,7 +263,7 @@ in
   # defaults of 1000 entries + every highlight, clipmenud re-checked its whole
   # history in a slow shell loop every few copies.)
   systemd.user.services.clipmenu.environment = {
-    CM_OWN_CLIPBOARD = "1";
+    CM_OWN_CLIPBOARD = "0";
     CM_IGNORE_WINDOW = "Bitwarden|KeePass|Proton Pass|Password";
     CM_SELECTIONS = "clipboard";
     CM_MAX_CLIPS = "50";
