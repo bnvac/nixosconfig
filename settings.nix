@@ -53,6 +53,9 @@ let
     # Night light: warmer screen colours after sunset (`nightlight` toggles it).
     # Sunset is worked out from where you are — rough is fine (city level).
     nightLight = true;
+    # Clipboard history (Super+Alt+c) forgets each thing you copied this many
+    # minutes later, so it stays short and fast. 0 = keep the last 50 forever.
+    clipboardForgetMinutes = 30;
     location = { latitude = 40.7; longitude = -74.0; };
     # The key that takes screenshots (with Shift: the screenshot menu). Print
     # always does; set this when your laptop's screenshot key sends something

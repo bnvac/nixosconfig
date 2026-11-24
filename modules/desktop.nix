@@ -2,6 +2,7 @@
 { config, pkgs, lib, ... }:
 let
   s = import ../settings.nix;
+  clipForget = s.clipboardForgetMinutes or 30;   # minutes; 0 = never
   wallpaper = pkgs.snow-wallpaper;          # snowy night, drawn at build time (pkgs/scripts)
   kbLayout = s.keyboardLayout or "us";
   kbVariant = s.keyboardVariant or "";
@@ -252,9 +253,46 @@ in
   # Copied text stays pasteable after you close the window you copied it from
   # (on X the clipboard normally dies with that window). Only text: a copied
   # image is left alone. Password managers' windows aren't recorded at all.
+  #
+  # Kept small so it never lags: only what you actually copy (not every mouse
+  # highlight, which st also copies), at most 50 entries, and each one is
+  # forgotten settings.clipboardForgetMinutes after you copied it. (With the
+  # defaults of 1000 entries + every highlight, clipmenud re-checked its whole
+  # history in a slow shell loop every few copies.)
   systemd.user.services.clipmenu.environment = {
     CM_OWN_CLIPBOARD = "1";
     CM_IGNORE_WINDOW = "Bitwarden|KeePass|Proton Pass|Password";
+    CM_SELECTIONS = "clipboard";
+    CM_MAX_CLIPS = "50";
+  };
+  systemd.user.services.clipboard-forget = lib.mkIf (clipForget > 0) {
+    description = "Forget clipboard history older than ${toString clipForget} minutes";
+    serviceConfig.Type = "oneshot";
+    script = ''
+      dir="''${XDG_RUNTIME_DIR:-/tmp}/clipmenu.6.$USER"
+      cache="$dir/line_cache"
+      [ -s "$cache" ] || exit 0
+      exec {lock}> "$dir/lock"
+      ${pkgs.util-linux}/bin/flock -x -w 5 "$lock" || exit 0
+      cutoff=$(( $(date +%s) - ${toString (clipForget * 60)} ))
+      # Lines are "<copy time in ns> <first line>"; keep the recent ones.
+      keep=$(mktemp -p "$dir" .keep.XXXXXX)
+      while IFS= read -r line; do
+        t=''${line%% *}
+        if [[ $t =~ ^[0-9]+$ ]] && (( t / 1000000000 >= cutoff )); then printf '%s\n' "$line"; fi
+      done < "$cache" > "$keep"
+      mv -- "$keep" "$cache"
+      # Remove the stored text of every clip no longer listed.
+      declare -A listed
+      while IFS= read -r first; do listed["$(cksum <<< "$first")"]=1; done < <(cut -d' ' -f2- "$cache")
+      for f in "$dir"/[0-9]*; do
+        if [ -e "$f" ] && [ -z "''${listed["''${f##*/}"]-}" ]; then rm -f -- "$f"; fi
+      done
+    '';
+  };
+  systemd.user.timers.clipboard-forget = lib.mkIf (clipForget > 0) {
+    wantedBy = [ "timers.target" ];
+    timerConfig = { OnActiveSec = "5min"; OnUnitActiveSec = "5min"; };
   };
 
   # Night light: the screen turns gradually warmer after sunset (gammastep).
