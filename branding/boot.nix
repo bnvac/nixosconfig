@@ -106,45 +106,99 @@ let
     SCRIPT
   '';
 
+  # GRUB reads only 8-bit PNGs (16-bit ones come out as rainbow garbage), so
+  # every picture below is written with -depth 8.
+  # The boot menu. Centred on the logo and name, entries with an icon each,
+  # the selected one in a soft accent pill, and the countdown underneath.
+  fontBold = "${pkgs.dejavu_fonts}/share/fonts/truetype/DejaVuSans-Bold.ttf";
   grubTheme = pkgs.runCommand "grub-theme-parajynx" { nativeBuildInputs = [ pkgs.grub2 ]; } ''
-    mkdir -p $out
-    grub-mkfont -s 18 -o $out/dejavu-18.pf2 ${font}
-    grub-mkfont -s 14 -o $out/dejavu-14.pf2 ${font}
+    mkdir -p $out/icons
+    grub-mkfont -s 16 -o $out/dejavu-16.pf2 ${font}
+    grub-mkfont -s 20 -o $out/dejavu-20.pf2 ${font}
+    grub-mkfont -s 20 -o $out/dejavu-bold-20.pf2 ${fontBold}
+
+    # Background: the colour, a faint glow behind the logo, a few parallel
+    # lines (并行) along the bottom, the logo and the name.
     ${if have "grub-background.png" then "cp ${./grub-background.png} $out/background.png" else ''
       ${magick} -size 1920x1080 xc:'${c.background}' \
-        \( ${logo} -resize 220x220 \) -gravity center -geometry +0-150 -composite \
-        -font ${font} -pointsize 44 -fill '${c.text}' -gravity center -annotate +0+0 '${b.name}' \
-        $out/background.png
+        \( -size 1920x1080 xc:none -fill '${c.accent}' -draw "circle 960,330 960,700" \
+           -channel A -evaluate multiply 0.09 +channel -blur 0x160 \) -compose over -composite \
+        -stroke '${c.accent}' -strokewidth 2 -fill none \
+        -draw "stroke-opacity 0.10 line -100,1080 700,760" \
+        -draw "stroke-opacity 0.07 line -40,1080 760,760" \
+        -draw "stroke-opacity 0.10 line 1220,320 2020,0" \
+        -draw "stroke-opacity 0.07 line 1280,320 2080,0" \
+        \( ${logo} -resize 150x150 \) -gravity north -geometry +0+190 -compose over -composite \
+        -font ${fontBold} -pointsize 40 -fill '${c.text}' -gravity north -annotate +0+360 '${b.name}' \
+        -depth 8 PNG24:$out/background.png
     ''}
+
+    # The selected entry: a rounded pill (left cap, middle, right cap).
+    ${magick} -size 52x52 xc:none -fill '${c.accent}' -draw "fill-opacity 0.20 circle 26,26 26,0" -crop 26x52+0+0 +repage -depth 8 PNG32:$out/select_w.png
+    ${magick} -size 52x52 xc:none -fill '${c.accent}' -draw "fill-opacity 0.20 circle 26,26 26,0" -crop 26x52+26+0 +repage -depth 8 PNG32:$out/select_e.png
+    ${magick} -size 4x52 xc:none -fill '${c.accent}' -draw "fill-opacity 0.20 rectangle 0,0 3,51" -depth 8 PNG32:$out/select_c.png
+
+    # Icons by menu-entry class: this system, Windows, firmware settings.
+    ${magick} ${logo} -resize 64x64 -depth 8 PNG32:$out/icons/nixos.png
+    cp $out/icons/nixos.png $out/icons/submenu.png      # "All configurations"
+    ${magick} -size 64x64 xc:none -fill '${c.text}' \
+      -draw "rectangle 8,8 30,30" -draw "rectangle 34,8 56,30" \
+      -draw "rectangle 8,34 30,56" -draw "rectangle 34,34 56,56" -depth 8 PNG32:$out/icons/windows.png
+    ${magick} -size 64x64 xc:none -fill none -stroke '${c.text}' -strokewidth 5 \
+      -draw "circle 32,32 32,14" -draw "line 32,4 32,14" -draw "line 32,50 32,60" \
+      -draw "line 4,32 14,32" -draw "line 50,32 60,32" -depth 8 PNG32:$out/icons/uefi.png
+
     cat > $out/theme.txt <<'EOF'
     title-text: ""
     desktop-image: "background.png"
+    desktop-image-scale-method: "crop"
     desktop-color: "${c.background}"
-    terminal-font: "DejaVu Sans Regular 14"
+    terminal-font: "DejaVu Sans Regular 16"
+    terminal-left: "10%"
+    terminal-top: "10%"
+    terminal-width: "80%"
+    terminal-height: "80%"
 
     + boot_menu {
-      left = 35%
-      width = 30%
-      top = 58%
-      height = 28%
-      item_font = "DejaVu Sans Regular 18"
+      left = 32%
+      top = 46%
+      width = 36%
+      height = 38%
+      item_font = "DejaVu Sans Regular 20"
       item_color = "${c.dim}"
-      selected_item_font = "DejaVu Sans Regular 18"
-      selected_item_color = "${c.accent}"
-      item_height = 38
-      item_padding = 6
-      item_spacing = 6
+      selected_item_font = "DejaVu Sans Bold 20"
+      selected_item_color = "${c.text}"
+      selected_item_pixmap_style = "select_*.png"
+      icon_width = 30
+      icon_height = 30
+      item_icon_space = 18
+      item_height = 52
+      item_padding = 14
+      item_spacing = 10
       scrollbar = false
     }
+
+    # The countdown, then the keys.
     + label {
       id = "__timeout__"
       left = 0
+      top = 89%
       width = 100%
-      top = 92%
+      height = 30
       align = "center"
-      font = "DejaVu Sans Regular 14"
+      font = "DejaVu Sans Regular 16"
       color = "${c.dim}"
-      text = "Starting in %d s · ↑↓ to choose, Enter to start"
+      text = "Starting in %d s"
+    }
+    + label {
+      left = 0
+      top = 94%
+      width = 100%
+      height = 30
+      align = "center"
+      font = "DejaVu Sans Regular 16"
+      color = "${c.dim}"
+      text = "↑ ↓ choose   ·   Enter start   ·   e edit"
     }
     EOF
   '';

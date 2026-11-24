@@ -615,6 +615,9 @@ in
         insmod fat
         insmod search_fs_file
         insmod chain
+        if [ "$grub_platform" = "efi" ]; then
+          menuentry "Firmware settings (BIOS)" --class uefi { fwsetup }
+        fi
         if search --no-floppy --file --set=winroot /EFI/Microsoft/Boot/bootmgfw.efi; then
           menuentry "Windows" --class windows {
             search --no-floppy --file --set=root /EFI/Microsoft/Boot/bootmgfw.efi
