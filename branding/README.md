@@ -12,6 +12,10 @@ Placeholders are drawn automatically until you add your own files.
 Add or change a file, then rebuild (`nixup`). With no `grub-background.png`, the
 boot menu background is made from `logo.png`, the name and the colours.
 
+The boot menu draws its own icons per entry (this system: your logo; Windows; firmware settings),
+a soft accent pill on the selected entry, and a countdown. Pictures you add must be ordinary 8-bit
+PNGs (GRUB can't read 16-bit ones; most apps save 8-bit already).
+
 Where they're used: the splash while the system starts (Plymouth, which also
 asks for your disk password if the disk is encrypted) and the GRUB boot menu.
 Settings: `bootSplash = false;` in settings.local.nix brings back the plain
