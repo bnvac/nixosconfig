@@ -93,24 +93,26 @@ writes it, it's not in git, so updates never touch it.
 
 ## Modules
 
-On by default unless it says otherwise. `mod on <name>` / `mod off <name>`.
+Only the essentials are on by default (desktop, apps, power, vpn), so a fresh install stays small and light on RAM. Turn on what you use: `mod on <name>` / `mod off <name>`.
 
 | module | what |
 |---|---|
 | desktop | dwm/st/dmenu/dwmblocks (based on LARBS), picom, snowy live wallpaper, lock screen, Thunar + drives, apps menu, Bluetooth, clipboard history, night light |
-| devtools | coding toolkit: lazygit, gh/glab/tea, delta, difftastic, direnv, just, hyperfine, CMake/Ninja/clangd/gdb/valgrind, Meld, Zeal, Qalculate; sccache/ccache + mold for fast builds; `nix2 new`; shared builds. `devExtras = true` adds VSCodium, Helix, Ghidra, Octave, OBS |
-| ee | hardware & electronics: KiCad, ngspice, PulseView/sigrok, PlatformIO, Arduino IDE, picotool, esptool/espflash, probe-rs, OpenOCD, ST-Link, dfu-util, Thonny/mpremote, QMK + Vial, FreeCAD, OpenSCAD, OrcaSlicer — and the device permissions for all of it |
-| apps | LibreOffice, browsers — **Brave** is the default (ad/tracker blocking built in, !bangs via Brave Search; wallet, Rewards, VPN, AI chat and News switched off; Proton Pass pre-installed) and plain Chromium — Discord/Slack, media, Calibre, torrents + Stremio, Onshape |
-| gaming | native Steam with Steam Play for every game, Proton-GE, NTSYNC, gamescope/gamemode, Xbox controllers, Prism Launcher. If Steam crashes while starting it fixes the usual cause and tries again by itself (`steam-fix` does it by hand) |
-| privacy | Tor (Tor Browser, per-app, system-wide — off until you turn it on), Proton (VPN, Mail, Pass, Authenticator, and Mail Bridge running in the background so Thunderbird gets your Proton mail — their own menu section), I2P, nheko |
-| platform | Docker, Flatpak/Flathub, AppImage, Distrobox, and apps built from any git repo (`gitApps`) |
-| paper | printers and scanners: most work with no driver (network or USB), plus HP/Brother/Canon/Epson/Samsung/Gutenprint drivers for older ones. Menu → Printers & scanners |
-| printing | 3D printers: mDNS + printrun for Klipper printers on the network; a notification when a print ends |
-| backups | daily restic snapshots of home + config to an external drive |
+| devtools | coding toolkit: lazygit, gh/glab/tea, delta, difftastic, direnv, just, hyperfine, CMake/Ninja/clangd/gdb/valgrind, Meld, Zeal, Qalculate; sccache/ccache + mold for fast builds; `nix2 new`; shared builds. `devExtras = true` adds VSCodium, Helix, Ghidra, Octave, OBS — **off by default** |
+| ee | hardware & electronics: KiCad, ngspice, PulseView/sigrok, PlatformIO, Arduino IDE, picotool, esptool/espflash, probe-rs, OpenOCD, ST-Link, dfu-util, Thonny/mpremote, QMK + Vial, FreeCAD, OpenSCAD, OrcaSlicer — and the device permissions for all of it — **off by default** |
+| apps | the lean everyday set: **Brave** (ad/tracker blocking built in, !bangs via Brave Search; wallet, Rewards, VPN, AI chat and News switched off; Proton Pass pre-installed), LibreOffice, mpv, sound and network controls |
+| extras | the bigger apps: Chromium, Discord/Slack, music (Cider, mpd), Calibre, torrents + Stremio, Onshape, iPhone tools — **off by default** |
+| vpn | a VPN that connects by itself (any WireGuard config, e.g. Proton: `vpn add file.conf`), steps aside on networks that block VPNs, and works alongside Tailscale. `vpn`, `vpn off`, `vpn on`, `vpn retry` |
+| gaming | native Steam with Steam Play for every game, Proton-GE, NTSYNC, gamescope/gamemode, Xbox controllers, Prism Launcher. If Steam crashes while starting it fixes the usual cause and tries again by itself (`steam-fix` does it by hand) — **off by default** |
+| privacy | Tor (Tor Browser, per-app, system-wide — off until you turn it on), Proton (VPN, Mail, Pass, Authenticator, and Mail Bridge running in the background so Thunderbird gets your Proton mail — their own menu section), I2P, nheko — **off by default** |
+| platform | Docker, Flatpak/Flathub, AppImage, Distrobox, and apps built from any git repo (`gitApps`) — **off by default** |
+| paper | printers and scanners: most work with no driver (network or USB), plus HP/Brother/Canon/Epson/Samsung/Gutenprint drivers for older ones. Menu → Printers & scanners — **off by default** |
+| printing | 3D printers: mDNS + printrun for Klipper printers on the network; a notification when a print ends — **off by default** |
+| backups | daily restic snapshots of home + config to an external drive — **off by default** |
 | power | laptop battery/thermal tuning (TLP); does nearly nothing on a desktop. `batteryLimit = 80;` stops charging at 80% (longer battery life), `fingerprint = true;` turns on the fingerprint reader for login and sudo |
 | virt | QEMU/KVM + virt-manager — **off by default** |
 | sync | your machines (two or more): Syncthing, DeviceLink (send files, tabs, screen), bookmarks. Link with `devlink pin <code>`, or list them in `syncDevices` — **off by default** |
-| ai | Claude: the official desktop app (Chat, Cowork, Claude Code; Linux beta, kept on its newest version by `update-mine`) and the terminal agents Claude Code and Freebuff (free, ad-supported), which install themselves the first time you run them and keep themselves up to date; menu → Code & engineering opens one in a project |
+| ai | Claude: the official desktop app (Chat, Cowork, Claude Code; Linux beta, kept on its newest version by `update-mine`) and the terminal agents Claude Code and Freebuff (free, ad-supported), which install themselves the first time you run them and keep themselves up to date; menu → Code & engineering opens one in a project — **off by default** |
 | assistant | Neb, a local voice assistant, + Ollama / Open-WebUI on your GPU — **off by default** |
 | backoffice | a parts-inventory web app — **off by default** |
 | intraweb | a local-first neighborhood web on your LAN (no server, no internet) — **off by default** |
@@ -242,8 +244,8 @@ On by default unless it says otherwise. `mod on <name>` / `mod off <name>`.
   wallpapers in the Workshop, then pick them in `wallpapers` → Wallpaper Engine.
   They play on every screen, muted, at 30 fps, and pause while a game is
   fullscreen. Picking a picture switches the live one off.
-- **Wallpaper**: a snowy night with live snow by default; `setbg /path/to/image.png`
-  to change it, `snow off` (or `liveSnow = false`) to stop the snow.
+- **Wallpaper**: a snowy night; `setbg /path/to/image.png` to change it. Live falling
+  snow is off by default (it costs CPU and RAM): `snow on`, or `liveSnow = true`.
 
 ## How it's put together
 

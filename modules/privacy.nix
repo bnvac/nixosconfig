@@ -134,9 +134,16 @@ in
     };
   };
 
-  services.i2p.enable = true;   # console http://127.0.0.1:7657
+  # I2P runs on Java (hundreds of MB of RAM), so it only starts when you ask:
+  # menu → Network & privacy → "I2P: start" (console http://127.0.0.1:7657).
+  services.i2p.enable = true;
+  systemd.services.i2p.wantedBy = lib.mkForce [ ];
 
   # ── Proton VPN ───────────────────────────────────────────────────────────
+  # The everyday VPN is the `vpn` module (on by default): it connects by
+  # itself and works alongside Tailscale. Use the app below instead only if
+  # you want its extras, and then not both at once: the app's kill switch
+  # blocks Tailscale.
   # The official app (protonvpn-app) and CLI (protonvpn). Both keep your login
   # in the system keyring and connect through NetworkManager (WireGuard; the
   # OpenVPN plugin covers its OpenVPN mode). The keyring unlocks with your
@@ -190,6 +197,8 @@ in
     { label = "Tor: route everything ON"; run = "tormode on"; mode = "term"; }
     { label = "Tor: stop routing"; run = "tormode off"; mode = "term"; }
     { label = "Tor: am I on Tor?"; run = "tormode status"; mode = "term"; }
+    { label = "I2P: start"; run = "/run/wrappers/bin/sudo systemctl start i2p && echo 'I2P console: http://127.0.0.1:7657'"; mode = "term"; }
+    { label = "I2P: stop"; run = "/run/wrappers/bin/sudo systemctl stop i2p"; mode = "term"; }
   ];
   my.selfhosted."I2P router" = "http://127.0.0.1:7657";
 

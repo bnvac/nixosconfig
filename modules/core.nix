@@ -71,9 +71,14 @@ let
       Tor to connect and proves it via check.torproject.org; anything that
       can't go through Tor (IPv6, QUIC/UDP, LAN, Docker/VMs, a VPN) is refused,
       not leaked. The Tor daemon is OFF until then; Tor Browser and torrun
-      bring their own. Proton VPN: `protonvpn-app` (GUI) / `protonvpn` (CLI);
-      its login lives in gnome-keyring (unlocked at the ly login). Don't run
-      tormode and the VPN at the same time.
+      bring their own. VPN: the `vpn` module connects a WireGuard config
+      (`vpn add file.conf`) by itself on every network, turns itself off on
+      networks that block it (nothing through it for 10 s while the internet
+      works directly; retried after 12 h or `vpn retry`), stands aside for
+      tormode or another VPN, and coexists with Tailscale (Tailscale's ip rules
+      5210-5270 come before NetworkManager's WireGuard rules ~31000). `vpn`
+      shows the state. The Proton app (privacy module) is optional; its kill
+      switch blocks Tailscale.
     - **Neb** is the assistant (the `assistant` module). `neb` server runs on
       http://127.0.0.1:7000 (dashboard: switch brain, set API keys, allowlist).
       **Super+Alt+n** = `neb-voice`: listen → answer, shown only as a small

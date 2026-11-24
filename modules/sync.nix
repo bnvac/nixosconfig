@@ -143,9 +143,9 @@ in
     # opens the window (the ui service serves it)
     (pkgs.makeDesktopItem {
       name = "devlink"; desktopName = "DeviceLink";
-      exec = "${pkgs.chromium}/bin/chromium --app=http://127.0.0.1:7010";
+      exec = "${pkgs.brave}/bin/brave --app=http://127.0.0.1:7010";
       icon = "network-transmit-receive"; categories = [ "Network" "Utility" ];
     })
-    (pkgs.writeShellScriptBin "devlink-window" ''exec ${pkgs.chromium}/bin/chromium --app=http://127.0.0.1:7010'')
+    (pkgs.writeShellScriptBin "devlink-window" ''exec ${pkgs.brave}/bin/brave --app=http://127.0.0.1:7010'')
   ];
 }
