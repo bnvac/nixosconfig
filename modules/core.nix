@@ -891,6 +891,6 @@ in
 
   # The name the system shows (boot menu, /etc/os-release, fastfetch). The ID
   # stays "nixos" so everything that checks for NixOS keeps working.
-  system.nixos.distroName = "parajynx";
+  system.nixos.distroName = (import ../branding/branding.nix).name;   # MooreOS
   system.stateVersion = "26.05";
 }

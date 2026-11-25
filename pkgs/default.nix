@@ -396,7 +396,7 @@ in
   backup          = sh "backup" (with final; [ restic coreutils util-linux libnotify curl git jq ]) ./scripts/backup.sh;
   # fastfetch (also as `neofetch`) with parajynx's own layout (pkgs/fastfetch/
   # config.jsonc), unless you have ~/.config/fastfetch/config.jsonc. The logo
-  # is 并行 (pkgs/fastfetch/logo.txt, drawn by logo.py) in the wallpaper's
+  # is the Moore chip (pkgs/fastfetch/logo.txt, from branding/chip.txt) in the wallpaper's
   # accent colour — except inside a git repo that has its own logo: drop a
   # <reponame>.txt in pkgs/fastfetch-logos/ to add one.
   # Replaces the plain `fastfetch` on PATH, so Super+Alt+i and the shell get it.

@@ -1,12 +1,13 @@
-# parajynx's look at boot (the boot menu and the splash while it starts).
-# Change these, or drop your own pictures in this folder (see README.md);
-# then rebuild. Nothing else needs touching.
+# MooreOS's look at boot and login: the boot menu, the splash while it
+# starts, and the login screen. Change these, or the art next to them
+# (see README.md), then rebuild. Nothing else needs touching.
 {
-  name = "parajynx";              # shown under the logo while it boots
+  name = "MooreOS";                         # the system's name (window titles, the welcome window)
+  tagline = "Moore Performance Industries"; # under the logo at boot and on the login screen
   colors = {
-    background = "#0e1013";       # the whole screen
-    text = "#d7dae0";             # the name, the password prompt
-    dim = "#6b7280";              # small print (boot menu countdown)
-    accent = "#8aa4c8";           # the loading dots, the selected boot entry
+    background = "#060908";       # the whole screen: near-black with a hint of green
+    text = "#c8f7dc";             # the password prompt, selected boot entry
+    dim = "#2f6b4c";              # small print (countdown, tagline)
+    accent = "#33ff99";           # phosphor green: dots, highlights, outlines
   };
 }

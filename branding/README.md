@@ -1,22 +1,23 @@
-# Branding
+# Branding (MooreOS)
 
-Everything parajynx shows before you log in comes from this folder.
-Placeholders are drawn automatically until you add your own files.
+Everything shown before you're logged in comes from this folder: the boot
+menu (GRUB), the splash while it starts (Plymouth, which also asks for the disk
+password on an encrypted disk), and the login screen (ly). fastfetch shows the
+chip too (pkgs/fastfetch/logo.txt).
 
-| File | What it is | Size |
-|---|---|---|
-| `branding.nix` | the name under the logo, and the colours | |
-| `logo.svg` → `logo.png` | the logo (a hexagon holding two parallel slashes: 并行, "in parallel"). Edit the SVG, then render it: `rsvg-convert -w 1024 logo.svg \| magick - -depth 8 PNG32:logo.png` | square, transparent, 1024×1024 |
-| `grub-background.png` | (optional) the boot menu's whole background | 1920×1080 (it's scaled) |
+| File | What it is |
+|---|---|
+| `branding.nix` | the name (MooreOS), the tagline (Moore Performance Industries), the colours |
+| `chip.txt` | the mark: an "M" on a chip (Moore's law: transistors per chip double every ~2 years) |
+| `wordmark.txt` | the MOORE banner (ANSI Shadow lettering) |
+| `render.py` | turns the two text files into the glowing pictures and the login-screen art, at build time |
 
-Add or change a file, then rebuild (`nixup`). With no `grub-background.png`, the
-boot menu background is made from `logo.png`, the name and the colours.
+The art is plain text: edit `chip.txt` or `wordmark.txt` in any editor, keep the
+lines the same length, rebuild (`nixup`). Block characters (█ ▀ ▄ ▐ ▌ ▪) glow
+bright; line-drawing characters (╗ ║ ┤ ╷ …) are the dim outlines.
 
-The boot menu draws its own icons per entry (this system: your logo; Windows; firmware settings),
-a soft accent pill on the selected entry, and a countdown. Pictures you add must be ordinary 8-bit
-PNGs (GRUB can't read 16-bit ones; most apps save 8-bit already).
+To use pictures instead, drop in `logo.png` (square, transparent),
+`wordmark.png` and/or `grub-background.png` (1920×1080). They must be ordinary
+8-bit PNGs: GRUB can't read 16-bit ones.
 
-Where they're used: the splash while the system starts (Plymouth, which also
-asks for your disk password if the disk is encrypted) and the GRUB boot menu.
-Settings: `bootSplash = false;` in settings.local.nix brings back the plain
-scrolling text at boot.
+`bootSplash = false;` in settings.local.nix brings back plain scrolling text at boot.

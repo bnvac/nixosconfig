@@ -1,5 +1,8 @@
-# The boot screen: GRUB menu + Plymouth splash, from ./branding.nix and the
-# pictures next to it (placeholders when they're missing). Imported by core.nix.
+# Boot and login screens: the GRUB menu, the Plymouth splash and the ly login
+# screen, all from this folder: branding.nix (name, tagline, colours) and the
+# ASCII art (chip.txt, wordmark.txt), rendered at build time by render.py.
+# Drop a logo.png / wordmark.png / grub-background.png here to use your own
+# pictures instead. Imported by core.nix.
 { pkgs, lib, ... }:
 let
   s = import ../settings.nix;
@@ -7,31 +10,41 @@ let
   c = b.colors;
   have = f: builtins.pathExists (./. + "/${f}");
 
-  # "#8aa4c8" → "0.541" (Plymouth wants 0–1 per channel)
+  # "#33ff99" → "0.2, 1, 0.6" (Plymouth wants 0–1 per channel); → "0x0033FF99" (ly)
   ch = hex: i: let v = lib.fromHexString (builtins.substring (1 + 2 * i) 2 hex);
                in builtins.toString (v / 255.0);
   rgb = hex: "${ch hex 0}, ${ch hex 1}, ${ch hex 2}";
+  lyColor = hex: "0x00" + lib.toUpper (builtins.substring 1 6 hex);
 
-  font = "${pkgs.dejavu_fonts}/share/fonts/truetype/DejaVuSans.ttf";
+  fonts = "${pkgs.dejavu_fonts}/share/fonts/truetype";
   magick = "${pkgs.imagemagick}/bin/magick";
+  py = pkgs.python3.withPackages (p: [ p.pillow ]);
+  render = "${py}/bin/python3 -I ${./render.py}";
+  tagline = lib.toUpper b.tagline;
 
-  # Placeholder logo: a ring with two parallel bars (并行, "in parallel").
-  logo = if have "logo.png" then ./logo.png else pkgs.runCommand "parajynx-logo.png" { } ''
-    ${magick} -size 512x512 xc:none -fill none -stroke '${c.accent}' -strokewidth 22 \
-      -draw "circle 256,256 256,40" -stroke none -fill '${c.text}' \
-      -draw "roundrectangle 196,150 232,362 14,14" -draw "roundrectangle 280,150 316,362 14,14" \
-      PNG32:$out
+  # The pictures: ASCII art in phosphor green with a glow (or yours).
+  logo = if have "logo.png" then ./logo.png else pkgs.runCommand "moore-logo.png" { } ''
+    ${render} png ${./chip.txt} $out ${fonts}/DejaVuSansMono.ttf 60
+  '';
+  wordmark = if have "wordmark.png" then ./wordmark.png else pkgs.runCommand "moore-wordmark.png" { } ''
+    ${render} png ${./wordmark.txt} $out ${fonts}/DejaVuSansMono.ttf 40
   '';
   dot = pkgs.runCommand "dot.png" { } ''
-    ${magick} -size 14x14 xc:none -fill '${c.accent}' -draw "circle 7,7 7,1" PNG32:$out
+    ${magick} -size 14x14 xc:none -fill '${c.accent}' -draw "circle 7,7 7,1" -depth 8 PNG32:$out
+  '';
+  # The login screen's art (ly draws .dur files: text + 256 colours).
+  lyArt = pkgs.runCommand "moore-login.dur" { } ''
+    ${render} dur $out ${lib.escapeShellArg b.tagline} ${./chip.txt} ${./wordmark.txt}
   '';
 
-  plymouthTheme = pkgs.runCommand "plymouth-theme-parajynx" { } ''
-    d=$out/share/plymouth/themes/parajynx
+  # ── Plymouth: the splash while it starts ─────────────────────────────────
+  plymouthTheme = pkgs.runCommand "plymouth-theme-moore" { } ''
+    d=$out/share/plymouth/themes/moore
     mkdir -p $d
     cp ${logo} $d/logo.png
+    cp ${wordmark} $d/wordmark.png
     cp ${dot} $d/dot.png
-    cat > $d/parajynx.plymouth <<PLY
+    cat > $d/moore.plymouth <<PLY
     [Plymouth Theme]
     Name=${b.name}
     Description=${b.name} boot splash
@@ -39,29 +52,38 @@ let
 
     [script]
     ImageDir=$d
-    ScriptFile=$d/parajynx.script
+    ScriptFile=$d/moore.script
     PLY
-    cat > $d/parajynx.script <<'SCRIPT'
+    cat > $d/moore.script <<'SCRIPT'
     Window.SetBackgroundTopColor(${rgb c.background});
     Window.SetBackgroundBottomColor(${rgb c.background});
     W = Window.GetWidth(); H = Window.GetHeight();
 
-    # The logo: a quarter of the screen's height, centred a little above the middle.
-    logo.raw = Image("logo.png");
-    size = Math.Int(H / 4);
-    logo.image = logo.raw.Scale(size, size);
-    logo.sprite = Sprite(logo.image);
-    logo.sprite.SetPosition(Math.Int((W - size) / 2), Math.Int(H * 0.42 - size / 2), 1);
+    # The chip, then the wordmark under it, centred a little above the middle.
+    chip.raw = Image("logo.png");
+    cs = Math.Int(H * 0.17);
+    chip.image = chip.raw.Scale(cs, cs);
+    chip.sprite = Sprite(chip.image);
+    chipY = Math.Int(H * 0.22);
+    chip.sprite.SetPosition(Math.Int((W - cs) / 2), chipY, 1);
 
-    name.image = Image.Text("${b.name}", ${rgb c.text}, 1, "Sans 22");
-    name.sprite = Sprite(name.image);
-    nameY = Math.Int(H * 0.42 + size / 2 + 28);
-    name.sprite.SetPosition(Math.Int((W - name.image.GetWidth()) / 2), nameY, 1);
+    wm.raw = Image("wordmark.png");
+    ww = Math.Int(W * 0.36);
+    wh = Math.Int(ww * wm.raw.GetHeight() / wm.raw.GetWidth());
+    wm.image = wm.raw.Scale(ww, wh);
+    wm.sprite = Sprite(wm.image);
+    wmY = chipY + cs + Math.Int(H * 0.03);
+    wm.sprite.SetPosition(Math.Int((W - ww) / 2), wmY, 1);
 
-    # Three dots that breathe while it loads.
+    tag.image = Image.Text("${tagline}", ${rgb c.dim}, 1, "Mono 13");
+    tag.sprite = Sprite(tag.image);
+    nameY = wmY + wh + 18;
+    tag.sprite.SetPosition(Math.Int((W - tag.image.GetWidth()) / 2), nameY, 1);
+
+    # Three dots that pulse while it loads.
     for (i = 0; i < 3; i++) {
       dots[i].sprite = Sprite(Image("dot.png"));
-      dots[i].sprite.SetPosition(Math.Int(W / 2 - 37 + i * 30), nameY + 70, 1);
+      dots[i].sprite.SetPosition(Math.Int(W / 2 - 37 + i * 30), nameY + 60, 1);
     }
     t = 0;
     asking = 0;
@@ -69,24 +91,23 @@ let
       t++;
       for (i = 0; i < 3; i++) {
         if (global.asking) dots[i].sprite.SetOpacity(0);
-        else dots[i].sprite.SetOpacity(0.25 + 0.75 * Math.Abs(Math.Sin(t / 18 - i * 0.7)));
+        else dots[i].sprite.SetOpacity(0.2 + 0.8 * Math.Abs(Math.Sin(t / 16 - i * 0.7)));
       }
     }
     Plymouth.SetRefreshFunction(refresh);
 
-    # Encrypted disk: the password prompt, in the same style. (Sprites must be
+    # Encrypted disk: the password prompt, as a terminal line. (Sprites must be
     # global: a function's own variables vanish, and their sprites with them.)
     fun show_password(prompt, bullets) {
       global.asking = 1;
-      global.prompt_image = Image.Text(prompt, ${rgb c.text}, 1, "Sans 14");
+      global.prompt_image = Image.Text("> " + prompt, ${rgb c.text}, 1, "Mono 14");
       global.prompt_sprite = Sprite(global.prompt_image);
-      global.prompt_sprite.SetPosition(Math.Int((W - global.prompt_image.GetWidth()) / 2), nameY + 60, 2);
+      global.prompt_sprite.SetPosition(Math.Int((W - global.prompt_image.GetWidth()) / 2), nameY + 55, 2);
       stars = "";
-      for (i = 0; i < bullets; i++) stars = stars + "● ";
-      if (bullets == 0) stars = "_";
-      global.bullets_image = Image.Text(stars, ${rgb c.accent}, 1, "Sans 16");
+      for (i = 0; i < bullets; i++) stars = stars + "*";
+      global.bullets_image = Image.Text(stars + "_", ${rgb c.accent}, 1, "Mono 16");
       global.bullets_sprite = Sprite(global.bullets_image);
-      global.bullets_sprite.SetPosition(Math.Int((W - global.bullets_image.GetWidth()) / 2), nameY + 95, 2);
+      global.bullets_sprite.SetPosition(Math.Int((W - global.bullets_image.GetWidth()) / 2), nameY + 90, 2);
     }
     Plymouth.SetDisplayPasswordFunction(show_password);
     fun show_normal() {
@@ -98,7 +119,7 @@ let
 
     # Messages (e.g. "checking the disk") in small print at the bottom.
     fun show_message(text) {
-      global.msg_image = Image.Text(text, ${rgb c.dim}, 1, "Sans 12");
+      global.msg_image = Image.Text(text, ${rgb c.dim}, 1, "Mono 12");
       global.msg_sprite = Sprite(global.msg_image);
       global.msg_sprite.SetPosition(Math.Int((W - global.msg_image.GetWidth()) / 2), Math.Int(H * 0.92), 2);
     }
@@ -106,37 +127,33 @@ let
     SCRIPT
   '';
 
+  # ── GRUB: the boot menu ──────────────────────────────────────────────────
   # GRUB reads only 8-bit PNGs (16-bit ones come out as rainbow garbage), so
   # every picture below is written with -depth 8.
-  # The boot menu. Centred on the logo and name, entries with an icon each,
-  # the selected one in a soft accent pill, and the countdown underneath.
-  fontBold = "${pkgs.dejavu_fonts}/share/fonts/truetype/DejaVuSans-Bold.ttf";
-  grubTheme = pkgs.runCommand "grub-theme-parajynx" { nativeBuildInputs = [ pkgs.grub2 ]; } ''
+  grubTheme = pkgs.runCommand "grub-theme-moore" { nativeBuildInputs = [ pkgs.grub2 ]; } ''
     mkdir -p $out/icons
-    grub-mkfont -s 16 -o $out/dejavu-16.pf2 ${font}
-    grub-mkfont -s 20 -o $out/dejavu-20.pf2 ${font}
-    grub-mkfont -s 20 -o $out/dejavu-bold-20.pf2 ${fontBold}
+    grub-mkfont -s 16 -o $out/mono-16.pf2 ${fonts}/DejaVuSansMono.ttf
+    grub-mkfont -s 20 -o $out/mono-20.pf2 ${fonts}/DejaVuSansMono.ttf
+    grub-mkfont -s 20 -o $out/mono-bold-20.pf2 ${fonts}/DejaVuSansMono-Bold.ttf
 
-    # Background: the colour, a faint glow behind the logo, a few parallel
-    # lines (并行) along the bottom, the logo and the name.
+    # Background: the colour, faint scanlines, the chip, the wordmark, the tagline.
     ${if have "grub-background.png" then "cp ${./grub-background.png} $out/background.png" else ''
       ${magick} -size 1920x1080 xc:'${c.background}' \
-        \( -size 1920x1080 xc:none -fill '${c.accent}' -draw "circle 960,330 960,700" \
-           -channel A -evaluate multiply 0.09 +channel -blur 0x160 \) -compose over -composite \
-        -stroke '${c.accent}' -strokewidth 2 -fill none \
-        -draw "stroke-opacity 0.10 line -100,1080 700,760" \
-        -draw "stroke-opacity 0.07 line -40,1080 760,760" \
-        -draw "stroke-opacity 0.10 line 1220,320 2020,0" \
-        -draw "stroke-opacity 0.07 line 1280,320 2080,0" \
-        \( ${logo} -resize 150x150 \) -gravity north -geometry +0+190 -compose over -composite \
-        -font ${fontBold} -pointsize 40 -fill '${c.text}' -gravity north -annotate +0+360 '${b.name}' \
+        \( -size 1920x1080 xc:none -fill '${c.accent}' -draw "circle 960,300 960,640" \
+           -channel A -evaluate multiply 0.06 +channel -blur 0x170 \) -compose over -composite \
+        \( -size 1x4 xc:none -fill '#000000' -draw "point 0,3" -channel A -evaluate set 30% +channel \
+           -write mpr:scan +delete -size 1920x1080 tile:mpr:scan \) -compose over -composite \
+        \( ${logo} -resize 170x170 \) -gravity north -geometry +0+95 -composite \
+        \( ${wordmark} -resize 620x \) -gravity north -geometry +0+290 -composite \
+        -font ${fonts}/DejaVuSansMono.ttf -pointsize 20 -fill '${c.dim}' \
+        -gravity north -annotate +0+478 '${lib.concatStringsSep " " (lib.stringToCharacters tagline)}' \
         -depth 8 PNG24:$out/background.png
     ''}
 
-    # The selected entry: a rounded pill (left cap, middle, right cap).
-    ${magick} -size 52x52 xc:none -fill '${c.accent}' -draw "fill-opacity 0.20 circle 26,26 26,0" -crop 26x52+0+0 +repage -depth 8 PNG32:$out/select_w.png
-    ${magick} -size 52x52 xc:none -fill '${c.accent}' -draw "fill-opacity 0.20 circle 26,26 26,0" -crop 26x52+26+0 +repage -depth 8 PNG32:$out/select_e.png
-    ${magick} -size 4x52 xc:none -fill '${c.accent}' -draw "fill-opacity 0.20 rectangle 0,0 3,51" -depth 8 PNG32:$out/select_c.png
+    # The selected entry: a sharp terminal-style bar with a bright left edge.
+    ${magick} -size 6x48 xc:'${c.accent}' -depth 8 PNG32:$out/select_w.png
+    ${magick} -size 4x48 xc:none -fill '${c.accent}' -draw "fill-opacity 0.14 rectangle 0,0 3,47" -depth 8 PNG32:$out/select_c.png
+    ${magick} -size 4x48 xc:none -fill '${c.accent}' -draw "fill-opacity 0.14 rectangle 0,0 3,47" -depth 8 PNG32:$out/select_e.png
 
     # Icons by menu-entry class: this system, Windows, firmware settings.
     ${magick} ${logo} -resize 64x64 -depth 8 PNG32:$out/icons/nixos.png
@@ -153,28 +170,28 @@ let
     desktop-image: "background.png"
     desktop-image-scale-method: "crop"
     desktop-color: "${c.background}"
-    terminal-font: "DejaVu Sans Regular 16"
+    terminal-font: "DejaVu Sans Mono Regular 16"
     terminal-left: "10%"
     terminal-top: "10%"
     terminal-width: "80%"
     terminal-height: "80%"
 
     + boot_menu {
-      left = 32%
-      top = 46%
-      width = 36%
-      height = 38%
-      item_font = "DejaVu Sans Regular 20"
+      left = 33%
+      top = 53%
+      width = 34%
+      height = 32%
+      item_font = "DejaVu Sans Mono Regular 20"
       item_color = "${c.dim}"
-      selected_item_font = "DejaVu Sans Bold 20"
+      selected_item_font = "DejaVu Sans Mono Bold 20"
       selected_item_color = "${c.text}"
       selected_item_pixmap_style = "select_*.png"
-      icon_width = 30
-      icon_height = 30
-      item_icon_space = 18
-      item_height = 52
+      icon_width = 28
+      icon_height = 28
+      item_icon_space = 16
+      item_height = 48
       item_padding = 14
-      item_spacing = 10
+      item_spacing = 8
       scrollbar = false
     }
 
@@ -186,9 +203,9 @@ let
       width = 100%
       height = 30
       align = "center"
-      font = "DejaVu Sans Regular 16"
+      font = "DejaVu Sans Mono Regular 16"
       color = "${c.dim}"
-      text = "Starting in %d s"
+      text = "> booting in %d s_"
     }
     + label {
       left = 0
@@ -196,9 +213,9 @@ let
       width = 100%
       height = 30
       align = "center"
-      font = "DejaVu Sans Regular 16"
+      font = "DejaVu Sans Mono Regular 16"
       color = "${c.dim}"
-      text = "↑ ↓ choose   ·   Enter start   ·   e edit"
+      text = "[↑↓] select   [enter] boot   [e] edit"
     }
     EOF
   '';
@@ -211,11 +228,28 @@ in
 
   boot.plymouth = lib.mkIf splash {
     enable = true;
-    theme = "parajynx";
+    theme = "moore";
     themePackages = [ plymouthTheme ];
   };
   # Quiet: the splash instead of scrolling kernel text (Esc during boot shows it).
   boot.consoleLogLevel = lib.mkIf splash 3;
   boot.initrd.verbose = lib.mkIf splash false;
   boot.kernelParams = lib.optionals splash [ "splash" "loglevel=3" "rd.udev.log_level=3" "systemd.show_status=auto" ];
+
+  # ── ly: the login screen ─────────────────────────────────────────────────
+  # The chip + MOORE at the top, the tagline on the login box, green on black.
+  services.displayManager.ly.settings = {
+    animation = "dur_file";
+    dur_file_path = "${lyArt}";
+    dur_offset_alignment = "topcenter";
+    dur_y_offset = 1;
+    full_color = true;
+    box_title = tagline;
+    fg = lyColor c.text;
+    border_fg = lyColor c.accent;
+    bg = "0x00000000";
+    clock = "%a %d %b  %H:%M";
+    hide_version_string = true;
+    asterisk = "*";
+  };
 }
