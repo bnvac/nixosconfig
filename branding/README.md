@@ -6,7 +6,7 @@ Placeholders are drawn automatically until you add your own files.
 | File | What it is | Size |
 |---|---|---|
 | `branding.nix` | the name under the logo, and the colours | |
-| `logo.png` | the logo on the boot splash (and the boot menu) | square, transparent, 512×512 or bigger |
+| `logo.svg` → `logo.png` | the logo (a hexagon holding two parallel slashes: 并行, "in parallel"). Edit the SVG, then render it: `rsvg-convert -w 1024 logo.svg \| magick - -depth 8 PNG32:logo.png` | square, transparent, 1024×1024 |
 | `grub-background.png` | (optional) the boot menu's whole background | 1920×1080 (it's scaled) |
 
 Add or change a file, then rebuild (`nixup`). With no `grub-background.png`, the

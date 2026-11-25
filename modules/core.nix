@@ -602,7 +602,8 @@ in
 
   # ── boot ───────────────────────────────────────────────────────────────────
   boot.loader = lib.mkMerge [
-    { efi.canTouchEfiVariables = true; efi.efiSysMountPoint = s.espMountPoint; }
+    { efi.canTouchEfiVariables = true; efi.efiSysMountPoint = s.espMountPoint;
+      timeout = lib.mkDefault 3; }                 # boot menu: 3 s (any key stops the countdown)
     (lib.mkIf s.useGrub { grub = {
       enable = true; efiSupport = true; device = "nodev"; configurationLimit = 10;
       useOSProber = s.osProber or false;       # Windows has its own entry, below
@@ -786,6 +787,7 @@ in
     { label = "Roll back to an earlier version"; run = "nix2 rollback"; mode = "term"; }
   ];
   my.menu."System/Fix & clean" = [
+    { label = "Pasting is slow? (copy the thing first, then run this)"; run = "pastecheck"; mode = "term"; }
     { label = "System check (what's broken + how to fix it)"; run = "nix2 doctor"; mode = "term"; }
     { label = "Fix problems (restart what's stuck, then check again)"; run = "nix2 doctor --fix"; mode = "term"; }
     { label = "Free up space (debloat)"; run = "debloat"; mode = "term"; }
