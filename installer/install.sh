@@ -31,7 +31,7 @@ while :; do
       kb=$a; echo "Keyboard: $a"
     else
       echo "Couldn't switch this screen to '$a', so the install stays on US."
-      echo "After installing, switch with: nix2-setup set keyboardLayout $a"
+      echo "After installing, switch with: menu setup set keyboardLayout $a"
     fi
     break
   fi

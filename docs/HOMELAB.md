@@ -94,7 +94,7 @@ one is plugged in (backing up to itself would lose both copies at once).
 ## Bridges: your home network and an exit node (optional)
 
 Tailscale already connects your devices to this machine's services. Two more bridges, each one line in
-`settings.local.nix` then `nixup`:
+`settings.local.nix` then `menu update`:
 
 | Setting | What it does | Then |
 |---|---|---|
@@ -102,7 +102,7 @@ Tailscale already connects your devices to this machine's services. Two more bri
 | `homelab.exitNode = true;` | Your phone or laptop can send all its internet through home, e.g. on public Wi-Fi | Same page → tick **Use as exit node**; then on the phone: Tailscale → Exit node → this machine |
 
 Find your home network's range with `ip -4 route | grep -v tailscale` (the line with `src`, e.g.
-`192.168.1.0/24`). Remove a setting and `nixup` and the bridge is withdrawn: the flags are restated at
+`192.168.1.0/24`). Remove a setting and `menu update` and the bridge is withdrawn: the flags are restated at
 every boot. On Linux clients, accept routes with `sudo tailscale set --accept-routes`; phones do it
 automatically.
 

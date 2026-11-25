@@ -1,4 +1,4 @@
-//! nix2 game start|end — gamemode runs these when a game starts and when
+//! menu game start|end — gamemode runs these when a game starts and when
 //! the last one closes. While you play: notifications wait, the live
 //! wallpaper freezes and the snow stops (both cost GPU time). Everything goes
 //! back exactly as it was afterwards. (gamemode itself sets the CPU to
@@ -76,7 +76,7 @@ pub fn run(args: &[String]) -> i32 {
             0
         }
         _ => {
-            eprintln!("usage: nix2 game start|end");
+            eprintln!("usage: menu game start|end");
             2
         }
     }

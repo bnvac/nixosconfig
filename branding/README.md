@@ -1,23 +1,22 @@
 # Branding (MooreOS)
 
-Everything shown before you're logged in comes from this folder: the boot
-menu (GRUB), the splash while it starts (Plymouth, which also asks for the disk
-password on an encrypted disk), and the login screen (ly). fastfetch shows the
-chip too (pkgs/fastfetch/logo.txt).
+Everything shown before you're logged in comes from this folder, and so does
+fastfetch's logo:
+
+| Screen | What it shows |
+|---|---|
+| Boot menu (GRUB) | the dodecahedron inside a thin ring, viewfinder corners, the menu |
+| Load screen (Plymouth) | the dodecahedron tumbling inside the ring, boot messages scrolling like a terminal log, a dotted waveform; on an encrypted disk, `> Password for the disk` |
+| Login screen (ly) | the dodecahedron tumbling above the login box |
+| fastfetch | the dodecahedron spins for a moment, then stops at a random angle |
 
 | File | What it is |
 |---|---|
-| `branding.nix` | the name (MooreOS), the tagline (Moore Performance Industries), the colours |
-| `chip.txt` | the mark: an "M" on a chip (Moore's law: transistors per chip double every ~2 years) |
-| `wordmark.txt` | the MOORE banner (ANSI Shadow lettering) |
-| `render.py` | turns the two text files into the glowing pictures and the login-screen art, at build time |
+| `branding.nix` | the name (MooreOS), the tagline (Moore Performance Industries), the colours (monochrome) |
+| `dodeca.py` | the logo: draws a dodecahedron in ASCII, cell by cell (each face shaded by how much light it catches, edges bright), as text frames, pictures, or the login screen's animation |
+| `boot.nix` | puts it all together at build time |
 
-The art is plain text: edit `chip.txt` or `wordmark.txt` in any editor, keep the
-lines the same length, rebuild (`nixup`). Block characters (█ ▀ ▄ ▐ ▌ ▪) glow
-bright; line-drawing characters (╗ ║ ┤ ╷ …) are the dim outlines.
-
-To use pictures instead, drop in `logo.png` (square, transparent),
-`wordmark.png` and/or `grub-background.png` (1920×1080). They must be ordinary
-8-bit PNGs: GRUB can't read 16-bit ones.
-
-`bootSplash = false;` in settings.local.nix brings back plain scrolling text at boot.
+Change the colours or tagline in `branding.nix`, or the solid's look in
+`dodeca.py` (`RAMP` = the shading characters, `AXIS`/`TILT` = how it tumbles),
+then `menu update` (or `rebuild`). `bootSplash = false;` in settings.local.nix
+brings back plain scrolling text at boot.

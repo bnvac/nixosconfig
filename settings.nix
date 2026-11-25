@@ -2,7 +2,7 @@
 #
 # DON'T EDIT THIS FILE for your own machine. Your values live in
 # settings.local.nix next to it (not in git, so updates never clash with
-# them). `nix2-setup` writes it for you, and `modtui` → Edit settings, `mod`
+# them). `menu setup` writes it for you, and `modtui` → Edit settings, `mod`
 # and `debloat remove` change it. Any name below can go there, one per line:
 #
 #   username = "ada";
@@ -14,7 +14,7 @@
 # (location, menu, modules…) merge key by key.
 let
   defaults = {
-    # ── You and this machine (nix2-setup asks for these) ────────────────────
+    # ── You and this machine (menu setup asks for these) ────────────────────
     username = "user";
     fullName = "parajynx user";
     hostName = "parajynx";
@@ -77,7 +77,7 @@ let
     modules = { };
 
     # ── Updates ───────────────────────────────────────────────────────────────
-    # `nixup` pulls this repo (cloned at /etc/nixos) and rebuilds — no re-cloning.
+    # `menu update` pulls this repo (cloned at /etc/nixos) and rebuilds — no re-cloning.
     # autoUpdate = true adds a weekly timer that pulls + rebuilds on its own.
     autoUpdate = false;
     # Apps built from git (settings.gitApps, and the optional neb, backoffice,
@@ -100,7 +100,7 @@ let
     # Share builds between your machines (`devtools` module): one machine
     # builds, the others download the result over your home network instead of
     # compiling it again. On the machine that builds: shareBuilds.serve = true;
-    # then `nix2-setup share` prints the two lines to put on the others.
+    # then `menu setup share` prints the two lines to put on the others.
     shareBuilds = { serve = false; from = ""; key = ""; };
 
     # Folders made in your home on boot (never deleted). Nested is fine: "projects/work".

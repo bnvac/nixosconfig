@@ -92,7 +92,7 @@ in
                        $'        scheme[i] = drw_scm_create(drw, colors[i], 3);\n\n    for (Monitor *m = mons; m; m = m->next)\n        for (Client *c = m->clients; c; c = c->next) {\n            XSetWindowBorder(dpy, c->win, scheme[SchemeNorm][ColBorder].pixel);\n            if (c->bw != borderpx && !c->isfullscreen) {\n                XWindowChanges wc = { .border_width = borderpx };\n                c->bw = borderpx;\n                XConfigureWindow(dpy, c->win, CWBorderWidth, &wc);\n            }\n        }\n\n    focus(NULL);'
       # Super+F3 (LARBS's displayselect) opens parajynx's display tool instead.
       substituteInPlace config.h \
-        --replace-fail '{.v = (const char*[]){ "displayselect", NULL } }' '{.v = (const char*[]){ "nix2", "displays", NULL } }'
+        --replace-fail '{.v = (const char*[]){ "displayselect", NULL } }' '{.v = (const char*[]){ "menu", "displays", NULL } }'
       # Screenshots: Print / Shift+Print run `screenshot` (absolute save path,
       # clipboard, a notification — and an error message if it fails) instead
       # of maim with a path relative to wherever the session started.
@@ -104,7 +104,7 @@ in
       # Super+Alt+Shift+n is bound twice on purpose: dwm runs every matching
       # binding, so one press switches to tag 9 AND opens Neb's terminal there.
       cat > larbs-extra-keys.h <<'KEYS'
-      { MODKEY|Mod1Mask,           XK_space,  spawn, {.v = (const char*[]){ "nixmenu", NULL } } },
+      { MODKEY|Mod1Mask,           XK_space,  spawn, {.v = (const char*[]){ "menu", NULL } } },
       { MODKEY|Mod1Mask,           XK_n,      spawn, {.v = (const char*[]){ "neb-voice", NULL } } },
       { MODKEY|Mod1Mask|ShiftMask, XK_n,      view,  {.ui = 1 << 8} },
       { MODKEY|Mod1Mask|ShiftMask, XK_n,      spawn, {.v = (const char*[]){ "neb-space", NULL } } },
@@ -118,7 +118,7 @@ in
       { MODKEY|Mod1Mask,           XK_s,      spawn, {.v = (const char*[]){ "screenshot", NULL } } },
       { MODKEY|Mod1Mask,           XK_c,      spawn, {.v = (const char*[]){ "clipmenu", "-i", "-l", "20", "-p", "clipboard:", NULL } } },
       { MODKEY|Mod1Mask,           XK_w,      spawn, {.v = (const char*[]){ "wallpapers", NULL } } },
-      { MODKEY|Mod1Mask,           XK_p,      spawn, {.v = (const char*[]){ "nix2", "displays", NULL } } },
+      { MODKEY|Mod1Mask,           XK_p,      spawn, {.v = (const char*[]){ "menu", "displays", NULL } } },
       { MODKEY|Mod1Mask,           XK_r,      spawn, {.v = (const char*[]){ "rice", NULL } } },
       { MODKEY|Mod1Mask,           XK_o,      spawn, {.v = (const char*[]){ "offtimer", NULL } } },
       { MODKEY|Mod1Mask,           XK_y,      spawn, {.v = (const char*[]){ "wifi", NULL } } },
@@ -206,7 +206,7 @@ in
     runtimeInputs = with final; [ networkmanager tailscale jq systemd libnotify util-linux ];
     text = ''
       case "''${BLOCK_BUTTON:-}" in
-        1) setsid -f nix2 menu "Network & privacy" >/dev/null 2>&1 ;;
+        1) setsid -f menu "Network & privacy" >/dev/null 2>&1 ;;
         3) notify-send "Status bar" "🔒 VPN on · 🔓 VPN off here · 🧅 Tor for everything · 🔗 Tailscale connected. Click: Network & privacy." ;;
       esac
       out=""
@@ -230,7 +230,7 @@ in
       server="${server}"
       [ -n "$server" ] || exit 0
       case "''${BLOCK_BUTTON:-}" in
-        1) setsid -f nix2 menu "Self-hosted" >/dev/null 2>&1 ;;
+        1) setsid -f menu "Self-hosted" >/dev/null 2>&1 ;;
         3) notify-send "Status bar" "🏠 your home server is reachable · 🏠✗ it isn't (off, or you're off Tailscale). Click: Self-hosted." ;;
       esac
       if curl -s -o /dev/null --max-time 3 "http://$server/services.json"; then echo "🏠"; else echo "🏠✗"; fi
@@ -396,18 +396,32 @@ in
   backup          = sh "backup" (with final; [ restic coreutils util-linux libnotify curl git jq ]) ./scripts/backup.sh;
   # fastfetch (also as `neofetch`) with parajynx's own layout (pkgs/fastfetch/
   # config.jsonc), unless you have ~/.config/fastfetch/config.jsonc. The logo
-  # is the Moore chip (pkgs/fastfetch/logo.txt, from branding/chip.txt) in the wallpaper's
+  # is the tumbling dodecahedron (branding/dodeca.py), spinning for a moment, in the wallpaper's
   # accent colour — except inside a git repo that has its own logo: drop a
   # <reponame>.txt in pkgs/fastfetch-logos/ to add one.
   # Replaces the plain `fastfetch` on PATH, so Super+Alt+i and the shell get it.
+  # The logo's frames: the dodecahedron tumbling, 16 rows, one full turn.
+  fastfetch-frames = final.runCommand "fastfetch-dodeca-frames" { } ''
+    mkdir -p $out
+    ${final.python3}/bin/python3 -I ${../branding/dodeca.py} text 16 36 frames.txt
+    ${final.python3}/bin/python3 -I - <<'PY'
+    import os
+    out = os.environ["out"]
+    for i, fr in enumerate(open("frames.txt", encoding="utf-8").read().split("\f\n")):
+        lines = [l for l in fr.split("\n") if l != ""] if fr.strip() else []
+        if lines:
+            with open(f"{out}/frame-{i:03d}.txt", "w", encoding="utf-8") as f:
+                f.write("".join("$1" + l + "\n" for l in lines))
+    PY
+  '';
   fastfetch-id = final.writeShellApplication {
     name = "fastfetch";
-    runtimeInputs = with final; [ git coreutils ];
+    runtimeInputs = with final; [ git coreutils ncurses ];
     text = ''
       ff=${final.fastfetch}/bin/fastfetch
       cfg=${./fastfetch/config.jsonc}
       logos=${./fastfetch-logos}
-      logo=${./fastfetch/logo.txt}
+      frames=${final.fastfetch-frames}
     '' + builtins.readFile ./fastfetch/fastfetch.sh;
   };
   neofetch = final.writeShellScriptBin "neofetch" ''exec ${final.fastfetch-id}/bin/fastfetch "$@"'';
@@ -453,8 +467,8 @@ in
   nix2-setup      = sh "nix2-setup" (with final; [ coreutils gnused gnugrep gawk util-linux git ]) ./scripts/setup.sh;
   debloat         = sh "debloat" (with final; [ gawk gnugrep gnused coreutils findutils util-linux ]) ./scripts/debloat.sh;
 
-  # ── nix2: this system's own tools in one small, fast Rust binary ────────
-  # menu (nixmenu), doctor (system check), rollback, game-mode hooks and the
+  # ── menu: this system's own tools in one small, fast Rust binary ────────
+  # the menu, doctor (system check), rollback, game-mode hooks and the
   # printer watcher. Source in pkgs/nix2; `nixmenu`, `printer-notify` and
   # `nix2-doctor` are links to it (it picks the tool by the name it's run as).
   nix2 = final.rustPlatform.buildRustPackage {
@@ -467,9 +481,10 @@ in
     # The patched dmenu (Backspace = back) and st, found first at run time.
     env.NIX2_PATH = final.lib.makeBinPath [ final.larbs-dmenu final.larbs-st final.libnotify ];
     postInstall = ''
-      for n in nixmenu printer-notify nix2-doctor; do ln -s nix2 $out/bin/$n; done
+      # `menu` is the name you use; the others are links it recognises.
+      for n in menu nixmenu printer-notify nix2-doctor; do ln -s nix2 $out/bin/$n; done
     '';
-    meta.mainProgram = "nix2";
+    meta.mainProgram = "menu";
   };
   nixmenu         = final.nix2;
   printer-notify  = final.nix2;

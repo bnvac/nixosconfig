@@ -313,7 +313,7 @@ let
          this machine's 100.x address (tailscale ip -4) → turn on "Override DNS servers".
          Then ${if names then "http://home.${domain}" else "http://${addr}/"} lists everything.
          Pi-hole for devices NOT on Tailscale: set your router's DNS to this machine's LAN address.
-      4b. Optional bridges (settings.local.nix, then nixup):
+      4b. Optional bridges (settings.local.nix, then menu update):
          homelab.lanSubnet = "192.168.1.0/24";  reach home devices from anywhere
          homelab.exitNode = true;               route a device's internet through home
          then login.tailscale.com/admin/machines → ${addr} → ⋯ → Edit route settings → approve.

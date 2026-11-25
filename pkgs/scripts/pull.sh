@@ -1,5 +1,5 @@
 # nix2-pull — bring /etc/nixos up to date without losing your own edits.
-# `nixup` and the weekly auto-update run it before rebuilding.
+# `menu update` and the weekly auto-update run it before rebuilding.
 #
 #   1. Anything you changed (edited files, new files) is committed locally
 #      first, as "My changes on <host>, <date>". Nothing is pushed anywhere;
@@ -117,5 +117,5 @@ echo "  Your changes are safe: every file is just as it was. The files that clas
 printf '%s\n' "$clash" | sed 's/^/    /'
 echo "  To merge them by hand:  cd $dir && ${as}git rebase $up"
 echo "  (fix each file git names, then: ${as}git add <file> && ${as}git rebase --continue;"
-echo "   changed your mind: ${as}git rebase --abort). Then run nixup again."
+echo "   changed your mind: ${as}git rebase --abort). Then run menu update again."
 exit 1

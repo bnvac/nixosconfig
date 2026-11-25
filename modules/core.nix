@@ -30,7 +30,7 @@ let
       settings.local.nix (`mod on|off` writes those).
     - `/etc/nixos/settings.nix` — every setting with its default (in git).
     - `/etc/nixos/settings.local.nix` — THIS machine's values (not in git):
-      username, hostname, gpu, modules… Edit it, or `nix2-setup set KEY VALUE`.
+      username, hostname, gpu, modules… Edit it, or `menu setup set KEY VALUE`.
     - `/etc/nixos/modules/<name>.nix` — one feature each. Off modules stay on
       disk, just unbuilt.
     - `/etc/nixos/pkgs/default.nix` — packages built from source (one overlay).
@@ -127,7 +127,7 @@ let
       shared notes and backoffice.
     - `setbg <image>` — set the wallpaper.
     - `rebuild` (alias `nrs`) — `nixos-rebuild switch` with a live progress display.
-    - `nixup` — pull the config repo at /etc/nixos and rebuild (no re-cloning).
+    - `menu update` — pull the config repo at /etc/nixos and rebuild (no re-cloning).
       Edits made in /etc/nixos are committed locally first ("My changes on
       <host>") by `nix2-pull` and rebased on top of the update; on a conflict
       it aborts and restores everything. `nix2-pull --mine` lists them.
@@ -144,7 +144,7 @@ let
       --status` shows what's pinned vs. upstream. A new commit that doesn't
       build is held back and the old version stays. pkgs/tracked.nix is the
       single source of truth for which commit each one builds.
-    - `nixmenu` is data-driven: modules add entries via `my.menu`, web apps via
+    - `menu` is data-driven: modules add entries via `my.menu`, web apps via
       `my.selfhosted`; settings.menu (order/hide/extra) and
       ~/.config/nixmenu/menu (no rebuild) customise it. Running Docker
       containers with a published port appear under Self-hosted.
@@ -165,7 +165,7 @@ let
       which linux-wallpaperengine needs and user services don't get.
     - `neofetch` = fastfetch with pkgs/fastfetch/config.jsonc (unless
       ~/.config/fastfetch/config.jsonc exists); /etc/nix2/modules lists the
-      modules that are on. The logo is 并行 (pkgs/fastfetch/logo.txt) in the
+      modules that are on. The logo is the tumbling dodecahedron (branding/dodeca.py) in the
       terminal's colour 4, which `rice` sets to the wallpaper's accent.
     - Look: by default `rice` takes calm colours from the wallpaper (near-
       neutral background, muted terminal colours, one accent) and follows it
@@ -188,7 +188,7 @@ let
     - The `platform` module: Docker (socket-activated, weekly prune), Flatpak +
       Flathub, AppImage, Distrobox, and the gitApps builds/services.
     - This machine's own functions live under **Super+Alt** (a namespace LARBS
-      leaves alone): **Super+Alt+Space** opens `nixmenu` (every function here),
+      leaves alone): **Super+Alt+Space** opens `menu` (every function here),
       **Super+Alt+F1** shows `mykeys` (the custom-keybind cheat sheet). Stock
       LARBS keys stay on Super+F1's manual; Super+Enter is the terminal.
     - `apps` (Super+Alt+a) — every installed app, by category.
@@ -207,7 +207,7 @@ let
       also used on the text console (ly login, LUKS prompt at boot).
     - Background jobs that rebuild (nixos-prebuild, update-mine, the optional
       nix-auto-update) get NIX_PATH explicitly: systemd units don't inherit it.
-    - nixmenu search: words typed at the top level (or "🔍 Search everything")
+    - menu search: words typed at the top level (or "🔍 Search everything")
       list every entry whose name/category holds them. `nix2-pull` prints
       the update's commit titles (git log old-upstream..new-upstream).
     - `wifi` (Super+Alt+y): nmcli from dmenu; a failed new connection is
@@ -228,7 +228,7 @@ let
       them across focus changes). `rice apply --startup` runs at login;
       `rice follow-wallpaper` re-derives the palette when `wallpapers` sets
       a picture and the theme is "wallpaper".
-    - `nix2 displays` (Super+Alt+p, Super+F3): xrandr layouts from dmenu —
+    - `menu displays` (Super+Alt+p, Super+F3): xrandr layouts from dmenu —
       mirror/extend/only/resolution/rate/rotate/primary, with a 15 s
       keep-or-revert prompt. Kept layouts are autorandr profiles named
       nix2-<hash of the connected monitors> (~/.config/autorandr), restored
@@ -236,16 +236,16 @@ let
       (autorandr's postswitch hook) redoes wallpaper, live wallpaper and snow.
     - `lock` (Super+Alt+l) — lock screen; also on suspend and after 10 idle min.
     - `snow on|off|toggle` — the live falling snow over the snowy wallpaper.
-    - `nix2` (pkgs/nix2, one Rust binary) holds this system's own tools:
-      the menu (`nixmenu` is a link to it), `nix2 doctor` (system check with
+    - `menu` (pkgs/nix2, one Rust binary) holds this system's own tools:
+      the menu itself (`menu`, also `menu update` / `menu setup`), `menu doctor` (system check with
       a fix for every problem; a weekly user timer runs `--notify`, which
-      only speaks up when something's wrong), `nix2 rollback` (switch to an
-      earlier system generation), `nix2 game start|end` (gamemode hooks:
+      only speaks up when something's wrong), `menu rollback` (switch to an
+      earlier system generation), `menu game start|end` (gamemode hooks:
       pause dunst, SIGSTOP the live wallpaper, stop snow — all restored on
-      exit; state in $XDG_RUNTIME_DIR/nix2-game), `nix2 new` (project
+      exit; state in $XDG_RUNTIME_DIR/nix2-game), `menu new` (project
       starter: shell.nix + .envrc + git in ~/projects) and `printer-notify`.
       `backup` writes ~/.local/state/backup/last-success for the doctor.
-    - `nix2 serial` (pick a USB board by name → tio) and `nix2 new board|
+    - `menu serial` (pick a USB board by name → tio) and `menu new board|
       micropython` (PlatformIO / MicroPython projects with `just flash`). The
       `ee` module grants device access (udev: picotool, probe-rs, ST-Link,
       OpenOCD, sigrok, QMK, Vial/hidraw for the seat user, RTL-SDR, Flipper).
@@ -259,7 +259,7 @@ let
       when a command ran ≥30 s; `debloat junk` lists stale build folders.
     - Shared builds: settings.shareBuilds.serve runs harmonia (:5000, key in
       /var/lib/nix2/cache-key); other machines set shareBuilds.from + key
-      (`nix2-setup share` prints them) and substitute from it first.
+      (`menu setup share` prints them) and substitute from it first.
     - Clipboard history: clipmenud + `clipmenu` (Super+Alt+c). Night light:
       gammastep via services.redshift, location from settings.location;
       `nightlight` toggles it for the session.
@@ -410,7 +410,7 @@ let
         "Modules on/off")     toggle_modules ;;
         "Edit settings")      edit_settings ;;
         "AI model")           ai_model ;;
-        "Update system"*)     nixup ;;
+        "Update system"*)     menu update ;;
         "Rebuild now")        rebuild ;;
         "Open Neb dashboard") neb_dash ;;
         "Quit")               exit 0 ;;
@@ -449,7 +449,7 @@ let
     };
   };
 
-  # `nixup` — pull the config repo at /etc/nixos and rebuild. No re-cloning:
+  # `menu update` — pull the config repo at /etc/nixos and rebuild. No re-cloning:
   # your machine-local hardware-configuration.nix (untracked) is left alone.
   nixup = pkgs.writeShellScriptBin "nixup" ''
     # Tools the freshly pulled rebuild/update-mine scripts need (they're run
@@ -457,7 +457,7 @@ let
     export PATH=${lib.makeBinPath (with pkgs; [ nix-output-monitor git jq util-linux gawk gnugrep gnused coreutils ])}:/run/wrappers/bin:/run/current-system/sw/bin:$PATH
     dir=/etc/nixos
     if [ ! -d "$dir/.git" ]; then
-      echo "nixup: $dir isn't a git clone. Clone your config there once:"
+      echo "menu update: $dir isn't a git clone. Clone your config there once:"
       echo "  sudo git clone <your-repo-url> $dir   # keep hardware-configuration.nix"
       exit 1
     fi
@@ -545,7 +545,7 @@ in
   # Updates are built before you ask for them (nix2-prebuild, at idle priority,
   # only on mains power — you won't notice it):
   #   every 6 hours  fetch your config's git remote; if it has something new,
-  #                  build that system. `nixup` then only has to switch.
+  #                  build that system. `menu update` then only has to switch.
   #   weekly         move to the newest NixOS packages and build this config
   #                  on them; if it doesn't build, the channel goes back so
   #                  your next rebuild can't break (settings.channelUpdates,
@@ -781,24 +781,24 @@ in
     { label = "Setup / modules (TUI)"; run = "modtui"; mode = "term"; }
   ];
   my.menu."System/Updates" = [
-    { label = "Update system (pull + rebuild)"; run = "nixup"; mode = "term"; }
+    { label = "Update system (pull + rebuild)"; run = "menu update"; mode = "term"; }
     { label = "Full upgrade (newest NixOS packages)"; run = "rebuild --upgrade"; mode = "term"; }
     { label = "Update my git apps"; run = "update-mine --switch"; mode = "term"; }
-    { label = "Roll back to an earlier version"; run = "nix2 rollback"; mode = "term"; }
+    { label = "Roll back to an earlier version"; run = "menu rollback"; mode = "term"; }
   ];
   my.menu."System/Fix & clean" = [
     { label = "Pasting is slow? (copy the thing first, then run this)"; run = "pastecheck"; mode = "term"; }
-    { label = "System check (what's broken + how to fix it)"; run = "nix2 doctor"; mode = "term"; }
-    { label = "Fix problems (restart what's stuck, then check again)"; run = "nix2 doctor --fix"; mode = "term"; }
+    { label = "System check (what's broken + how to fix it)"; run = "menu doctor"; mode = "term"; }
+    { label = "Fix problems (restart what's stuck, then check again)"; run = "menu doctor --fix"; mode = "term"; }
     { label = "Free up space (debloat)"; run = "debloat"; mode = "term"; }
   ];
 
   # Weekly system check: a notification only if something needs a look
   # (failed services, a nearly full disk, no recent backup, missing Steam
-  # graphics libraries…). Run it yourself any time: `nix2 doctor`.
+  # graphics libraries…). Run it yourself any time: `menu doctor`.
   systemd.user.services.nix2-doctor = {
     description = "Weekly system check";
-    serviceConfig = { Type = "oneshot"; ExecStart = "${pkgs.nix2}/bin/nix2 doctor --notify"; SuccessExitStatus = [ 1 ]; };
+    serviceConfig = { Type = "oneshot"; ExecStart = "${pkgs.nix2}/bin/menu doctor --notify"; SuccessExitStatus = [ 1 ]; };
   };
   systemd.user.timers.nix2-doctor = {
     wantedBy = [ "timers.target" ];
@@ -811,7 +811,7 @@ in
     (s.homeFolders or [ "projects" "notes" "junk" ]);
 
   # Optional weekly auto-update (settings.autoUpdate). Runs as root, so no sudo:
-  # pulls /etc/nixos (your own edits kept, like nixup) and rebuilds. Skips
+  # pulls /etc/nixos (your own edits kept, like menu update) and rebuilds. Skips
   # this run if the update clashes with your edits (the journal says which file).
   systemd.services.nix-auto-update = lib.mkIf s.autoUpdate {
     description = "Pull /etc/nixos and rebuild";

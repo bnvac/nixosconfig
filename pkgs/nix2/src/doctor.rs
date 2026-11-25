@@ -1,10 +1,10 @@
-//! nix2 doctor — check that the system works, in plain words, with the fix
+//! menu doctor — check that the system works, in plain words, with the fix
 //! for anything that doesn't.
 //!
-//!   nix2 doctor            the full report (menu: System → System check)
-//!   nix2 doctor --notify   quiet: one notification, only if something's wrong
+//!   menu doctor            the full report (menu: System → System check)
+//!   menu doctor --notify   quiet: one notification, only if something's wrong
 //!                            (a weekly timer runs this)
-//!   nix2 doctor --fix      fix what's safe to fix by itself (restart failed
+//!   menu doctor --fix      fix what's safe to fix by itself (restart failed
 //!                            services, the sound server, the clock, the
 //!                            network; unmute), then check again
 //!                            (menu: System → Fix problems)
@@ -501,7 +501,7 @@ fn updates() -> Vec<Check> {
             ));
         }
     }
-    // nix2-prebuild built what `nixup` would pull, and it isn't applied yet.
+    // nix2-prebuild built what `menu update` would pull, and it isn't applied yet.
     if let Some(rev) = fs::read_to_string("/var/lib/nixos-prebuild/next.key")
         .ok()
         .and_then(|k| k.split_whitespace().next().map(String::from))
@@ -524,7 +524,7 @@ fn updates() -> Vec<Check> {
                 Level::Note,
                 "Updates",
                 "an update is built and waiting",
-                Some("nixup (takes seconds)"),
+                Some("menu update (takes seconds)"),
             ));
         }
     }
@@ -699,7 +699,7 @@ fn boards() -> Option<Check> {
         check(
             Level::Good,
             "Boards",
-            format!("can talk to {} (nix2 serial)", ports.join(", ")),
+            format!("can talk to {} (menu serial)", ports.join(", ")),
             None,
         )
     } else if !in_group {
@@ -911,7 +911,7 @@ pub fn run(args: &[String]) -> i32 {
             paint(
                 "1",
                 &format!(
-                    "nix2 doctor --fix can fix {} of these by itself (menu: System → Fix problems).",
+                    "menu doctor --fix can fix {} of these by itself (menu: System → Fix problems).",
                     if fixable == 1 { "one".to_string() } else { fixable.to_string() }
                 )
             )

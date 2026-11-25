@@ -5,7 +5,7 @@ Thanks for helping! Bug reports, ideas and pull requests are all welcome.
 ## Trying a change
 
 On a parajynx machine, `/etc/nixos` *is* your clone: edit, then `rebuild`. If it
-goes wrong, `nix2 rollback` (or pick an older entry at boot) brings the last
+goes wrong, `menu rollback` (or pick an older entry at boot) brings the last
 working system back.
 
 Without installing anything, check the config still fits together, the same

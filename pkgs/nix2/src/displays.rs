@@ -1,4 +1,4 @@
-//! nix2 displays — screens: mirror, extend, pick one, resolution, refresh
+//! menu displays — screens: mirror, extend, pick one, resolution, refresh
 //! rate, rotation, which one is the main screen. (Super+Alt+p, Super+F3, or
 //! menu → System → Displays.)
 //!
@@ -7,12 +7,12 @@
 //! never leaves you stuck. A layout you keep is remembered for exactly that
 //! set of screens (autorandr) and comes back whenever they're plugged in.
 //!
-//!   nix2 displays                 the menu
-//!   nix2 displays status          what's connected and how it's set
-//!   nix2 displays mirror          same picture on every screen
-//!   nix2 displays extend [right|left|above|below]   second screen next to the main one
-//!   nix2 displays only NAME       just that screen
-//!   nix2 displays auto            every screen at its best mode, side by side
+//!   menu displays                 the menu
+//!   menu displays status          what's connected and how it's set
+//!   menu displays mirror          same picture on every screen
+//!   menu displays extend [right|left|above|below]   second screen next to the main one
+//!   menu displays only NAME       just that screen
+//!   menu displays auto            every screen at its best mode, side by side
 //!   … --dry-run                   print the xrandr command, change nothing
 
 use crate::util::{dmenu, extend_path, load_x_env, notify, ok, output, which, Pick};
@@ -702,12 +702,12 @@ pub fn run(args: &[String]) -> i32 {
         Some("only") => match args.get(1) {
             Some(name) => apply(only(&outs, name), &outs, dry, false),
             None => {
-                eprintln!("usage: nix2 displays only NAME   (names: nix2 displays status)");
+                eprintln!("usage: menu displays only NAME   (names: menu displays status)");
                 2
             }
         },
         Some(_) => {
-            eprintln!("usage: nix2 displays [status|mirror|extend [right|left|above|below]|only NAME|auto] [--dry-run]");
+            eprintln!("usage: menu displays [status|mirror|extend [right|left|above|below]|only NAME|auto] [--dry-run]");
             2
         }
     }

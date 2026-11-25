@@ -144,7 +144,7 @@ let
     esac
   '';
 
-  # After the screens changed (nix2 displays, a monitor plugged in): the
+  # After the screens changed (menu displays, a monitor plugged in): the
   # wallpaper is set again for the new sizes, the live wallpaper gets its
   # windows remade (one per screen), and the snow covers the new area.
   displaysRefresh = pkgs.writeShellScriptBin "displays-refresh" ''
@@ -181,7 +181,7 @@ let
 
       MY KEYBINDS   (Super = the key that used to be CapsLock)
 
-      Super + Alt + Space        nixmenu — the menu of everything here
+      Super + Alt + Space        menu — the menu of everything here
       Super + Alt + n            talk to Neb (a corner notification; press again to send now)
       Super + Alt + Shift + n    Neb's workspace (tag 9) + his terminal — Enter on an empty line talks
       Super + Alt + a            apps, by category
@@ -260,7 +260,7 @@ in
           ${pkgs.xdg-utils}/bin/xdg-mime default brave-browser.desktop x-scheme-handler/http x-scheme-handler/https text/html application/xhtml+xml 2>/dev/null \
             && mkdir -p "$HOME/.local/state/nix2" && echo brave > "$HOME/.local/state/nix2/default-browser"
         fi
-        # Screens (the layout you kept for this set of monitors, nix2 displays)
+        # Screens (the layout you kept for this set of monitors, menu displays)
         # and then the wallpaper, alongside the desktop starting rather than
         # before it: dwm follows screen changes by itself (~0.4 s sooner).
         bg="$HOME/.local/share/bg"
@@ -361,7 +361,7 @@ in
     latitude = (s.location or { }).latitude or 40.7;
     longitude = (s.location or { }).longitude or (-74.0);
   };
-  # Screens (`nix2 displays`, Super+Alt+p): a layout you keep is saved for
+  # Screens (`menu displays`, Super+Alt+p): a layout you keep is saved for
   # that exact set of monitors, and autorandr puts it back when they're
   # plugged in, at login and after sleep.
   services.autorandr = {
@@ -478,7 +478,7 @@ in
       "Devices" = [
         { label = "Audio (output, mic, volume)"; run = "audio"; }
         { label = "Bluetooth"; run = "blueman-manager"; needs = "blueman-manager"; }
-        { label = "Displays (mirror, extend, resolution, rotate)"; run = "nix2 displays"; }
+        { label = "Displays (mirror, extend, resolution, rotate)"; run = "menu displays"; }
       ];
       "Network & privacy" = [
         { label = "Wi-Fi (pick a network)"; run = "wifi"; }
