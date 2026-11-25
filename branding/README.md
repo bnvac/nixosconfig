@@ -1,22 +1,22 @@
-# Branding
+# Branding (MooreOS)
 
-Everything parajynx shows before you log in comes from this folder.
-Placeholders are drawn automatically until you add your own files.
+Everything shown before you're logged in comes from this folder, and so does
+fastfetch's logo:
 
-| File | What it is | Size |
-|---|---|---|
-| `branding.nix` | the name under the logo, and the colours | |
-| `logo.png` | the logo on the boot splash (and the boot menu) | square, transparent, 512×512 or bigger |
-| `grub-background.png` | (optional) the boot menu's whole background | 1920×1080 (it's scaled) |
+| Screen | What it shows |
+|---|---|
+| Boot menu (GRUB) | the dodecahedron inside a thin ring, viewfinder corners, the menu |
+| Load screen (Plymouth) | the dodecahedron tumbling inside the ring, boot messages scrolling like a terminal log, a dotted waveform; on an encrypted disk, `> Password for the disk` |
+| Login screen (ly) | the dodecahedron tumbling above the login box |
+| fastfetch | the dodecahedron spins for a moment, then stops at a random angle |
 
-Add or change a file, then rebuild (`nixup`). With no `grub-background.png`, the
-boot menu background is made from `logo.png`, the name and the colours.
+| File | What it is |
+|---|---|
+| `branding.nix` | the name (MooreOS), the tagline (Moore Performance Industries), the colours (monochrome) |
+| `dodeca.py` | the logo: draws a dodecahedron in ASCII, cell by cell (each face shaded by how much light it catches, edges bright), as text frames, pictures, or the login screen's animation |
+| `boot.nix` | puts it all together at build time |
 
-The boot menu draws its own icons per entry (this system: your logo; Windows; firmware settings),
-a soft accent pill on the selected entry, and a countdown. Pictures you add must be ordinary 8-bit
-PNGs (GRUB can't read 16-bit ones; most apps save 8-bit already).
-
-Where they're used: the splash while the system starts (Plymouth, which also
-asks for your disk password if the disk is encrypted) and the GRUB boot menu.
-Settings: `bootSplash = false;` in settings.local.nix brings back the plain
-scrolling text at boot.
+Change the colours or tagline in `branding.nix`, or the solid's look in
+`dodeca.py` (`RAMP` = the shading characters, `AXIS`/`TILT` = how it tumbles),
+then `menu update` (or `rebuild`). `bootSplash = false;` in settings.local.nix
+brings back plain scrolling text at boot.

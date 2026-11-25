@@ -1,4 +1,4 @@
-//! nix2 serial [PORT] [BAUD] — talk to a board over USB serial (Arduino,
+//! menu serial [PORT] [BAUD] — talk to a board over USB serial (Arduino,
 //! ESP32, Pico, any USB-serial adapter). Lists what's plugged in by name
 //! ("Raspberry Pi Pico on ttyACM0"), opens the one you pick in tio, which
 //! reconnects by itself when you reflash or replug the board.
@@ -136,7 +136,7 @@ pub fn run(args: &[String]) -> i32 {
     } else {
         Command::new("picocom").args(["-b", &baud, &port]).exec()
     };
-    eprintln!("nix2 serial: couldn't start a serial terminal: {err}");
+    eprintln!("menu serial: couldn't start a serial terminal: {err}");
     1
 }
 

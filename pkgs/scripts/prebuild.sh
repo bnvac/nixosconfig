@@ -1,4 +1,4 @@
-# nix2-prebuild — get the next update ready before you ask for it, so `nixup`
+# nix2-prebuild — get the next update ready before you ask for it, so `menu update`
 # only has to switch (seconds) instead of compiling while you wait.
 #
 #   nix2-prebuild            fetch your config's git remote; if there's
@@ -12,7 +12,7 @@
 # switched and /etc/nixos isn't touched: the update is built from a scratch
 # copy (plus this machine's own settings.local.nix, hardware-configuration.nix
 # and app pins). What it builds stays in the Nix store, kept from garbage
-# collection by links in /var/lib/nixos-prebuild — `nixup` finds it there.
+# collection by links in /var/lib/nixos-prebuild — `menu update` finds it there.
 dir=${NIXOS_DIR:-/etc/nixos}
 state=${STATE_DIRECTORY:-/var/lib/nixos-prebuild}
 channel=false
@@ -67,7 +67,7 @@ if g merge-base --is-ancestor "$rev" HEAD 2>/dev/null; then
   exit 0
 fi
 
-echo "nix2-prebuild: building ${rev:0:7} (what nixup will pull) …"
+echo "nix2-prebuild: building ${rev:0:7} (what menu update will pull) …"
 src="$state/src"
 rm -rf "$src" "$src.tmp"
 mkdir -p "$src.tmp"
@@ -84,8 +84,8 @@ status=0
 nix-build '<nixpkgs/nixos>' -A system -I "nixos-config=$src/configuration.nix" -o "$state/next" || status=$?
 rm -rf "$src"
 if [ "$status" -ne 0 ]; then
-  echo "nix2-prebuild: ${rev:0:7} doesn't build on this machine yet (nixup would stop at the same error, above)."
+  echo "nix2-prebuild: ${rev:0:7} doesn't build on this machine yet (menu update would stop at the same error, above)."
   exit 1
 fi
 echo "$key" >"$state/next.key"
-echo "nix2-prebuild: ${rev:0:7} is built — nixup will just switch to it."
+echo "nix2-prebuild: ${rev:0:7} is built — menu update will just switch to it."

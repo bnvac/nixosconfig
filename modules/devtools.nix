@@ -1,6 +1,6 @@
 # Coding & engineering toolkit — small, fast, free/open-source tools for
 # writing code, reading code and working on FOSS projects. Each project's own
-# compilers come from its shell.nix (start one with `nix2 new`), so the
+# compilers come from its shell.nix (start one with `menu new`), so the
 # system stays lean and two projects never fight over versions.
 #
 # Bigger apps (VSCodium, Ghidra, Octave, OBS…) only with settings.nix →
@@ -108,7 +108,7 @@ in
   ];
 
   my.menu."Code & engineering" = lib.mkBefore [
-    { label = "New project (Rust, Python, C++, Go, Node…)"; run = "nix2 new"; mode = "term"; }
+    { label = "New project (Rust, Python, C++, Go, Node…)"; run = "menu new"; mode = "term"; }
     { label = "Projects folder"; run = "thunar ~/projects"; needs = "thunar"; }
     { label = "Git (lazygit, in ~/projects)"; run = "cd ~/projects && lazygit"; mode = "tty"; }
     { label = "Offline docs (Zeal)"; run = "zeal"; }

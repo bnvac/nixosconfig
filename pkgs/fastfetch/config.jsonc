@@ -1,4 +1,4 @@
-// parajynx's fastfetch (and `neofetch`). Your own ~/.config/fastfetch/config.jsonc
+// MooreOS's fastfetch (and `neofetch`). Your own ~/.config/fastfetch/config.jsonc
 // wins if you make one.
 //
 // One accent, everything else plain: "blue" is the terminal's colour 4, which
@@ -20,7 +20,7 @@
   "modules": [
     { "type": "title", "format": "{user-name}@{host-name}", "color": { "user": "default", "at": "90", "host": "blue" } },
     { "type": "custom", "format": "\u001b[90m────────────────────────────────────" },
-    { "type": "os", "key": "system", "format": "parajynx · NixOS {version-id}" },
+    { "type": "os", "key": "system", "format": "MooreOS · NixOS {version-id}" },
     { "type": "command", "key": "version", "shell": "/bin/sh",
       "text": "l=$(readlink /nix/var/nix/profiles/system) && n=${l#system-} && echo \"#${n%-link}\"" },
     { "type": "command", "key": "modules", "shell": "/bin/sh",

@@ -51,8 +51,8 @@ in
   # GPU is all the game's. Everything comes back as it was when you quit.
   # Steam: add `gamemoderun %command%` to a game's launch options.
   programs.gamemode.settings.custom = {
-    start = "${pkgs.nix2}/bin/nix2 game start";
-    end = "${pkgs.nix2}/bin/nix2 game end";
+    start = "${pkgs.nix2}/bin/menu game start";
+    end = "${pkgs.nix2}/bin/menu game end";
   };
   # /dev/ntsync (built into the zen kernel; the kernel makes it usable by
   # everyone). Only asked for on kernels that have it (6.14+).

@@ -1,7 +1,7 @@
-# parajynx · 并行
+# MooreOS
 
-*并行 (bìngxíng) means "parallel": many things running side by side, which is
-how this system is built: your desktop and your own server, one config.*
+*Moore Performance Industries. Named for Moore's law: more done with the same
+machine, every year. Your desktop and your own server, one config.*
 
 **A Linux for people who build things.** Write code, design circuit boards,
 flash microcontrollers, 3D print, game — on a fast, private desktop that
@@ -9,7 +9,7 @@ sets itself up. Built on [NixOS](https://nixos.org), so the whole system is
 a few readable files: nothing breaks for good (every update can be rolled
 back), and every feature is a module you switch on with one command.
 
-![The parajynx desktop: tiled terminals over a snowy wallpaper](site/desktop.webp)
+![The MooreOS desktop: tiled terminals over a snowy wallpaper](site/desktop.webp)
 
 ```sh
 mod list          # what's on and off
@@ -20,10 +20,10 @@ mod on virt       # switch a module on (it rebuilds for you)
   Super+Alt+F1 lists your keys.
 - **Hardware just works** — plug in an Arduino, ESP32, Raspberry Pi Pico, debug
   probe, logic analyser or QMK/Vial keyboard and it's usable straight away, no
-  sudo. `nix2 serial` shows a board's output; `nix2 new board` starts a
+  sudo. `menu serial` shows a board's output; `menu new board` starts a
   PlatformIO project you build and flash with `just flash`. KiCad, FreeCAD,
   OpenSCAD and OrcaSlicer are in.
-- **Coding without setup** — `nix2 new` makes a Rust / Python / C++ / Go /
+- **Coding without setup** — `menu new` makes a Rust / Python / C++ / Go /
   Node project whose compiler, language server and formatter load when you
   `cd` in. Builds are fast by default: a compile cache (sccache/ccache) and the
   mold linker for every project, and a notification when a long build ends.
@@ -32,10 +32,10 @@ mod on virt       # switch a module on (it rebuilds for you)
 - **Your machines help each other** — one computer can share what it built
   with your others over your home network, so they download instead of
   compiling.
-- **Looks after itself** — `nix2 doctor` checks the things that usually
+- **Looks after itself** — `menu doctor` checks the things that usually
   break (audio, screenshots, graphics drivers, disk, backups, battery…) and
   tells you the fix; a weekly check only speaks up when something's wrong.
-  Updates are pre-built in the background, and `nix2 rollback` undoes one.
+  Updates are pre-built in the background, and `menu rollback` undoes one.
 - **Private by default** — firewall on, SSH off, Tor one command away
   (`tormode on`), Proton VPN and Proton Pass, encrypted disk from the installer.
 - **Games** — Steam with Proton for every game, controllers, and a game mode
@@ -89,13 +89,20 @@ writes it, it's not in git, so updates never touch it.
 }
 ```
 
-`rebuild` applies changes. `nixup` pulls the newest parajynx and rebuilds.
+`rebuild` applies changes. `menu update` pulls the newest parajynx and rebuilds.
 
 ## First login
 
 A welcome window opens: pick what you'll use the machine for, sign in to Tailscale, drop in a VPN
 config, set up backups, and (on a new computer) bring your files over from another machine's backup.
-Menu → System → Welcome / setup opens it again. The boot splash and boot menu come from `branding/`.
+Menu → System → Welcome / setup opens it again. The boot menu, the load screen and the login screen
+(a tumbling ASCII dodecahedron, monochrome) come from `branding/`.
+
+## One command: `menu`
+
+`menu` opens the menu (also **Super+Alt+Space**). `menu update` pulls the newest system and rebuilds,
+`menu setup` changes this machine's settings, `menu doctor` checks everything, `menu displays`,
+`menu rollback`, `menu new`… `menu help` lists them. (`nixup` and `nix2` still work.)
 
 ## Modules
 
@@ -104,7 +111,7 @@ Only the essentials are on by default (desktop, apps, power, vpn, backups), so a
 | module | what |
 |---|---|
 | desktop | dwm/st/dmenu/dwmblocks (based on LARBS), picom, snowy live wallpaper, lock screen, Thunar + drives, apps menu, Bluetooth, clipboard history, night light |
-| devtools | coding toolkit: lazygit, gh/glab/tea, delta, difftastic, direnv, just, hyperfine, CMake/Ninja/clangd/gdb/valgrind, Meld, Zeal, Qalculate; sccache/ccache + mold for fast builds; `nix2 new`; shared builds. `devExtras = true` adds VSCodium, Helix, Ghidra, Octave, OBS — **off by default** |
+| devtools | coding toolkit: lazygit, gh/glab/tea, delta, difftastic, direnv, just, hyperfine, CMake/Ninja/clangd/gdb/valgrind, Meld, Zeal, Qalculate; sccache/ccache + mold for fast builds; `menu new`; shared builds. `devExtras = true` adds VSCodium, Helix, Ghidra, Octave, OBS — **off by default** |
 | ee | hardware & electronics: KiCad, ngspice, PulseView/sigrok, PlatformIO, Arduino IDE, picotool, esptool/espflash, probe-rs, OpenOCD, ST-Link, dfu-util, Thonny/mpremote, QMK + Vial, FreeCAD, OpenSCAD, OrcaSlicer — and the device permissions for all of it — **off by default** |
 | apps | the lean everyday set: **Brave** (ad/tracker blocking built in, !bangs via Brave Search; wallet, Rewards, VPN, AI chat and News switched off; Proton Pass pre-installed), LibreOffice, mpv, sound and network controls |
 | extras | the bigger apps: Chromium, Discord/Slack, music (Cider, mpd), Calibre, torrents + Stremio, Onshape, iPhone tools — **off by default** |
@@ -131,16 +138,16 @@ Only the essentials are on by default (desktop, apps, power, vpn, backups), so a
 | command | what |
 |---|---|
 | `modtui` | TUI: onboarding, modules, settings, AI model (with download bar), update |
-| `nix2-setup` | this machine's settings (you, hostname, timezone, laptop/desktop, graphics) → `settings.local.nix`; `nix2-setup set KEY VALUE` changes one |
+| `menu setup` | this machine's settings (you, hostname, timezone, laptop/desktop, graphics) → `settings.local.nix`; `menu setup set KEY VALUE` changes one |
 | `rebuild` (`nrs`) | apply your config + update your own git apps (seconds when nothing is new), live progress bar. `--upgrade` also moves to the newest NixOS packages — normally pre-built for you weekly in the background; `--no-update` just applies config |
 | `update-mine` | move your git-built apps (neb, backoffice, intraweb, slowtyper + `gitApps`) to their latest commit, and the Claude desktop app to its newest release, only if it builds; runs daily too. `--status` to just look |
 | `debloat` | what's using space, and clean it; `debloat junk` finds old build folders (target/, node_modules/…) in projects you haven't touched for a month; `debloat remove <app>` drops an app from every module, or uninstalls a Flatpak by id (`org.gimp.GIMP`) and trims runtimes nothing else uses |
-| `nixup` | update /etc/nixos from git + rebuild (`autoUpdate = true` does it weekly). Every 6 hours (on mains power, at idle priority) the update is fetched and built in the background (`nix2-prebuild`), so `nixup` usually just switches. Your own edits there are kept: committed locally first and put back on top of the update; if one clashes, nothing changes and it names the file. `nix2-pull --mine` lists them |
-| `nix2 doctor` | system check: failed services, disk, memory, clock, network, screenshots, audio, Vulkan/Steam libraries, updates, backups, battery health, temperature — each problem with its fix. Menu: System → System check; runs weekly and notifies only if something's wrong |
-| `nix2 doctor --fix` | fixes what's safe to fix by itself — restarts failed services and the sound server, resyncs the clock, turns networking back on, unmutes — then checks again. Menu: System → Fix problems |
-| `nix2 rollback` | go back to an earlier system version if an update broke something (Enter = the one before); menu: System → Roll back |
-| `nix2 new` | start a project in `~/projects` with its tools ready — Rust, Python, C/C++, Go, Node, a microcontroller board (PlatformIO: Pico, ESP32, Arduino) or MicroPython: shell.nix + direnv + git + `just` commands (`just watch` reruns on every save, `just flash` for boards) |
-| `nix2 serial` | pick a plugged-in board by name and see its serial output (reconnects when you reflash) |
+| `menu update` | update /etc/nixos from git + rebuild (`autoUpdate = true` does it weekly). Every 6 hours (on mains power, at idle priority) the update is fetched and built in the background (`nix2-prebuild`), so `menu update` usually just switches. Your own edits there are kept: committed locally first and put back on top of the update; if one clashes, nothing changes and it names the file. `nix2-pull --mine` lists them |
+| `menu doctor` | system check: failed services, disk, memory, clock, network, screenshots, audio, Vulkan/Steam libraries, updates, backups, battery health, temperature — each problem with its fix. Menu: System → System check; runs weekly and notifies only if something's wrong |
+| `menu doctor --fix` | fixes what's safe to fix by itself — restarts failed services and the sound server, resyncs the clock, turns networking back on, unmutes — then checks again. Menu: System → Fix problems |
+| `menu rollback` | go back to an earlier system version if an update broke something (Enter = the one before); menu: System → Roll back |
+| `menu new` | start a project in `~/projects` with its tools ready — Rust, Python, C/C++, Go, Node, a microcontroller board (PlatformIO: Pico, ESP32, Arduino) or MicroPython: shell.nix + direnv + git + `just` commands (`just watch` reruns on every save, `just flash` for boards) |
+| `menu serial` | pick a plugged-in board by name and see its serial output (reconnects when you reflash) |
 | `nixmenu` | this system's actions by category — **Super+Alt+Space** (Backspace = back, Esc = close). Add/hide/reorder with `menu` in your settings, or `~/.config/nixmenu/menu` (no rebuild) |
 | `mykeys` | your keybind cheat sheet — **Super+Alt+F1** |
 | `apps` | every app, by category — **Super+Alt+a** |
@@ -150,15 +157,15 @@ Only the essentials are on by default (desktop, apps, power, vpn, backups), so a
 | `wifi` | pick a Wi-Fi network from a menu: saved ones connect straight away, new ones ask for the password; forget a network, join a hidden one, Wi-Fi off/on — **Super+Alt+y** |
 | `offtimer` | shutdown timer: turn off, suspend or restart in 30 min, 1h30, or at 23:30; warns 5 and 1 minute before, `offtimer cancel` stops it — **Super+Alt+o** |
 | `rice` | look & feel, live: 16 themes (Nord, Gruvbox, Catppuccin, Tokyo Night, Dracula…, light ones too) or colours taken from your wallpaper; see-through terminals, rounded corners, gaps, borders, dark/light apps. Recolours the bar, menus, notifications and open terminals without logging out; `rice reset` goes back — **Super+Alt+r** |
-| `nix2 displays` | screens: mirror, extend, only one, resolution, refresh rate, rotation, main screen. Asks "Keep this layout?" and goes back after 15 s if you don't answer; a layout you keep comes back whenever those monitors are plugged in — **Super+Alt+p** |
-| `screenshot` | **Print** = whole screen, **Shift+Print** (or **Super+Alt+s**) = area / window / clipboard / text (OCR) / screen recording (video with sound, to `~/Videos/recordings`; the same menu stops it); saved to `~/Pictures/screenshots` and copied to the clipboard. Laptop whose screenshot key is really F10 (or anything else)? `nix2-setup set screenshotKey F10` |
+| `menu displays` | screens: mirror, extend, only one, resolution, refresh rate, rotation, main screen. Asks "Keep this layout?" and goes back after 15 s if you don't answer; a layout you keep comes back whenever those monitors are plugged in — **Super+Alt+p** |
+| `screenshot` | **Print** = whole screen, **Shift+Print** (or **Super+Alt+s**) = area / window / clipboard / text (OCR) / screen recording (video with sound, to `~/Videos/recordings`; the same menu stops it); saved to `~/Pictures/screenshots` and copied to the clipboard. Laptop whose screenshot key is really F10 (or anything else)? `menu setup set screenshotKey F10` |
 | `lock` | lock screen: just your username + password — **Super+Alt+l** (also on suspend / 10 idle min) |
 | `site-push` | publish a folder to its Neocities site — menu: Apps & files → "Publish a folder to Neocities". The site comes from the repo's `.neocities` file; only changed files upload |
 | `wallpapers` | the wallpaper picker — six built-in wallpapers (snowy night, aurora, dusk ridge, blueprint, topography, circuit board), your pictures, or live **Wallpaper Engine** ones from the Steam Workshop; fit, shuffle, snow on/off — **Super+Alt+w** |
 | `neofetch` / `fastfetch` | system summary with parajynx's eye logo, which blinks at you, and layout (version you can roll back from, modules on); your own `~/.config/fastfetch/config.jsonc` takes over — **Super+Alt+i** |
 | `snow on\|off` | the live falling snow (never piles up) |
 | `clipmenu` | clipboard history — **Super+Alt+c**. Copied text stays pasteable after you close the window it came from. In the terminal: **select = copy, right-click = paste** (Ctrl+Shift+C/V too) |
-| `nightlight` | night light on/off for now (warmer screen after sunset; `nix2-setup` sets where you are from your timezone) |
+| `nightlight` | night light on/off for now (warmer screen after sunset; `menu setup` sets where you are from your timezone) |
 | `steam-setup` | turns on Steam Play for all games (runs at login; Steam must be closed) |
 | `thunar` | GUI file manager — **Super+Alt+e** (`lf` is still Super+r) |
 | `dash` | the menu's Self-hosted section (your web apps + running Docker containers) — **Super+Alt+d** |
@@ -186,7 +193,7 @@ Only the essentials are on by default (desktop, apps, power, vpn, backups), so a
   Types: rust, go, node, python, make, script, docker. `update-mine` keeps them
   on their newest commit and only switches to one that builds. The same works
   to point neb/backoffice/intraweb at a fork. Forking this whole config? Clone
-  your fork to /etc/nixos and `nixup` pulls from it.
+  your fork to /etc/nixos and `menu update` pulls from it.
 - **Tor**: `tormode on` waits until Tor has connected and shows the exit IP.
   While it's on, anything that can't go through Tor — IPv6, QUIC, your LAN,
   Docker, a VPN — is refused instantly instead of leaking or hanging.
@@ -259,7 +266,7 @@ Only the essentials are on by default (desktop, apps, power, vpn, backups), so a
 configuration.nix     imports core + every module that's on
 picker.nix            which modules exist / are on (mods/ + your settings)
 settings.nix          every setting, its default and what it does
-settings.local.nix    YOUR machine's values (not in git; nix2-setup writes it)
+settings.local.nix    YOUR machine's values (not in git; menu setup writes it)
 options.nix           shared options modules fill in (menu entries, packages…)
 modules/core.nix      always on: boot, network, user, audio, shell, updates
 modules/*.nix         one feature each (table above)

@@ -123,7 +123,7 @@ run_backup() {
   # restic: 0 = all saved; 3 = saved, but a few files couldn't be read.
   if [ "$status" -eq 0 ] || [ "$status" -eq 3 ]; then
     restic forget --prune --keep-daily 7 --keep-weekly 4 --keep-monthly 6 >/dev/null 2>&1 || true
-    mkdir -p "$state" && touch "$state/last-success"     # nix2 doctor reads this
+    mkdir -p "$state" && touch "$state/last-success"     # menu doctor reads this
     if [ "$status" -eq 3 ]; then
       note "backup done (a few files couldn't be read: journalctl --user -u backup -e)."
     else
@@ -200,7 +200,7 @@ case "$cmd" in
           jq -r 'to_entries[] | "\(.key) \(if .value then "on" else "off" end)"' <<<"$mods" |
             while read -r m v; do nix2-setup module "$m" "$v" </dev/tty || true; done
           [ "$hs" != '""' ] && nix2-setup set homelabServer "$(jq -r . <<<"$hs")" </dev/tty || true
-          echo "Run 'nixup' (or rebuild) to install them."
+          echo "Run 'menu update' (or rebuild) to install them."
         fi
       fi
     fi

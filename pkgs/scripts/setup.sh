@@ -1,17 +1,17 @@
-# nix2-setup — this machine's own settings (settings.local.nix).
+# menu setup — this machine's own settings (settings.local.nix).
 #
-#   nix2-setup                 guided: works out user, hostname, timezone,
+#   menu setup                 guided: works out user, hostname, timezone,
 #                                laptop/desktop and graphics card, asks you to
 #                                confirm each, writes settings.local.nix
-#   nix2-setup --migrate       the same without questions (rebuild runs this
+#   menu setup --migrate       the same without questions (rebuild runs this
 #                                once on machines set up before settings.local.nix
 #                                existed, carrying your old values over)
-#   nix2-setup set KEY VALUE   one value: F10, 42, true, [ "a" ] (a plain word = text)
-#   nix2-setup unset KEY       back to parajynx's default
-#   nix2-setup get KEY         print a value (yours, else the default)
-#   nix2-setup module NAME on|off|default
-#   nix2-setup modules         which modules are on
-#   nix2-setup share           the lines that let your other machines use
+#   menu setup set KEY VALUE   one value: F10, 42, true, [ "a" ] (a plain word = text)
+#   menu setup unset KEY       back to parajynx's default
+#   menu setup get KEY         print a value (yours, else the default)
+#   menu setup module NAME on|off|default
+#   menu setup modules         which modules are on
+#   menu setup share           the lines that let your other machines use
 #                                this one's builds (settings shareBuilds)
 # --root DIR works on DIR/etc/nixos instead (the installer uses --root /mnt).
 
@@ -32,7 +32,7 @@ ensure_file() {
   cat > "$local_file" <<'EOF'
 # This machine's settings. Any name from settings.nix can go here and replaces
 # parajynx's default. Not in git, so updates never touch it. Change it with an
-# editor, `modtui` → Edit settings, `mod on|off`, or `nix2-setup set`.
+# editor, `modtui` → Edit settings, `mod on|off`, or `menu setup set`.
 {
 }
 EOF
@@ -196,7 +196,7 @@ EOF
 }
 
 # ── commands ───────────────────────────────────────────────────────────────
-# `nix2-setup set`, forgiving: a name in the wrong case is corrected to the
+# `menu setup set`, forgiving: a name in the wrong case is corrected to the
 # one settings.nix uses (screenshotkey → screenshotKey), and a plain word
 # becomes text (F10 → "F10"), so the Nix quoting rules can't trip you up.
 set_cmd() {

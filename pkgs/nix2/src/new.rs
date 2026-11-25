@@ -1,4 +1,4 @@
-//! nix2 new [kind] [name] — start a project in ~/projects/NAME with its
+//! menu new [kind] [name] — start a project in ~/projects/NAME with its
 //! toolchain ready: a shell.nix (compiler, language server, formatter), an
 //! .envrc so the tools load the moment you `cd` in (direnv), a .gitignore,
 //! a hello-world, and a git repo. Nothing gets installed system-wide.
@@ -213,7 +213,7 @@ pub fn run(args: &[String]) -> i32 {
             Some(k) => k,
             None => {
                 eprintln!(
-                    "nix2 new: unknown kind '{k}' — one of: {}",
+                    "menu new: unknown kind '{k}' — one of: {}",
                     KINDS.iter().map(|k| k.key).collect::<Vec<_>>().join(", ")
                 );
                 return 2;
@@ -259,7 +259,7 @@ pub fn run(args: &[String]) -> i32 {
         return 1;
     }
     if let Err(e) = create(&dir, kind, &name) {
-        eprintln!("nix2 new: couldn't create {}: {e}", dir.display());
+        eprintln!("menu new: couldn't create {}: {e}", dir.display());
         return 1;
     }
     let d = dir.to_str().unwrap_or(".");

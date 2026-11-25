@@ -12,7 +12,7 @@
 # What it tracks comes from pkgs/tracked.nix: the built-ins (neb, backoffice,
 # intraweb, slowtyper — pkgs/pins.json) plus every repo in settings.gitApps, from GitHub
 # or any git server, on a branch if you set one. New pins go to
-# pkgs/pins.local.json (gitignored, so `nixup` pulls never conflict). For each:
+# pkgs/pins.local.json (gitignored, so `menu update` pulls never conflict). For each:
 #   1. ask the repo for its latest commit (git ls-remote — no API, no token)
 #   2. let Nix work out the new hashes (source, and Go/npm dependencies) by
 #      building with a placeholder and reading back the hash it reports

@@ -1,12 +1,13 @@
-# parajynx's look at boot (the boot menu and the splash while it starts).
-# Change these, or drop your own pictures in this folder (see README.md);
-# then rebuild. Nothing else needs touching.
+# MooreOS's look before you're logged in: the boot menu, the load screen
+# and the login screen. Change these, then rebuild; the logo is drawn by
+# dodeca.py (a tumbling ASCII dodecahedron), nothing else to touch.
 {
-  name = "parajynx";              # shown under the logo while it boots
-  colors = {
-    background = "#0e1013";       # the whole screen
-    text = "#d7dae0";             # the name, the password prompt
-    dim = "#6b7280";              # small print (boot menu countdown)
-    accent = "#8aa4c8";           # the loading dots, the selected boot entry
+  name = "MooreOS";                         # the system's name
+  tagline = "Moore Performance Industries"; # small print at boot and on the login screen
+  colors = {                                # monochrome: black, greys, white
+    background = "#000000";
+    text = "#e6e6e6";
+    dim = "#6b6b6b";
+    accent = "#ffffff";
   };
 }

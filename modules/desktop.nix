@@ -85,6 +85,12 @@ let
       { id = "homelab"; title = "This is my home server"; desc = "Pi-hole, Nextcloud, Gitea, Jellyfin, Immich, backups… 24/7"; }
     ];
   });
+  # `pastecheck`: run right after copying something that pastes slowly.
+  pastecheck = pkgs.writeShellScriptBin "pastecheck" ''
+    export PATH=${lib.makeBinPath (with pkgs; [ xclip xprop ])}:$PATH
+    export PASTECHECK_LIBX11=${pkgs.libx11}/lib/libX11.so.6
+    exec ${pkgs.python3}/bin/python3 -I ${../pkgs/scripts/pastecheck.py} "$@"
+  '';
   welcome = pkgs.writeShellScriptBin "welcome" ''
     export WELCOME_DATA=${welcomeData}
     exec ${pkgs.python3}/bin/python3 -I ${../pkgs/scripts/welcome.py} "$@"
@@ -138,7 +144,7 @@ let
     esac
   '';
 
-  # After the screens changed (nix2 displays, a monitor plugged in): the
+  # After the screens changed (menu displays, a monitor plugged in): the
   # wallpaper is set again for the new sizes, the live wallpaper gets its
   # windows remade (one per screen), and the snow covers the new area.
   displaysRefresh = pkgs.writeShellScriptBin "displays-refresh" ''
@@ -175,7 +181,7 @@ let
 
       MY KEYBINDS   (Super = the key that used to be CapsLock)
 
-      Super + Alt + Space        nixmenu — the menu of everything here
+      Super + Alt + Space        menu — the menu of everything here
       Super + Alt + n            talk to Neb (a corner notification; press again to send now)
       Super + Alt + Shift + n    Neb's workspace (tag 9) + his terminal — Enter on an empty line talks
       Super + Alt + a            apps, by category
@@ -254,12 +260,14 @@ in
           ${pkgs.xdg-utils}/bin/xdg-mime default brave-browser.desktop x-scheme-handler/http x-scheme-handler/https text/html application/xhtml+xml 2>/dev/null \
             && mkdir -p "$HOME/.local/state/nix2" && echo brave > "$HOME/.local/state/nix2/default-browser"
         fi
-        # Screens: the layout you kept for this set of monitors (nix2 displays).
-        ${pkgs.autorandr}/bin/autorandr --change >/dev/null 2>&1 || true
+        # Screens (the layout you kept for this set of monitors, menu displays)
+        # and then the wallpaper, alongside the desktop starting rather than
+        # before it: dwm follows screen changes by itself (~0.4 s sooner).
         bg="$HOME/.local/share/bg"
         [ -e "$bg" ] || { mkdir -p "$HOME/.local/share"; ln -sfn ${wallpaper} "$bg"; }
         fit=$(cat "$HOME/.config/wallpapers/fit" 2>/dev/null) || fit=zoom   # set in `wallpapers`
-        ${pkgs.xwallpaper}/bin/xwallpaper "--''${fit:-zoom}" "$bg" &
+        { ${pkgs.autorandr}/bin/autorandr --change >/dev/null 2>&1
+          ${pkgs.xwallpaper}/bin/xwallpaper "--''${fit:-zoom}" "$bg"; } &
         ${lib.optionalString (s.liveSnow or false) "${pkgs.snow}/bin/snow on"}
         ${pkgs.larbs-scripts}/bin/remaps &
         ${pkgs.xset}/bin/xset s 600 600          # 10 idle minutes → xss-lock locks the screen
@@ -279,6 +287,16 @@ in
   # low-memory warnings…) are XDG autostart entries, which a bare window
   # manager never runs. This runs them when the session starts.
   services.xserver.desktopManager.runXdgAutostartIfNone = true;
+  # …a few seconds after the desktop is up, and below it in priority, so the
+  # desktop is usable at once instead of fighting Proton, Discord & co. for
+  # the disk. (A drop-in for every app-*@autostart.service.)
+  systemd.packages = [ (pkgs.writeTextDir "lib/systemd/user/app-.service.d/parajynx-later.conf" ''
+    [Service]
+    ExecStartPre=${pkgs.coreutils}/bin/sleep 4
+    Nice=5
+    IOSchedulingClass=best-effort
+    IOSchedulingPriority=6
+  '') ];
 
   # Clipboard history (Super+Alt+c): remembers what you copy, pick it back with dmenu.
   services.clipmenu.enable = true;
@@ -343,7 +361,7 @@ in
     latitude = (s.location or { }).latitude or 40.7;
     longitude = (s.location or { }).longitude or (-74.0);
   };
-  # Screens (`nix2 displays`, Super+Alt+p): a layout you keep is saved for
+  # Screens (`menu displays`, Super+Alt+p): a layout you keep is saved for
   # that exact set of monitors, and autorandr puts it back when they're
   # plugged in, at login and after sleep.
   services.autorandr = {
@@ -460,7 +478,7 @@ in
       "Devices" = [
         { label = "Audio (output, mic, volume)"; run = "audio"; }
         { label = "Bluetooth"; run = "blueman-manager"; needs = "blueman-manager"; }
-        { label = "Displays (mirror, extend, resolution, rotate)"; run = "nix2 displays"; }
+        { label = "Displays (mirror, extend, resolution, rotate)"; run = "menu displays"; }
       ];
       "Network & privacy" = [
         { label = "Wi-Fi (pick a network)"; run = "wifi"; }
@@ -482,7 +500,7 @@ in
   };
 
   my.packages = [ dash drives pkgs.nixmenu mykeys nightlight displaysRefresh homelabDiscover ] ++ dashItems ++ (with pkgs; [
-    wallpapers wallpaper-live site-push rice xsettingsd sb-privacy sb-homelab welcome
+    wallpapers wallpaper-live site-push rice xsettingsd sb-privacy sb-homelab welcome pastecheck
     (makeDesktopItem {
       name = "rice"; desktopName = "Look & feel"; exec = "rice";
       icon = "preferences-desktop-theme"; categories = [ "Settings" "DesktopSettings" ];

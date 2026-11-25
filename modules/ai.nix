@@ -10,7 +10,7 @@
 #              the kvm group) and QEMU, both provided.
 #
 # The two terminal agents below install themselves the first time you run
-# them and then keep themselves up to date — no `nixup` needed for a new
+# them and then keep themselves up to date — no `menu update` needed for a new
 # version, and nothing is downloaded until you use one.
 #
 #   claude     Claude Code. The first run installs Anthropic's own build into
