@@ -109,7 +109,9 @@ def terminal(script, *args):
 
 
 def tailscale_login():
-    p = subprocess.Popen(["tailscale", "up", "--accept-routes", "--timeout=10m"],
+    # `login`, not `up`: `up` refuses to run once other settings (the operator,
+    # accept-routes…) are set unless every one of them is repeated.
+    p = subprocess.Popen(["tailscale", "login", "--timeout=10m"],
                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                          start_new_session=True)
     deadline = time.time() + 20

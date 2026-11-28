@@ -212,6 +212,10 @@ let
     # Sync, DeviceLink and screen sharing only over Tailscale (encrypted, from
     # anywhere, no public discovery or relay servers). false = also on the LAN.
     syncOverTailscale = true;
+    # Use the routes your home server shares (homelab.lanSubnet: reach your
+    # printer/router from anywhere). Off by default: on a Wi-Fi with the same
+    # addresses as home it would break that Wi-Fi.
+    tailscaleAcceptRoutes = false;
     syncIds = { desktop = ""; laptop = ""; };   # older two-machine form, still works
   };
 

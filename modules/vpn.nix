@@ -38,8 +38,10 @@ let
   state = "/var/lib/vpn-auto";
   giveUp = toString (v.giveUpSeconds or 10);
   retryHours = toString (v.retryBlockedHours or 12);
-  # Something tiny that always answers, by address (no DNS involved).
+  # Something tiny that always answers: by address (raw connectivity), and by
+  # name (connectivity AND DNS: a VPN whose DNS doesn't answer is no VPN).
   probe = "http://1.1.1.1/cdn-cgi/trace";
+  probeByName = "https://one.one.one.one/cdn-cgi/trace";
 
   vpn = pkgs.writeShellApplication {
     name = "vpn";
@@ -112,7 +114,7 @@ let
         runuser -u "$user" -- env DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$uid/bus" \
           notify-send -a VPN -i network-vpn "$1" "$2" >/dev/null 2>&1 || true
       }
-      through_vpn() { curl -s -o /dev/null --max-time 3 --interface ${dev} ${probe}; }
+      through_vpn() { curl -s -o /dev/null --max-time 4 --interface ${dev} ${probeByName}; }
       direct() { curl -s -o /dev/null --max-time 4 ${probe}; }
       bar() { pkill -RTMIN+13 dwmblocks 2>/dev/null || true; }   # refresh the status bar's 🔒
       down() { nmcli connection down id ${id} >/dev/null 2>&1 || true; bar; }
