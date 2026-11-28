@@ -87,11 +87,18 @@ Admin page → **Machines**: remove anything you don't recognise or don't use an
 
 ## Tailscale and the VPN together
 
-The `vpn` module (on by default) and Tailscale run at the same time: your tailnet (home server, sync,
+The VPN (the `vpn` module; off until you `vpn on`) and Tailscale run at the same time: your tailnet (home server, sync,
 DeviceLink, Minecraft) goes straight to your devices, Tailscale's own connections use your real network,
 and everything else goes through the VPN. Use `vpn` rather than the Proton app's kill switch, which
 blocks Tailscale. On a network that blocks VPNs, the VPN switches itself off there and Tailscale keeps
 working (it gets through almost any network).
+
+## Your internet never depends on it
+
+Plain Wi-Fi always works on its own. Tailscale doesn't take routes your home server shares unless you
+set `tailscaleAcceptRoutes = true;`, and if the home server's DNS stops answering, a guard (`dns-guard`)
+switches the machine to the network's own DNS within 20 seconds and back once it answers again. Still
+stuck? Menu → Network & privacy → **Internet not working? Fix it** (`netfix`).
 
 ## What parajynx does on its side
 

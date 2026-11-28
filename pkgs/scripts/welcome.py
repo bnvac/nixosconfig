@@ -320,7 +320,8 @@ footer{display:flex;justify-content:space-between;gap:10px;margin-top:22px}
 </section>
 
 <section><h2><span class="n" id="n3">3</span>VPN</h2>
-<p>Connects by itself on every network, and steps aside on ones that block it. Get a WireGuard config from
+<p>Optional, and off until you switch it on: menu → Network & privacy → VPN (or <code>vpn on</code>). When on it
+connects by itself and steps aside on any network where it doesn't work, so it never costs you the internet. Get a WireGuard config from
 your VPN account (Proton: account → Downloads → WireGuard configuration), then drop the file here.</p>
 <div class="drop" id="drop">Drop the <b>.conf</b> file here, or <a href="#" id="pick" style="color:var(--acc)">choose it</a>
 <input type="file" id="file" accept=".conf" hidden></div>
@@ -368,7 +369,7 @@ async function refresh(){
   if(on&&ts.peers.length){$("srvrow").style.display="";
     if(!$("srv").options.length){$("srv").append(new Option("(none)",""));
       for(const p of ts.peers)$("srv").append(new Option(p,p));$("srv").value=S.backup.server||"";}}
-  if(S.vpn.configured)$("vpn").innerHTML=S.vpn.connected?'<span class="good">VPN connected.</span>':"VPN set up; it connects in a few seconds.";
+  if(S.vpn.configured)$("vpn").innerHTML=S.vpn.connected?'<span class="good">VPN connected.</span>':"VPN set up (off until you switch it on).";
   ok(3,S.vpn.configured);
   $("bkwhere").textContent=S.backup.server?`Every day, your files go to your home server (${S.backup.server}) over Tailscale: encrypted, with 7 days, 4 weeks and 6 months of history.`
     :"Every day, to an external drive labelled BACKUP when it's plugged in (pick a home server above to back up there instead, from anywhere).";
@@ -388,7 +389,7 @@ drop.ondragover=e=>{e.preventDefault();drop.classList.add("over")};drop.ondragle
 drop.ondrop=e=>{e.preventDefault();drop.classList.remove("over");sendVpn(e.dataTransfer.files[0])};
 async function sendVpn(f){if(!f)return;$("vpn").textContent="Adding…";
   const r=await api("/api/vpn",{config:await f.text()});
-  $("vpn").textContent=r.error||(r.ok?"Added. It connects in a few seconds. You can delete the downloaded file now.":r.out);refresh();}
+  $("vpn").textContent=r.error||(r.ok?"Added (off). Switch it on: menu → Network & privacy → VPN. You can delete the downloaded file now.":r.out);refresh();}
 async function pass(pw){const r=await api("/api/passphrase",{passphrase:pw});
   if(r.generated){$("secret").textContent=r.generated;$("bkmade").style.display=""}refresh();}
 $("pwbtn").onclick=()=>{const v=$("pw").value.trim();if(v.length<8){alert("At least 8 characters.");return}pass(v)};

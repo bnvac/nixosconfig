@@ -67,6 +67,7 @@ let
     # Set up once with `vpn add <wireguard-config.conf>` (Proton: account →
     # Downloads → WireGuard configuration).
     vpn = {
+      auto = false;            # true: on after every boot. false: off until `vpn on`
       giveUpSeconds = 10;      # nothing through the VPN this long → off on that network
       retryBlockedHours = 12;  # then try that network again after this long (or `vpn retry`)
     };
