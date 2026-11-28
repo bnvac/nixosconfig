@@ -52,6 +52,8 @@ never depend on DNS there. It still asks its own Pi-hole first for everything el
    - uses Pi-hole (ads blocked on your phone, even on mobile data),
    - can open the `*.home.arpa` names.
    This machine itself is set not to use the tailnet's DNS, so it never asks itself in a loop.
+   **Also add `9.9.9.9` as a second nameserver** there: then your devices keep working DNS
+   whenever this server is off (otherwise they lose all internet names until it's back).
 4. **Passwords:** `homelab passwords`. They're made on this machine and never go into git.
 5. **Gitea account:** `homelab git-admin`. It prints a first password, which you change at first login.
 6. **Check:** `homelab status` lists every service, whether it's running, and whether the names resolve.
@@ -103,7 +105,7 @@ Tailscale already connects your devices to this machine's services. Two more bri
 
 Find your home network's range with `ip -4 route | grep -v tailscale` (the line with `src`, e.g.
 `192.168.1.0/24`). Remove a setting and `menu update` and the bridge is withdrawn: the flags are restated at
-every boot. On Linux clients, accept routes with `sudo tailscale set --accept-routes`; phones do it
+every boot. On parajynx laptops, set `tailscaleAcceptRoutes = true;` to use the home-network bridge (off by default: on a Wi-Fi with the same addresses as home it breaks that Wi-Fi); phones do it
 automatically.
 
 ## Names vs ports
@@ -116,7 +118,7 @@ completely with `homelab.proxy = false;`, and every link goes back to `live:port
 ## Your other desktops pick it up by themselves
 
 Tailscale is on every parajynx machine already; sign each one in once (menu → Network & privacy →
-"Tailscale: sign in", or `sudo tailscale up --accept-routes`). Then add to its `settings.local.nix`:
+"Tailscale", or `tailscale login`). Then add to its `settings.local.nix`:
 
 ```nix
 homelabServer = "live";

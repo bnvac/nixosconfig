@@ -393,6 +393,7 @@ in
       meta.mainProgram = "rice";
     };
   offtimer        = sh "offtimer" (with final; [ systemd coreutils gnused gawk libnotify larbs-dmenu ]) ./scripts/offtimer.sh;
+  netfix          = sh "netfix" (with final; [ networkmanager curl util-linux glibc.bin coreutils gnugrep systemd tailscale ]) ./scripts/netfix.sh;
   backup          = sh "backup" (with final; [ restic coreutils util-linux libnotify curl git jq ]) ./scripts/backup.sh;
   # fastfetch (also as `neofetch`) with parajynx's own layout (pkgs/fastfetch/
   # config.jsonc), unless you have ~/.config/fastfetch/config.jsonc. The logo

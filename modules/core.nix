@@ -680,7 +680,7 @@ in
 
   # Tailscale on every parajynx machine (desktop or laptop), so your devices
   # always find each other and the home server (homelab module) from anywhere.
-  # Sign in once: menu → Network & privacy → Tailscale (or sudo tailscale up).
+  # Sign in once: menu → Network & privacy → Tailscale (or `tailscale login`).
   # "client" lets a laptop use the server's home-network bridge and exit node;
   # the homelab module raises it to "server". The open port lets devices
   # connect directly instead of through a relay.
@@ -689,12 +689,18 @@ in
     useRoutingFeatures = lib.mkDefault "client";
     openFirewall = true;
     # You can sign in and switch it without sudo (the welcome window does).
-    extraSetFlags = [ "--operator=${s.username}" ];
+    # Routes your home server shares (homelab.lanSubnet) are NOT taken by
+    # default: on a Wi-Fi that uses the same addresses as home (most do,
+    # 192.168.1.x), they'd send that Wi-Fi's own traffic home instead and
+    # break it. settings: tailscaleAcceptRoutes = true; to reach home devices.
+    extraSetFlags = [ "--operator=${s.username}"
+                      "--accept-routes=${lib.boolToString (s.tailscaleAcceptRoutes or false)}" ];
   };
   my.menu."Network & privacy" = [
+    { label = "Internet not working? Fix it"; run = "netfix"; mode = "term"; }
     # Signed in: who's online. Not yet: sign in.
     { label = "Tailscale (your devices)"; mode = "term";
-      run = "if tailscale status >/dev/null 2>&1; then tailscale status; else /run/wrappers/bin/sudo tailscale up --accept-routes && tailscale ip -4; fi"; }
+      run = "if tailscale status >/dev/null 2>&1; then tailscale status; else tailscale login && tailscale ip -4; fi"; }
   ];
   hardware.enableRedistributableFirmware = true;          # laptop wifi blobs
   systemd.services.NetworkManager-wait-online.enable = false;
@@ -747,7 +753,7 @@ in
   # there strips an app out of every module — `debloat` shows what's big and
   # `debloat remove <name>` adds to that list.
   environment.systemPackages = with pkgs; [
-    mod modtui nixup nix2-pull rebuild update-mine debloat nix2 nix2-setup git curl wget htop jq zoxide starship
+    mod modtui nixup netfix nix2-pull rebuild update-mine debloat nix2 nix2-setup git curl wget htop jq zoxide starship
   ] ++ lib.filter (p: !(lib.elem (lib.getName p) removed)) config.my.packages;
   my.packages = with pkgs; [
     fastfetch-id neofetch fzf ripgrep fd bat eza tree unzip zip psmisc usbutils pciutils
