@@ -696,6 +696,50 @@ in
     extraSetFlags = [ "--operator=${s.username}"
                       "--accept-routes=${lib.boolToString (s.tailscaleAcceptRoutes or false)}" ];
   };
+  # DNS guard: Tailscale can hand this machine your home server's DNS (Pi-hole,
+  # *.home.arpa names). If that stops answering (server off, Pi-hole down),
+  # websites would stop loading even though the Wi-Fi is fine. Every 20 s this
+  # checks; if names fail while the internet itself works, it switches this
+  # machine back to the network's own DNS at once, and hands back to
+  # Tailscale's as soon as that answers again. (Not on the home server itself,
+  # which never uses the tailnet's DNS.)
+  systemd.services.dns-guard = lib.mkIf (!(lib.elem "homelab" picked.on)) {
+    description = "Keep DNS working when the tailnet's DNS doesn't answer";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "tailscaled.service" "NetworkManager.service" ];
+    path = with pkgs; [ tailscale dig curl jq coreutils gnugrep util-linux libnotify ];
+    serviceConfig = { Restart = "always"; RestartSec = 10; Nice = 10; StateDirectory = "dns-guard"; };
+    script = ''
+      off=/var/lib/dns-guard/took-over
+      names() { dig +time=2 +tries=1 +short example.com A 2>/dev/null | grep -qE '^[0-9.]+$'; }
+      internet() { curl -s -o /dev/null --max-time 4 http://1.1.1.1/cdn-cgi/trace; }
+      running() { tailscale status --json 2>/dev/null | jq -e '.BackendState == "Running"' >/dev/null; }
+      accepting() { tailscale debug prefs 2>/dev/null | jq -e '.CorpDNS == true' >/dev/null; }
+      tell() {
+        uid=$(id -u ${s.username} 2>/dev/null) || return 0
+        [ -S "/run/user/$uid/bus" ] || return 0
+        runuser -u ${s.username} -- env DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$uid/bus" \
+          notify-send -a Network -i network-wireless "$1" "$2" >/dev/null 2>&1 || true
+      }
+      while sleep 20; do
+        if [ -e "$off" ]; then
+          # We switched it off: back on once the tailnet's DNS answers again.
+          if running && dig +time=2 +tries=1 +short @100.100.100.100 example.com A 2>/dev/null | grep -qE '^[0-9.]+$'; then
+            tailscale set --accept-dns=true && rm -f "$off" && echo "tailnet DNS answers again: using it"
+          fi
+          continue
+        fi
+        running && accepting || continue
+        names && continue
+        sleep 3; names && continue                 # a blip, not an outage
+        internet || continue                      # no internet at all: not a DNS problem
+        tailscale set --accept-dns=false && touch "$off"
+        echo "tailnet DNS not answering: switched to the network's own DNS"
+        tell "Home DNS not answering" "Using this network's DNS instead, so websites keep working. Switches back by itself."
+      done
+    '';
+  };
+
   my.menu."Network & privacy" = [
     { label = "Internet not working? Fix it"; run = "netfix"; mode = "term"; }
     # Signed in: who's online. Not yet: sign in.

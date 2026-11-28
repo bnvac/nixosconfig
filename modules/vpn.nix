@@ -1,13 +1,18 @@
-# A VPN that turns itself on, and steps aside on networks that block it.
+# A VPN that's OFF unless you switch it on, and then never costs you the
+# internet: it steps aside on any network where it doesn't work.
 #
 #   vpn add ~/Downloads/proton.conf   once: a WireGuard config (Proton: account
 #                                     page → Downloads → WireGuard configuration)
+#   vpn on         switch it on (from then on it connects by itself, on every
+#                  network, and retries the ones it gave up on)
+#   vpn off        switch it off (stays off, also after a reboot)
 #   vpn            what's going on (on/off, this network, your public IP)
-#   vpn off        stop it and keep it off · vpn on: back to automatic
-#                  (and another try on networks it gave up on)
 #   vpn retry      try again on networks it gave up on
 #
-# How it behaves (vpn-auto, a small root service):
+# Plain Wi-Fi always works without it: nothing here runs until `vpn on`
+# (settings vpn.auto = true makes "on" the default after every boot).
+#
+# How it behaves when on (vpn-auto, a small root service):
 #   - Whenever you're on a network, the VPN connects.
 #   - If nothing gets through it for 10 seconds (settings vpn.giveUpSeconds), it
 #     disconnects and checks the network on its own:
@@ -64,19 +69,19 @@ let
           nmcli connection modify "$uuid" connection.id ${id} connection.autoconnect no \
             ipv4.dns-priority -50 ipv6.dns-priority -50
           nmcli connection down "$uuid" >/dev/null 2>&1 || true
-          rm -f ${state}/paused ${state}/blocked/* 2>/dev/null || true
-          echo "VPN added. It connects by itself in a few seconds; 'vpn' shows it."
+          rm -f ${state}/blocked/* 2>/dev/null || true
+          echo "VPN added (off). Switch it on: vpn on  (or menu → Network & privacy → VPN)."
           echo "The config holds your private key: you can delete $f now (it's stored safely)."
           ;;
         on)
-          rm -f ${state}/paused ${state}/blocked/* 2>/dev/null || true
+          touch ${state}/on; rm -f ${state}/paused ${state}/blocked/* 2>/dev/null || true
           pkill -RTMIN+13 dwmblocks 2>/dev/null || true
           echo "Automatic: connects within a few seconds (blocked networks get another try)." ;;
         off)
-          touch ${state}/paused
+          rm -f ${state}/on
           nmcli connection down id ${id} >/dev/null 2>&1 || true
           pkill -RTMIN+13 dwmblocks 2>/dev/null || true
-          echo "Off until you turn it back on." ;;
+          echo "Off. Your normal connection is used; vpn on switches it back on." ;;
         retry)
           rm -f ${state}/blocked/* 2>/dev/null || true
           echo "Trying the VPN again on every network." ;;
@@ -85,7 +90,7 @@ let
             echo "No VPN set up yet: download a WireGuard config (Proton: account → Downloads →"
             echo "WireGuard configuration), then: vpn add ~/Downloads/<file>.conf"; exit 0
           fi
-          if [ -e ${state}/paused ]; then echo "Mode:      off (vpn on)"; else echo "Mode:      automatic"; fi
+          if [ -e ${state}/on ]; then echo "Mode:      on (connects by itself; vpn off)"; else echo "Mode:      off (vpn on)"; fi
           if nmcli -t -f NAME connection show --active | grep -qx ${id}; then echo "VPN:       connected"
           else echo "VPN:       not connected"; fi
           n=$(net)
@@ -132,8 +137,13 @@ let
         fi
         [ -n "$net" ] || continue               # no network: nothing to decide yet
 
-        # Stand aside: paused, tormode, or another VPN you connected yourself.
-        if [ -e ${state}/paused ] || systemctl is-active --quiet tor-transparent \
+        # Off (the default): make sure it's really off, and nothing else.
+        if [ ! -e ${state}/on ]; then
+          $up && down
+          continue
+        fi
+        # Stand aside: tormode, or another VPN you connected yourself.
+        if systemctl is-active --quiet tor-transparent \
            || grep -vE "^$vpn_uuid:" <<<"$active" | grep -qE ':(wireguard|vpn):activated$'; then
           continue
         fi
@@ -202,10 +212,12 @@ in
   systemd.tmpfiles.rules = [
     "d ${state} 2775 root networkmanager -"
     "d ${state}/blocked 2775 root networkmanager -"
+  ] ++ lib.optionals (v.auto or false) [
+    "f ${state}/on 0664 root networkmanager -"           # settings vpn.auto = true: on after every boot
   ];
 
   my.menu."Network & privacy" = lib.mkBefore [
-    { label = "VPN"; state = "[ ! -e ${state}/paused ]"; run = "vpn on"; off = "vpn off"; }
+    { label = "VPN"; state = "[ -e ${state}/on ]"; run = "vpn on"; off = "vpn off"; }
     { label = "Network status (VPN, IP, Tailscale)"; run = "vpn"; mode = "term"; }
   ];
 }
